@@ -2,3 +2,4 @@
 # Build results
 bin/
 build/
+.vscode/
