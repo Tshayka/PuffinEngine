@@ -24,11 +24,13 @@ add_subdirectory(
     ${CMAKE_BINARY_DIR}/googletest-build)
 
 
-#[[----Configuration of project.----]]
+#[[----Configuration of the project.----]]
 
 project (PuffinEngine)
 
-add_executable(${PROJECT_NAME} "puffinEngine/src/PuffinEngine.cpp" "main.cpp")
+add_executable(${PROJECT_NAME}  "puffinEngine/src/Device.cpp"
+                                "puffinEngine/src/PuffinEngine.cpp"
+                                "main.cpp")
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -38,8 +40,13 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 enable_testing()
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
 
+find_package(Vulkan)
+if (Vulkan_FOUND)
+    target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
+    include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
+endif (Vulkan_FOUND)
 
 #[[----Downloading and unpack glfw into lib directory at configure time.----]]
 
-set(GLFW_INCLUDE_DIR "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
-set(GLFW_LIBRARIES "${CMAKE_SOURCE_DIR}/puffinEngine/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
+include_directories(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include")
+target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
