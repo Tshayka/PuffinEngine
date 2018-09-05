@@ -5,28 +5,28 @@
 
 ## Install vulkan on Linux
 
-Intel
-    1) tar -xzf /home/sandro/Pobrane/vulkan-sdk.tar.gz
-    2) cd /home/sandro/1.1.82.1/build_samples.sh
-    3) sudo apt install libxcb1-dev xorg-dev 
-    4) sudo apt install mesa-vulkan-drivers vulkan-utils libegl1-mesa-dev
-    5) cd home/sandro/1.1.82.1/examples/build
-    6) ./cube
+### Intel:
+- $ tar -xzf /home/sandro/Pobrane/vulkan-sdk.tar.gz
+- $ cd /home/sandro/1.1.82.1/build_samples.sh
+- $ sudo apt install libxcb1-dev xorg-dev 
+- $ sudo apt install mesa-vulkan-drivers vulkan-utils libegl1-mesa-dev
+- $ cd home/sandro/1.1.82.1/examples/build
+- $ ./cube
     
-Nvidia
-    1) sudo add-apt-repository ppa:graphics-drivers/ppa
-    2) sudo apt upgrade
-    3) sudo apt install nvidia-graphics-drivers-396 nvidia-settings vulkan vulkan-utils
+### Nvidia:
+- $ sudo add-apt-repository ppa:graphics-drivers/ppa
+- $ sudo apt upgrade
+- $ sudo apt install nvidia-graphics-drivers-396 nvidia-settings vulkan vulkan-utils
     
-Set environmental
-    1) export VULKAN_SDK=~/vulkan/1.1.xx.y/x86_64
-    2) export PATH=$VULKAN_SDK/bin:$PATH
-    3) export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
-    4) export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
+### Set environmental
+- $ export VULKAN_SDK=~/vulkan/1.1.xx.y/x86_64
+- $ export PATH=$VULKAN_SDK/bin:$PATH
+- $ export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+- $ export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
 
-Check vulkan
-    1) vulkaninfo | less
-    2) printenv
+### Check vulkan
+- $ vulkaninfo | less
+- $ printenv
 
 ## Building
 1) cmake -H. -Bbuild
