@@ -1,9 +1,11 @@
+# Puffin Engine - Readme
 
-![PuffinEngine](https://img.shields.io/badge/Build-Linux-orange.svg)
+![Linux](https://img.shields.io/badge/Build-Linux-orange.svg)
+![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 
-I. Install vulkan on Linux
+## [Install vulkan on Linux]
 
-    A. Intel
+    ### Intel
         1) tar -xzf /home/sandro/Pobrane/vulkan-sdk.tar.gz
         2) cd /home/sandro/1.1.82.1/build_samples.sh
         3) sudo apt install libxcb1-dev xorg-dev 
@@ -11,29 +13,31 @@ I. Install vulkan on Linux
         5) cd home/sandro/1.1.82.1/examples/build
         6) ./cube
     
-    B. Nvidia
+    ### Nvidia
         1) sudo add-apt-repository ppa:graphics-drivers/ppa
         2) sudo apt upgrade
         3) sudo apt install nvidia-graphics-drivers-396 nvidia-settings vulkan vulkan-utils
     
-    C. Set environmental
+    ### Set environmental
         1) export VULKAN_SDK=~/vulkan/1.1.xx.y/x86_64
         2) export PATH=$VULKAN_SDK/bin:$PATH
         3) export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
         4) export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
 
-    D. To make sure, check vulkan
+    ### Check vulkan
         1) vulkaninfo | less
         2) printenv
 
-II. Building
-    1) cmake -H. -Bbuild
-    2) cmake --build build -- -j4
+## [Building]
+1) cmake -H. -Bbuild
+2) cmake --build build -- -j4
 
-III. Running program
+## [Running program]
 ./bin/puffinEngine
 
-IV. Running tests
+## [Running tests]
 ./bin/puffinEngineTest
 
-![PuffinEngine](https://img.shields.io/badge/License-GPLv3-blue.svg)]
+## [Third party libraries]
+
+## [License]
