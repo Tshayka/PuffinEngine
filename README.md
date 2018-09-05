@@ -11,9 +11,16 @@ I. Install vulkan on Linux
         1) sudo add-apt-repository ppa:graphics-drivers/ppa
         2) sudo apt upgrade
         3) sudo apt install nvidia-graphics-drivers-396 nvidia-settings vulkan vulkan-utils
+    
+    C. Set environmental
+        1) export VULKAN_SDK=~/vulkan/1.1.xx.y/x86_64
+        2) export PATH=$VULKAN_SDK/bin:$PATH
+        3) export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
+        4) export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
 
-    C. Check vulkan info
-    vulkaninfo | less
+    D. To make sure check vulkan
+        1) vulkaninfo | less
+        2) printenv
 
 II. Building
     1) cmake -H. -Bbuild
