@@ -1,7 +1,8 @@
 # Puffin Engine - Readme
 
 ![Linux](https://img.shields.io/badge/Build-Linux-orange.svg)
-![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
+
+[![GitHub license](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/Tshayka/PuffinEngine/blob/master/LICENSE.md)
 
 ## Install vulkan on Linux
 
