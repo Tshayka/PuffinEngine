@@ -1,7 +1,7 @@
 # Puffin Engine - Readme
 
-[![Linux](https://img.shields.io/badge/Build-Linux-orange.svg)]
-(#Install-vulkan-on-Linux)
+[![Install vulkan on Linux](https://img.shields.io/badge/Build-Linux-orange.svg)]
+(#install-vulkan-on-linux)
 
 [![GitHub license](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://github.com/Tshayka/PuffinEngine/blob/master/LICENSE.md)
 
