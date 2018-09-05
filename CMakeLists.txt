@@ -28,7 +28,8 @@ add_subdirectory(
 
 project (PuffinEngine)
 
-add_executable(${PROJECT_NAME}  "puffinEngine/src/Device.cpp"
+add_executable(${PROJECT_NAME}  "puffinEngine/src/Buffer.cpp"
+                                "puffinEngine/src/Device.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
                                 "main.cpp")
 
@@ -45,8 +46,6 @@ if (Vulkan_FOUND)
     target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
 endif (Vulkan_FOUND)
-
-#[[----Downloading and unpack glfw into lib directory at configure time.----]]
 
 include_directories(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include")
 target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
