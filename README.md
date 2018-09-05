@@ -1,7 +1,8 @@
 
-![PuffinEngine](https://img.shields.io/travis/:user/:repo.svg)
+![PuffinEngine](https://img.shields.io/badge/Build-Linux-orange.svg)
 
 I. Install vulkan on Linux
+
     A. Intel
         1) tar -xzf /home/sandro/Pobrane/vulkan-sdk.tar.gz
         2) cd /home/sandro/1.1.82.1/build_samples.sh
@@ -34,3 +35,5 @@ III. Running program
 
 IV. Running tests
 ./bin/puffinEngineTest
+
+![PuffinEngine](https://img.shields.io/badge/License-GPLv3-blue.svg)]
