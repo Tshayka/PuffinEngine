@@ -1,5 +1,8 @@
+
+![PuffinEngine](https://img.shields.io/travis/:user/:repo.svg)
+
 I. Install vulkan on Linux
-    A.Intel
+    A. Intel
         1) tar -xzf /home/sandro/Pobrane/vulkan-sdk.tar.gz
         2) cd /home/sandro/1.1.82.1/build_samples.sh
         3) sudo apt install libxcb1-dev xorg-dev 
@@ -18,7 +21,7 @@ I. Install vulkan on Linux
         3) export LD_LIBRARY_PATH=$VULKAN_SDK/lib:$LD_LIBRARY_PATH
         4) export VK_LAYER_PATH=$VULKAN_SDK/etc/explicit_layer.d
 
-    D. To make sure check vulkan
+    D. To make sure, check vulkan
         1) vulkaninfo | less
         2) printenv
 
