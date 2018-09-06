@@ -17,3 +17,8 @@ if (Vulkan_FOUND)
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
 endif (Vulkan_FOUND)
 
+
+set(GLFW_LIB ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(GLFW_INCLUDE ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
+include_directories(${PROJECT_NAME} ${GLFW_INCLUDE})
+target_link_libraries(${PROJECT_NAME} ${GLFW_LIB} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
