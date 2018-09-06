@@ -3,10 +3,12 @@
 
 #include "puffinEngine/src/PuffinEngine.hpp"
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]){
+	
+	PuffinEngine engine;
+
     try {
-		PuffinEngine engine;
+		engine.Run();
 
         char l;
         std::cin >> l;
