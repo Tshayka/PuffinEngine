@@ -7,14 +7,14 @@ namespace enginetool
 {
 	struct Buffer
 	{
-		VkDevice device;
+		VkDevice device = VK_NULL_HANDLE;
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
-		VkDescriptorBufferInfo descriptor;
 		VkDeviceSize size = 0;
 		VkDeviceSize alignment = 0;
 		void* mapped = nullptr;
 
+		VkDescriptorBufferInfo descriptor;
 		VkBufferUsageFlags usage_flags;
 		VkMemoryPropertyFlags memory_property_flags;
 
