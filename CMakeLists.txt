@@ -12,7 +12,6 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
                                 "main.cpp")
 
-
 find_package(Vulkan)
 if (Vulkan_FOUND)
     target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
@@ -21,7 +20,7 @@ endif (Vulkan_FOUND)
 
 #[[----Downloading and unpack GLFW3 into liblaries directory.----]]
 
-configure_file(CMakeLists.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/CMakeLists.txt)
+configure_file(CMakeListsLib.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
 RESULT_VARIABLE result
 WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw)
@@ -36,13 +35,11 @@ if(result)
     message(FATAL_ERROR "Build step for glfw3 failed: ${result}")
 endif()
 
-include_directories(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include")
-
-set(GLFW_LIB ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/src/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(GLFW_LIBRARIES ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/src/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
 set(GLFW_INCLUDE ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/src/include)
 include_directories(${PROJECT_NAME} ${GLFW_INCLUDE})
 
-target_link_libraries(${PROJECT_NAME} ${GLFW_LIB})
+target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARIES})
 
 if(MSVC)
     target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/src/lib/libglfw3.lib")
@@ -53,7 +50,9 @@ endif ()
 if(UNIX)
     target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/src/lib/libglfw3.a")
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
-endif ()
+endif()
+
+#[[----Include GTest in project.----]]
 
 enable_testing()
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
