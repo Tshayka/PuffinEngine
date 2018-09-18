@@ -11,6 +11,10 @@
 #define BUILD_ENABLE_VULKAN_DEBUG			1
 #define BUILD_ENABLE_VULKAN_RUNTIME_DEBUG	1
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 #include "Device.hpp"
 
 
@@ -45,9 +49,7 @@ void Device::InitDevice(GLFWwindow* window)
     InitSwapChain(); 
 }
 
-void Device::DeInitDevice() 
-{
-	vkDestroyDevice(device, nullptr);
+void Device::DeInitDevice(){
     DeInitDebug();
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -589,7 +591,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	stream << msg << std::endl;
 	std::cout << stream.str();
 
-#ifdef _WIN32
+#ifdef WIN32
 	if (flags & VK_DEBUG_REPORT_ERROR_BIT_EXT) {
 		MessageBox(nullptr, stream.str().c_str(), "Vulkan Error!", 0);
 	}
@@ -608,7 +610,6 @@ void Device::SetupDebugCallback()
 void Device::InitDebug()
 {
 	CreateDebugReportCallback = reinterpret_cast<PFN_vkCreateDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance, "vkCreateDebugReportCallbackEXT"));
-	DebugReportMessage = reinterpret_cast<PFN_vkDebugReportMessageEXT>(vkGetInstanceProcAddr(instance, "vkDebugReportMessageEXT"));
 	DestroyDebugReportCallback = reinterpret_cast<PFN_vkDestroyDebugReportCallbackEXT>(vkGetInstanceProcAddr(instance, "vkDestroyDebugReportCallbackEXT"));
 	if (VK_NULL_HANDLE == CreateDebugReportCallback || VK_NULL_HANDLE == DestroyDebugReportCallback) {
 		assert(0 && "Vulkan ERROR: Can't fetch debug function pointers.");

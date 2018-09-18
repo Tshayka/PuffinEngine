@@ -58,7 +58,10 @@ void PuffinEngine::CreateDevice()
 
 void PuffinEngine::MainLoop()
 {
-	while (!glfwWindowShouldClose(window)){		
+	while (!glfwWindowShouldClose(window))
+	{
+		glfwPollEvents();
+		std::cout << "Inside Loop!" << '\n';		
 	}
 
 	vkDeviceWaitIdle(world_device->device);
@@ -66,11 +69,17 @@ void PuffinEngine::MainLoop()
 
 // ---------------- Deinitialisation ---------------- //
 
-void PuffinEngine::CleanUp()
-{
+void PuffinEngine::CleanUp(){
+	CleanUpSwapChain();
 	DestroyDevice();
 	glfwDestroyWindow(window);
 	glfwTerminate();
+}
+
+void PuffinEngine::CleanUpSwapChain()
+{
+	world_device->DeInitSwapchainImageViews();
+	world_device->DestroySwapchainKHR();
 }
 
 void PuffinEngine::DestroyDevice()

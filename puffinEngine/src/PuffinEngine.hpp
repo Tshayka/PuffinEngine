@@ -17,6 +17,7 @@ class PuffinEngine{
     GLFWwindow* window;
 
     void CleanUp();
+    void CleanUpSwapChain();
     void CreateDevice();
     void DestroyDevice();
     void InitVulkan();

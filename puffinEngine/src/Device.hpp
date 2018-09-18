@@ -94,6 +94,5 @@ private:
 	VkDebugReportCallbackCreateInfoEXT debugCreateInfo = {};
 
 	PFN_vkCreateDebugReportCallbackEXT CreateDebugReportCallback;
-	PFN_vkDebugReportMessageEXT DebugReportMessage;
 	PFN_vkDestroyDebugReportCallbackEXT DestroyDebugReportCallback;
 };
