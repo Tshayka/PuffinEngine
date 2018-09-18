@@ -40,7 +40,7 @@ set(GLFW3_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
 include_directories(${PROJECT_NAME} ${GLFW3_INCLUDE_DIR})
 
 if(MSVC)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.lib")
+    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/glfw3.lib")
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     set_target_properties(${WINDOWS_BINARIES} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif ()
