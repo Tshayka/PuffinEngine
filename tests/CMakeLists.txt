@@ -29,9 +29,25 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 
+if(MSVC)
+if(CMAKE_CXX_FLAGS MATCHES "/W[0-4]")
+    string(REGEX REPLACE "/W[0-4]" "/W4" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /W4")
+endif()
+elseif(CMAKE_COMPILER_ISGNUCC OR CMAKE_COMPILER_ISGNUCXX)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+endif()
+
+
 add_executable(${PROJECT_NAME} "BufferTest.cpp" "PuffinEngineTest.cpp" "main.cpp")
 
-target_link_libraries (${PROJECT_NAME} gtest gmock pthread)
+target_link_libraries (${PROJECT_NAME} gtest gmock)
+
+if(UNIX)
+target_link_libraries (${PROJECT_NAME} pthread)
+endif ()
+
 set (gtest_disable_pthreads on)
 
 find_package(Vulkan)
@@ -48,7 +64,7 @@ include_directories(${PROJECT_NAME} ${GLFW_INCLUDE})
 target_link_libraries(${PROJECT_NAME} ${GLFW_LIB})
 
 if(MSVC)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.lib")
+    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/glfw3.lib")
     add_definitions(-D_CRT_SECURE_NO_WARNINGS)
     set_target_properties(${WINDOWS_BINARIES} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
 endif ()
@@ -56,4 +72,8 @@ endif ()
 if(UNIX)
     target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
+endif ()
+
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
 endif ()
