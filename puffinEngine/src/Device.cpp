@@ -7,13 +7,16 @@
 #include <string>
 #include <unordered_map>
 
+#ifdef UNIX
 #define NOMINMAX
-#define BUILD_ENABLE_VULKAN_DEBUG			1
-#define BUILD_ENABLE_VULKAN_RUNTIME_DEBUG	1
+#endif
 
 #ifdef WIN32
 #include <windows.h>
 #endif
+
+#define BUILD_ENABLE_VULKAN_DEBUG			1
+#define BUILD_ENABLE_VULKAN_RUNTIME_DEBUG	1
 
 #include "Device.hpp"
 

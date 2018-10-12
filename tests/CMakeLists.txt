@@ -57,23 +57,15 @@ if (Vulkan_FOUND)
 endif (Vulkan_FOUND)
 
 
-set(GLFW_LIB ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
-set(GLFW_INCLUDE ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
-include_directories(${PROJECT_NAME} ${GLFW_INCLUDE})
+set(GLFW_LIBRARIES ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/${CMAKE_STATIC_LIBRARY_PREFIX}glfw3${CMAKE_STATIC_LIBRARY_SUFFIX})
+set(GLFW_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
+include_directories(${PROJECT_NAME} ${GLFW_INCLUDE_DIR})
 
-target_link_libraries(${PROJECT_NAME} ${GLFW_LIB})
-
-if(MSVC)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/glfw3.lib")
-    add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-    set_target_properties(${WINDOWS_BINARIES} PROPERTIES LINK_FLAGS "/ENTRY:mainCRTStartup")
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARIES})
 endif ()
 
 if(UNIX)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
+    target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARIES})
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
-endif ()
-
-if(WIN32)
-    target_link_libraries(${PROJECT_NAME} "${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/libglfw3.a")
-endif ()
+endif()
