@@ -3,13 +3,7 @@
 [![Install vulkan on Linux](https://img.shields.io/badge/Build-Linux-orange.svg)](#install-vulkan-on-linux)
 [![GitHub license](https://img.shields.io/badge/License-GPLv3-blue.svg)](#license)
 
-## Install vulkan on Linux
-- $ sudo apt install libglm-dev cmake libxcb-dri3-0 libxcb-present0 libpciaccess0 \
-libpng-dev libxcb-keysyms1-dev libxcb-dri3-dev libx11-dev \
-libmirclient-dev libwayland-dev libxrandr-dev
-- download Vulkan file (vulkansdk-linux-x86_64-1.1.xx.y.tar.gz) from [LunarG](https://vulkan.lunarg.com/sdk/home#linux)
-- $ tar -xzf /home/user/Downloads/vulkan-sdk.tar.gz
-- $ cd /home/user/vulkan/1.1.xx.y/build_samples.sh
+## Install graphic cards
 
 ### Intel
 - $ sudo apt install libxcb1-dev xorg-dev 
@@ -22,7 +16,17 @@ libmirclient-dev libwayland-dev libxrandr-dev
 - $ sudo apt install nvidia-graphics-drivers-390 
 - $ sudo apt-mark hold nvidia-390
 - $ lsmod | grep nvidia 
-    
+
+## Install vulkan on Linux
+- Add necessary libraries: $ sudo apt install libglm-dev cmake libxcb-dri3-0 libxcb-present0 libpciaccess0 \
+libpng-dev libxcb-keysyms1-dev libxcb-dri3-dev libx11-dev \
+libmirclient-dev libwayland-dev libxrandr-dev
+- You may also need: $ sudo apt install libxcursor-dev libxinerama-dev libxi-dev
+- Download Vulkan file (vulkansdk-linux-x86_64-1.1.xx.y.tar.gz) from [LunarG](https://vulkan.lunarg.com/sdk/home#linux)
+- Unpack to home directory: $ tar -xzf /home/user/Downloads/vulkan-sdk.tar.gz
+- Change your directory: $ cd /home/user/vulkan/1.1.xx.y/
+- Run install script: $ ./build_samples.sh
+
 ### Set environmental variables 
 You must add them inside working directory, because they won't be global:
 - $ export VULKAN_SDK=/home/user/vulkan/1.1.xx.y/x86_64
@@ -47,10 +51,10 @@ You must add them inside working directory, because they won't be global:
 - $ cmake --build build -- -j4
 
 ## Running program
-./bin/puffinEngine
+./bin/PuffinEngine
 
 ## Running tests
-./bin/puffinEngineTest
+./bin/PuffinEngineTest
 
 ## Third party libraries
 
