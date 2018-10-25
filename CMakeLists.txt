@@ -54,6 +54,23 @@ include_directories(${PROJECT_NAME} ${GLM_INCLUDE_DIR})
 set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli/include)
 include_directories(${GLI_INCLUDE_DIR})
 
+#[[----Downloading and unpack IMGUI into libraries directory.----]]
+
+include(ExternalProject)
+ExternalProject_Add(imgui
+	GIT_REPOSITORY         https://github.com/ocornut/imgui
+    GIT_TAG                         master
+    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
+	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
+	UPDATE_COMMAND  ""
+    BUILD_COMMAND     ""
+    INSTALL_COMMAND ""
+    CONFIGURE_COMMAND ""
+)
+
+set(IMGUI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui/include)
+include_directories(${PROJECT_NAME} ${IMGUI_INCLUDE_DIR})
+
 #[[----Include GTest in project.----]]
 
 #enable_testing()
