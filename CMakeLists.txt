@@ -18,7 +18,7 @@ if (Vulkan_FOUND)
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
 endif (Vulkan_FOUND)
 
-#[[----Downloading and unpack GLFW3 into liblaries directory.----]]
+#[[----Downloading and unpack GLFW3, GLI, GLM into liblaries directory.----]]
 
 configure_file(CMakeListsLib.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -48,7 +48,13 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
 endif()
 
+set(GLM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm)
+include_directories(${PROJECT_NAME} ${GLM_INCLUDE_DIR})
+
+set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli/include)
+include_directories(${GLI_INCLUDE_DIR})
+
 #[[----Include GTest in project.----]]
 
-enable_testing()
-add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
+#enable_testing()
+#add_subdirectory(${CMAKE_SOURCE_DIR}/tests)
