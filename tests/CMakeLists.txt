@@ -61,7 +61,7 @@ set(GLFW_LIBRARIES ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/lib/${CMAKE_STATIC_
 set(GLFW_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/include)
 include_directories(${PROJECT_NAME} ${GLFW_INCLUDE_DIR})
 
-if(WIN32)
+if(MSVC)
     target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARIES})
 endif ()
 
@@ -69,3 +69,9 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARIES})
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
 endif()
+
+set(GLM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm)
+include_directories(${PROJECT_NAME} ${GLM_INCLUDE_DIR})
+
+set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli)
+include_directories(${PROJECT_NAME} ${GLI_INCLUDE_DIR})
