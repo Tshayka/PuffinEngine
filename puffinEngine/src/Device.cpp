@@ -15,11 +15,8 @@
 #include <windows.h>
 #endif
 
-#define BUILD_ENABLE_VULKAN_DEBUG			1
-#define BUILD_ENABLE_VULKAN_RUNTIME_DEBUG	1
-
 #include "Device.hpp"
-
+#include "ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
 
@@ -116,12 +113,12 @@ void Device::InitSwapChain()
 	sc_create_info.clipped = VK_TRUE; // means that we don't care about the color of pixels
 	sc_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-	vkCreateSwapchainKHR(device, &sc_create_info, nullptr, &swap_chain);// TEST ME
+	ErrorCheck(vkCreateSwapchainKHR(device, &sc_create_info, nullptr, &swap_chain));
 
 	vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
 	swapchain_images.resize(image_count);
 	
-	vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swapchain_images.data()); // TEST ME
+	ErrorCheck(vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swapchain_images.data()));
 
 	swapchain_image_format = surface_format.format;
 	swapchain_extent = extent;
@@ -253,7 +250,7 @@ void Device::CreateInstance()
 	create_info.enabledLayerCount = 0;
 #endif // BUILD_ENABLE_VULKAN_DEBUG
 
-	vkCreateInstance(&createInfo, VK_NULL_HANDLE, &instance); // TEST ME
+	ErrorCheck(vkCreateInstance(&createInfo, VK_NULL_HANDLE, &instance)); 
 }
 
 std::vector<const char*> Device::GetRequiredExtensions() 
@@ -375,7 +372,7 @@ void Device::CreateLogicalDevice() // init device
 	device_create_info.enabledLayerCount = 0;
 #endif // BUILD_ENABLE_VULKAN_DEBUG
 
-	vkCreateDevice( gpu, &device_create_info, VK_NULL_HANDLE, &device); // TEST ME
+	ErrorCheck(vkCreateDevice( gpu, &device_create_info, VK_NULL_HANDLE, &device));
 
 	vkGetDeviceQueue(device, indices.graphicsFamily, 0, &queue);
 	vkGetDeviceQueue(device, indices.presentFamily, 0, &present_queue);
@@ -479,7 +476,7 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	BufferInfo.usage = usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer);// TEST ME
+	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer));
 
 	VkMemoryRequirements memory_requirements;
 	vkGetBufferMemoryRequirements(device, buffer->buffer, &memory_requirements);
@@ -489,7 +486,7 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	AllocInfo.allocationSize = memory_requirements.size;
 	// Find a memory type index that fits the properties of the buffer
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
-	vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory); // TEST ME // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 
 	buffer->alignment = memory_requirements.alignment;
 	buffer->size = AllocInfo.allocationSize;
@@ -499,7 +496,7 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 	if (data != nullptr)
 	{
-		buffer->Map(); // TEST ME
+		ErrorCheck(buffer->Map());
 		memcpy(buffer->mapped, data, size);
 		buffer->Unmap();
 	}
@@ -521,7 +518,7 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	BufferInfo.usage = usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer);// TEST ME
+	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer));
 
 	VkMemoryRequirements memory_requirements;
 	vkGetBufferMemoryRequirements(device, buffer->buffer, &memory_requirements);
@@ -531,7 +528,7 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	AllocInfo.allocationSize = memory_requirements.size;
 	// Find a memory type index that fits the properties of the buffer
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
-	vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory); // TEST ME // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 	
 	buffer->alignment = memory_requirements.alignment;
 	buffer->size = AllocInfo.allocationSize;
@@ -553,7 +550,7 @@ void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryP
 	BufferInfo.usage = usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	vkCreateBuffer(device, &BufferInfo, nullptr, &buffer);// TEST ME
+	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer));
 
 	VkMemoryRequirements  memory_requirements;
 	vkGetBufferMemoryRequirements(device, buffer, &memory_requirements);
@@ -563,7 +560,7 @@ void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryP
 	AllocInfo.allocationSize = memory_requirements.size;
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
 
-	vkAllocateMemory(device, &AllocInfo, nullptr, &buffer_memory); // TEST ME // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer_memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 
 	vkBindBufferMemory(device, buffer, buffer_memory, 0);
 }

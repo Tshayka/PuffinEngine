@@ -9,6 +9,7 @@ project (PuffinEngine)
 
 add_executable(${PROJECT_NAME}  "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/Device.cpp"
+                                "puffinEngine/src/ErrorCheck.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
                                 "main.cpp")
 
