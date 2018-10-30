@@ -63,6 +63,10 @@ The following third party packages are included, and carry, their own copyright 
 - [GLM](https://github.com/glm/glm)
 - [GLI](https://github.com/gli/gli)
 - [Dear ImGui](https://github.com/ocornut/imgui)
+- [JSON for Modern C++](https://github.com/nlohmann/json)
+- [Bitmap fonts for C/C++](https://nothings.org/stb/font/)
+- [stb](https://github.com/nothings/stb)
+- [tinyobjloader](https://github.com/syoyo/tinyobjloader)
 
 ## License
 The source code and the documentation are licensed under the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html).
