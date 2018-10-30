@@ -63,13 +63,30 @@ ExternalProject_Add(imgui
     SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
 	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
 	UPDATE_COMMAND  ""
-    BUILD_COMMAND     ""
-    INSTALL_COMMAND ""
-    CONFIGURE_COMMAND ""
+    CONFIGURE_COMMAND  ""
+    BUILD_COMMAND  ""
+    INSTALL_COMMAND  ""
 )
 
-set(IMGUI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui/include)
-include_directories(${PROJECT_NAME} ${IMGUI_INCLUDE_DIR})
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui)
+include_directories(${PROJECT_NAME} ${IMGUI_DIR})
+
+#[[----Downloading and unpack TINYOBJLOADER into libraries directory.----]]
+
+include(ExternalProject)
+ExternalProject_Add(tinyobjloader
+	GIT_REPOSITORY         https://github.com/syoyo/tinyobjloader
+    GIT_TAG                         master
+    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
+	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
+	UPDATE_COMMAND  ""
+    CONFIGURE_COMMAND  ""
+    BUILD_COMMAND  ""
+    INSTALL_COMMAND  ""
+)
+
+set(TINYOBJLOADER_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui/include)
+include_directories(${PROJECT_NAME} ${TINYOBJLOADER_DIR})
 
 #[[----Include GTest in project.----]]
 
