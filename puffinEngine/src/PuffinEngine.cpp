@@ -45,15 +45,23 @@ void PuffinEngine::InitWindow() {
 	}
 }
 
-void PuffinEngine::InitVulkan()
-{
+void PuffinEngine::InitVulkan() {
 	CreateDevice();
+	CreateStatusOverlay();
+	CreateImGuiMenu();
 }
 
-void PuffinEngine::CreateDevice()
-{
+void PuffinEngine::CreateDevice() {
 	world_device = std::make_shared<Device>();
 	world_device->InitDevice(window);
+}
+
+void PuffinEngine::CreateImGuiMenu() {
+	console = std::make_shared<ImGuiMenu>();
+}
+
+void PuffinEngine::CreateStatusOverlay() {
+	statusOverlay = new StatusOverlay();
 }
 
 void PuffinEngine::MainLoop()
