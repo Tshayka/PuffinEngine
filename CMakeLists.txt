@@ -10,7 +10,11 @@ project (PuffinEngine)
 add_executable(${PROJECT_NAME}  "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/Device.cpp"
                                 "puffinEngine/src/ErrorCheck.cpp"
+                                "puffinEngine/src/LoadMesh.cpp"
+                                "puffinEngine/src/LoadTexture.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
+                                "puffinEngine/src/StatusOverlay.cpp"
+                                "puffinEngine/src/Ui.cpp"
                                 "main.cpp")
 
 find_package(Vulkan)
