@@ -2,8 +2,9 @@
 
 #include <glm/glm.hpp>
 
-#include <imgui.h>
+#include "../imgui/imgui.h"
 #include "Device.hpp"
+#include "ErrorCheck.hpp"
 
 class ImGuiMenu 
 {

@@ -3,7 +3,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "ErrorCheck.hpp"
 #include "Ui.hpp"
 
 //---------- Constructors and dectructors ---------- //
