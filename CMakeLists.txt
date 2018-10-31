@@ -23,6 +23,10 @@ if (Vulkan_FOUND)
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
 endif (Vulkan_FOUND)
 
+
+add_subdirectory(puffinEngine/imgui)
+target_link_libraries(${PROJECT_NAME} imgui)
+
 #[[----Downloading and unpack GLFW3, GLI, GLM into liblaries directory.----]]
 
 configure_file(CMakeListsLib.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glfw/CMakeLists.txt)
@@ -58,23 +62,6 @@ include_directories(${PROJECT_NAME} ${GLM_INCLUDE_DIR})
 
 set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli/include)
 include_directories(${GLI_INCLUDE_DIR})
-
-#[[----Downloading and unpack IMGUI into libraries directory.----]]
-
-include(ExternalProject)
-ExternalProject_Add(imgui
-	GIT_REPOSITORY         https://github.com/ocornut/imgui
-    GIT_TAG                         master
-    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
-	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui"
-	UPDATE_COMMAND  ""
-    CONFIGURE_COMMAND  ""
-    BUILD_COMMAND  ""
-    INSTALL_COMMAND  ""
-)
-
-set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui)
-include_directories(${PROJECT_NAME} ${IMGUI_DIR})
 
 #[[----Downloading and unpack TINYOBJLOADER into libraries directory.----]]
 
