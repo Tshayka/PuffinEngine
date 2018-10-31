@@ -1,5 +1,3 @@
-#pragma once
-
 #include <array>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
@@ -64,8 +62,8 @@ namespace enginetool {
 }
 
 namespace std {
-	template<> struct hash<pog::VertexLayout> {
-		size_t operator()(pog::VertexLayout const& vertex) const {
+	template<> struct hash<enginetool::VertexLayout> {
+		size_t operator()(enginetool::VertexLayout const& vertex) const {
 			return ((hash<glm::vec3>()(vertex.pos) ^ (hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^ (hash<glm::vec2>()(vertex.text_coord) << 1);
 		}
 	};
