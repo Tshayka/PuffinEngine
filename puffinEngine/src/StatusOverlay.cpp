@@ -1,7 +1,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "ErrorCheck.cpp"
 #include "LoadMesh.cpp"
 #include "StatusOverlay.hpp"
 
@@ -10,14 +9,14 @@
 
 //---------- Constructors and dectructors ---------- //
 
-StatsOverlay::StatsOverlay()
+StatusOverlay::StatusOverlay()
 {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Performance statistics overlay object created\n";
 #endif 
 }
 
-StatsOverlay::~StatsOverlay()
+StatusOverlay::~StatusOverlay()
 {
 	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
 	vkDestroyImage(logical_device->device, image, nullptr);
@@ -48,7 +47,7 @@ StatsOverlay::~StatsOverlay()
 
 // ---------------- Main functions ------------------ //
 
-void StatsOverlay::InitStatsOverlay(std::shared_ptr<Device> device, std::shared_ptr<ImGuiMenu> cnsl, VkFormat d_format)
+void StatusOverlay::InitStatusOverlay(std::shared_ptr<Device> device, std::shared_ptr<ImGuiMenu> cnsl, VkFormat d_format)
 {
 	console = cnsl;
 	logical_device = device; 
@@ -66,7 +65,7 @@ void StatsOverlay::InitStatsOverlay(std::shared_ptr<Device> device, std::shared_
 	CreateGraphicsPipeline();
 }
 
-void StatsOverlay::Submit(VkQueue queue, uint32_t bufferindex)
+void StatusOverlay::Submit(VkQueue queue, uint32_t bufferindex)
 {
 	if (!console->visible) {
 		return;
@@ -81,7 +80,7 @@ void StatsOverlay::Submit(VkQueue queue, uint32_t bufferindex)
 	ErrorCheck(vkQueueWaitIdle(queue));
 }
 
-void StatsOverlay::CreateCommandPool() {
+void StatusOverlay::CreateCommandPool() {
 
 	QueueFamilyIndices queueFamilyIndices = logical_device->FindQueueFamilies(logical_device->gpu);
 
@@ -93,7 +92,7 @@ void StatsOverlay::CreateCommandPool() {
 	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
 }
 
-VkCommandBuffer StatsOverlay::BeginSingleTimeCommands()
+VkCommandBuffer StatusOverlay::BeginSingleTimeCommands()
 {
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -113,7 +112,7 @@ VkCommandBuffer StatsOverlay::BeginSingleTimeCommands()
 	return command_buffer;
 }
 
-void StatsOverlay::EndSingleTimeCommands(VkCommandBuffer command_buffer)
+void StatusOverlay::EndSingleTimeCommands(VkCommandBuffer command_buffer)
 {
 	vkEndCommandBuffer(command_buffer);
 
@@ -128,7 +127,7 @@ void StatsOverlay::EndSingleTimeCommands(VkCommandBuffer command_buffer)
 	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &command_buffer);
 }
 
-void StatsOverlay::InitResources()
+void StatusOverlay::InitResources()
 {
 	VkDeviceSize textoverlay_buffer_size = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
 	
@@ -233,7 +232,7 @@ void StatsOverlay::InitResources()
 	vkFreeMemory(logical_device->device, staging_buffer_memory, nullptr);
 }
 
-void StatsOverlay::CreateViewAndSampler()
+void StatusOverlay::CreateViewAndSampler()
 {
 	VkImageViewCreateInfo ViewInfo = {};
 	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
@@ -268,7 +267,7 @@ void StatsOverlay::CreateViewAndSampler()
 	}
 }
 
-void StatsOverlay::CreateDescriptorSetLayout()
+void StatusOverlay::CreateDescriptorSetLayout()
 {
 	VkDescriptorSetLayoutBinding TextOverlayLayoutBinding = {};
 	TextOverlayLayoutBinding.binding = 0;
@@ -287,7 +286,7 @@ void StatsOverlay::CreateDescriptorSetLayout()
 	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &SceneObjectsLayoutInfo, nullptr, &descriptor_set_layout));
 }
 
-void StatsOverlay::CreateDescriptorPool()
+void StatusOverlay::CreateDescriptorPool()
 {
 	// Don't forget to rise this numbers when you add bindings
 	std::array<VkDescriptorPoolSize, 1> PoolSizes = {};
@@ -303,7 +302,7 @@ void StatsOverlay::CreateDescriptorPool()
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
 
-void StatsOverlay::CreateDescriptorSet() {
+void StatusOverlay::CreateDescriptorSet() {
 
 		VkDescriptorSetAllocateInfo AllocInfo = {};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -349,7 +348,7 @@ static std::vector<char> readFile(const std::string& filename)//TODO move to dev
 	return buffer;
 }
 
-VkShaderModule StatsOverlay::CreateShaderModule(const std::vector<char>& code)//TODO move to device
+VkShaderModule StatusOverlay::CreateShaderModule(const std::vector<char>& code)//TODO move to device
 {
 	VkShaderModuleCreateInfo createInfo = {};
 	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -362,7 +361,7 @@ VkShaderModule StatsOverlay::CreateShaderModule(const std::vector<char>& code)//
 	return shaderModule;
 }
 
-void StatsOverlay::CreateGraphicsPipeline()
+void StatusOverlay::CreateGraphicsPipeline()
 {
 	VkPipelineCacheCreateInfo pipeline_cache_create_info = {};
 	pipeline_cache_create_info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -509,7 +508,7 @@ void StatsOverlay::CreateGraphicsPipeline()
 	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr);
 }
 
-void StatsOverlay::CreateRenderPass()
+void StatusOverlay::CreateRenderPass()
 {
 	VkAttachmentDescription color_attachment = {};
 	color_attachment.format = logical_device->swapchain_image_format;
@@ -585,13 +584,13 @@ void StatsOverlay::CreateRenderPass()
 	ErrorCheck(vkCreateRenderPass(logical_device->device, &render_pass_info, nullptr, &render_pass));
 }
 
-void StatsOverlay::BeginTextUpdate()
+void StatusOverlay::BeginTextUpdate()
 {
 	ErrorCheck(vkMapMemory(logical_device->device, memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
 	num_letters = 0;
 }
 
-void StatsOverlay::RenderText(std::string text, float x, float y, TextAlignment align)
+void StatusOverlay::RenderText(std::string text, float x, float y, TextAlignment align)
 {
 	assert(mapped != nullptr);
 
@@ -658,14 +657,14 @@ void StatsOverlay::RenderText(std::string text, float x, float y, TextAlignment 
 }
 
 // Unmap buffer and update command buffers
-void StatsOverlay::EndTextUpdate()
+void StatusOverlay::EndTextUpdate()
 {
 	vkUnmapMemory(logical_device->device, memory);
 	mapped = nullptr;
 	UpdateCommandBuffers();
 }
 
-void StatsOverlay::UpdateCommandBuffers() {
+void StatusOverlay::UpdateCommandBuffers() {
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;

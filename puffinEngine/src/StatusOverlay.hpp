@@ -18,15 +18,15 @@ static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 
 enum TextAlignment { alignLeft, alignCenter, alignRight };
 
-class StatsOverlay
+class StatusOverlay
 {
 public:
-	StatsOverlay();
-	~StatsOverlay();
+	StatusOverlay();
+	~StatusOverlay();
 
 	void BeginTextUpdate();
 	void EndTextUpdate();
-	void InitStatsOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>, VkFormat);
+	void InitStatusOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>, VkFormat);
 	void RenderText(std::string, float, float, enum TextAlignment);
 	void Submit(VkQueue, uint32_t);
 
