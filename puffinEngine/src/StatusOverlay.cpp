@@ -18,24 +18,6 @@ StatusOverlay::StatusOverlay()
 
 StatusOverlay::~StatusOverlay()
 {
-	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
-	vkDestroyImage(logical_device->device, image, nullptr);
-	vkDestroyImageView(logical_device->device, image_view, nullptr);
-	vkDestroyBuffer(logical_device->device, buffer, nullptr);
-	vkFreeMemory(logical_device->device, memory, nullptr);
-	vkFreeMemory(logical_device->device, image_memory, nullptr);
-	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
-	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
-	vkDestroyPipeline(logical_device->device, text_overlay_pipeline, nullptr);
-	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
-	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
-
-	console = nullptr;
-	logical_device = nullptr;
-	mapped = nullptr;
-
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Performance statistics overlay object destroyed\n";
 #endif
@@ -737,4 +719,22 @@ void StatusOverlay::UpdateCommandBuffers() {
 		vkCmdEndRenderPass(command_buffers[i]);
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
 	}
+}
+
+void StatusOverlay::DeInitStatusOverlay() {
+    std::cout << "Here\n";
+	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
+	vkDestroyImage(logical_device->device, image, nullptr);
+	vkDestroyImageView(logical_device->device, image_view, nullptr);
+    vkDestroyBuffer(logical_device->device, buffer, nullptr);
+	vkFreeMemory(logical_device->device, memory, nullptr);
+	vkFreeMemory(logical_device->device, image_memory, nullptr);
+    vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
+	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
+	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
+	vkDestroyPipeline(logical_device->device, text_overlay_pipeline, nullptr);
+	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
+	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
+	mapped = nullptr;
 }

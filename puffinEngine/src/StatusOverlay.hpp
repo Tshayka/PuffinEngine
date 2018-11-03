@@ -25,6 +25,7 @@ public:
 	~StatusOverlay();
 
 	void BeginTextUpdate();
+    void DeInitStatusOverlay();
 	void EndTextUpdate();
 	void InitStatusOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>, VkFormat);
 	void RenderText(std::string, float, float, enum TextAlignment);
