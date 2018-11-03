@@ -7,12 +7,16 @@ set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
 
 project (PuffinEngine)
 
-add_executable(${PROJECT_NAME}  "puffinEngine/src/Buffer.cpp"
+add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
+                                "puffinEngine/src/Buffer.cpp"
+                                "puffinEngine/src/Camera.cpp"
                                 "puffinEngine/src/Device.cpp"
                                 "puffinEngine/src/ErrorCheck.cpp"
+                                "puffinEngine/src/Light.cpp"
                                 "puffinEngine/src/LoadMesh.cpp"
                                 "puffinEngine/src/LoadTexture.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
+                                "puffinEngine/src/Scene.cpp"
                                 "puffinEngine/src/StatusOverlay.cpp"
                                 "puffinEngine/src/Ui.cpp"
                                 "main.cpp")
@@ -68,17 +72,31 @@ include_directories(${GLI_INCLUDE_DIR})
 include(ExternalProject)
 ExternalProject_Add(tinyobjloader
 	GIT_REPOSITORY         https://github.com/syoyo/tinyobjloader
-    GIT_TAG                         master
+    GIT_TAG                master
     SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
 	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
+	UPDATE_COMMAND  ""
+)
+
+set(TINYOBJ_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader/include)
+include_directories(${PROJECT_NAME} ${TINYOBJ_INCLUDE_PATH})
+
+#[[----Downloading and unpack STB into libraries directory.----]]
+
+include(ExternalProject)
+ExternalProject_Add(stb
+	GIT_REPOSITORY         https://github.com/nothings/stb
+    GIT_TAG                         master
+    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
+	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
 	UPDATE_COMMAND  ""
     CONFIGURE_COMMAND  ""
     BUILD_COMMAND  ""
     INSTALL_COMMAND  ""
 )
 
-set(TINYOBJLOADER_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/imgui/include)
-include_directories(${PROJECT_NAME} ${TINYOBJLOADER_DIR})
+set(STB_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb)
+include_directories(${PROJECT_NAME} ${STB_DIR})
 
 #[[----Include GTest in project.----]]
 
