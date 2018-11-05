@@ -86,7 +86,7 @@ include_directories(${PROJECT_NAME} ${TINYOBJ_INCLUDE_PATH})
 include(ExternalProject)
 ExternalProject_Add(stb
 	GIT_REPOSITORY         https://github.com/nothings/stb
-    GIT_TAG                         master
+    GIT_TAG                master
     SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
 	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
 	UPDATE_COMMAND  ""
@@ -95,8 +95,10 @@ ExternalProject_Add(stb
     INSTALL_COMMAND  ""
 )
 
-set(STB_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb)
-include_directories(${PROJECT_NAME} ${STB_DIR})
+set(STB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb)
+target_include_directories(${PROJECT_NAME} PUBLIC ${STB_INCLUDE_DIR})
+
+add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
 #[[----Include GTest in project.----]]
 
