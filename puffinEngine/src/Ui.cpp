@@ -558,8 +558,8 @@ void ImGuiMenu::CreateGraphicsPipeline() {
 	PipelineInfo.layout = gui_pipeline_layout;
 	PipelineInfo.renderPass = render_pass;
 
-	auto vertModelsShaderCode = readFile("shaders/imgui_menu_shader.vert.spv");
-	auto fragModelsShaderCode = readFile("shaders/imgui_menu_shader.frag.spv");
+	auto vertModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); // DRY
+	auto fragModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); // DRY 
 
 	VkShaderModule vertModelsShaderModule = CreateVertShaderModule();
 	VkShaderModule fragModelsShaderModule = CreateFragShaderModule();
