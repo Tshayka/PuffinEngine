@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "Camera.h"
+#include "Camera.hpp"
 
 // ------- Constructors and dectructors ------------- //
 

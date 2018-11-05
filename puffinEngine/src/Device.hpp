@@ -8,6 +8,9 @@
 
 #include "Buffer.cpp"
 
+static bool display_clouds = true;
+static bool display_skybox = true;
+
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
@@ -80,7 +83,6 @@ private:
 	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
-
 
 	VkDebugReportCallbackEXT callback = VK_NULL_HANDLE;
 
