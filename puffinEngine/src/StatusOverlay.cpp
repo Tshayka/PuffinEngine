@@ -463,8 +463,8 @@ void StatusOverlay::CreateGraphicsPipeline()
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	
-	auto vertModelsShaderCode = readFile("shaders/perform_stats.vert.spv");
-	auto fragModelsShaderCode = readFile("shaders/perform_stats.frag.spv");
+	auto vertModelsShaderCode = readFile("puffinEngine/shaders/perform_stats.vert.spv");
+	auto fragModelsShaderCode = readFile("puffinEngine/shaders/perform_stats.frag.spv");
 
 	VkShaderModule vertModelsShaderModule = CreateShaderModule(vertModelsShaderCode);
 	VkShaderModule fragModelsShaderModule = CreateShaderModule(fragModelsShaderCode);
