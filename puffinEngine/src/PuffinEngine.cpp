@@ -43,6 +43,12 @@ void PuffinEngine::CreateDevice() {
 
 void PuffinEngine::CreateImGuiMenu() {
 	console = std::make_shared<ImGuiMenu>();
+	console->InitMenu(world_device);
+}
+
+void PuffinEngine::CreateStatusOverlay() {
+	statusOverlay = new StatusOverlay();
+	statusOverlay->InitStatusOverlay(world_device, console);
 }
 
 void PuffinEngine::CreateScene() {
@@ -50,14 +56,10 @@ void PuffinEngine::CreateScene() {
 	scene_1->InitScene(world_device, window, console, statusOverlay);
 }
 
-void PuffinEngine::CreateStatusOverlay() {
-	statusOverlay = new StatusOverlay();
-}
-
 void PuffinEngine::InitVulkan() {
 	CreateDevice();
-	CreateStatusOverlay();
 	CreateImGuiMenu();
+	CreateStatusOverlay();
 	CreateScene();
 	CreateSemaphores();
 }
@@ -354,7 +356,6 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 void PuffinEngine::CleanUp() {
 	CleanUpSwapChain();
 
-	
 	ImGui::DestroyContext();
 	DeInitSemaphores();
 	DestroyGUI();
@@ -381,13 +382,14 @@ void PuffinEngine::DestroyDevice() {
 }
 
 void PuffinEngine::DestroyScene() {
+	scene_1->DeInitScene();
 	delete scene_1;
 	scene_1 = nullptr;
 }
 
 void PuffinEngine::DestroyGUI() {
-	statusOverlay -> DeInitStatusOverlay();
+	statusOverlay->DeInitStatusOverlay();
 	delete statusOverlay;
 	statusOverlay = nullptr;
-	console = nullptr;
+	console->DeInitMenu();
 }
