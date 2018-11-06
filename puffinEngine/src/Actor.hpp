@@ -3,13 +3,13 @@
 #include <glm/glm.hpp>
 
 enum class ActorType {
-        Light, Character, Camera
+        SphereLight, RectangularLight, DomeLight, Character, Camera
 };
 
 class Actor {
 public:
 	Actor(std::string name, std::string description, glm::vec3 position);
-	~Actor();
+	virtual ~Actor();
 
 	// ---------------- Main functions ------------------ //
 
@@ -18,15 +18,14 @@ public:
 	virtual ActorType GetType() = 0;
 	
 	float Approach(float, float, float);
-	std::string CreateId();
 	void Dolly(float);
    	void LoadFromFile();
+	void LoadModel();
 	void SaveToFile();
 	void Strafe(float);
 	void ResetPosition();
 	void UpdatePosition(float);
 	
-
 	std::string description;
 	std::string id;
 	std::string name;
@@ -38,5 +37,5 @@ public:
 	
 
 private:
-	
+	std::string CreateId();
 };

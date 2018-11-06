@@ -35,15 +35,25 @@ float Actor::Approach(float character_goal, float character_current, float dt) {
 	return character_goal;
 }
 
-std::string Actor::CreateId(){return "TEMP_ID";}
+std::string Actor::CreateId() {
+	return "TEMP_ID";
+}
 
 void Actor::Dolly(float charVelocityGoal) {
 	velocityGoal.x = charVelocityGoal;
 }
 
-void Actor::LoadFromFile(){}
+void Actor::LoadFromFile( ){
 
-void Actor::SaveToFile(){}
+}
+
+void Actor::LoadModel() {
+
+}
+
+void Actor::SaveToFile() {
+
+}
 
 void Actor::ResetPosition() {
 	position = glm::vec3(4.0f, 4.0f, 4.0f);
