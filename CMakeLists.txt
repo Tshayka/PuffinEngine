@@ -10,6 +10,7 @@ project (PuffinEngine)
 add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/Camera.cpp"
+                                "puffinEngine/src/Character.cpp"
                                 "puffinEngine/src/Device.cpp"
                                 "puffinEngine/src/ErrorCheck.cpp"
                                 "puffinEngine/src/Light.cpp"
