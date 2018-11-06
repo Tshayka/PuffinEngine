@@ -1,45 +1,31 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include "Actor.hpp"
 
-//const std::string model_path = "models/cube.obj";
-//const std::string texture_path = "textures/cube.jpg";
-
-class Light
-{
+class Light : public Actor {
 public:
-	virtual ~Light() {};
+	Light(std::string name, std::string description, glm::vec3 position);
+	virtual ~Light();
 
-	virtual void InitLight(float, float, float, float, float, float, float) = 0;
-	virtual void DrawLight() = 0;
-	void LoadModel();
-	glm::vec3 GetColor() const;
-	glm::vec4 GetPosition() const;
-	void SetColor(glm::vec3);
-	void SetPosition(glm::vec4);
+	virtual ActorType GetType() = 0;
+	glm::vec3 GetLightColor() const;
+	glm::vec4 GetLightPosition() const;
+	void SetLightColor(glm::vec3 lightColor);
+	void SetLightPosition(glm::vec4 lightPosition);
 
-	glm::vec4 light_position;
-	glm::vec3 light_color;
+	float alpha = 0.0f;
+	glm::vec3 lightColor;
+	glm::vec4 lightPosition;
 };
 
-class SkyMap : public Light
-{
+class SphereLight : public Light {
 public:
-	SkyMap();
-	~SkyMap();
+	SphereLight(std::string name, std::string description, glm::vec3 position);
+	virtual ~SphereLight();
 
-	virtual void InitLight(float, float, float, float, float, float, float);
-	virtual void DrawLight();
-};
+	ActorType GetType() override;
 
-class SphereLight : public Light
-{
-public:
-
-	SphereLight();
-	~SphereLight();
-
-	virtual void InitLight(float, float, float, float, float, float, float);
-	virtual void DrawLight();
+	ActorType type = ActorType::SphereLight;
 
 };

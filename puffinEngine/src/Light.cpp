@@ -1,75 +1,44 @@
 #include <iostream>
 #include "Light.hpp"
 
-
 // ------- Constructors and dectructors ------------- //
 
-SkyMap::SkyMap()
-{
-	std::cout << "Skymap created\n";
+Light::Light(std::string name, std::string description, glm::vec3 position) 
+: Actor(name, description, position) {
+	lightPosition = glm::vec4(glm::vec3(position), alpha);
+	std::cout << "Light created\n";
 }
 
-SkyMap::~SkyMap()
-{
-	std::cout << "Skymap removed\n";
+Light::~Light() {
+	std::cout << "Light destroyed\n";
 }
 
-SphereLight::SphereLight()
-{ 
-	std::cout << "Sphere Light created\n";
+SphereLight::SphereLight(std::string name, std::string description, glm::vec3 position) 
+: Light(name, description, position) {
+	std::cout << "Sphere light created\n";
 }
 
-SphereLight::~SphereLight()
-{
-	std::cout << "Sphere Light removed\n";
+SphereLight::~SphereLight() {
+	std::cout << "Sphere light destroyed\n";
 }
 
 // --------------- Setters and getters -------------- //
 
-glm::vec3 Light::GetColor() const
-{
-	return light_color;
+ActorType SphereLight::GetType() {
+    return type;
 }
 
-glm::vec4 Light::GetPosition() const
-{
-	return light_position;
+glm::vec3 Light::GetLightColor() const {
+	return lightColor;
 }
 
-void Light::SetColor(glm::vec3 light_color) 
-{
-	this->light_color = light_color;
+glm::vec4 Light::GetLightPosition() const {
+	return lightPosition;
 }
 
-void Light::SetPosition(glm::vec4 light_position)
-{
-	this->light_position = light_position;
+void Light::SetLightColor(glm::vec3 lightColor) {
+	this->lightColor = lightColor;
 }
-
-// ---------------- Main functions ------------------ //
-
-void SkyMap::InitLight(float pos_x, float pos_y, float pos_z, float alpha, float r, float g, float b)
-{
-	light_position = glm::vec4(pos_x, pos_y, pos_z, alpha);
-	light_color = glm::vec3(r, g, b);
-}
-
-void SphereLight::InitLight(float pos_x, float pos_y, float pos_z, float alpha, float r, float g, float b)
-{
-	light_position = glm::vec4(pos_x, pos_y, pos_z, alpha);
-	light_color = glm::vec3(r, g, b);
-}
-
-void SkyMap::DrawLight()
-{
-
-}
-
-void SphereLight::DrawLight()
-{
-
-}
-
-void Light::LoadModel()
-{
+void Light::SetLightPosition(glm::vec4 lightPosition) {
+	this->lightPosition = lightPosition;
 }
