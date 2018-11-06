@@ -7,39 +7,20 @@
 
 //---------- Constructors and dectructors ---------- //
 
-ImGuiMenu::ImGuiMenu()
-{
+ImGuiMenu::ImGuiMenu() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Menu object created\n";
+	std::cout << "ImGui object created\n";
 #endif 
 }
 
-ImGuiMenu::~ImGuiMenu()
-{
-	vertex_buffer.Destroy();
-	index_buffer.Destroy();
-	vkDestroyImageView(logical_device->device, ui_image_view, nullptr);
-	vkDestroyImage(logical_device->device, font_image, nullptr);
-	vkFreeMemory(logical_device->device, font_memory, nullptr);
-	vkDestroySampler(logical_device->device, ui_texture_sampler, nullptr);
-	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, gui_pipeline_layout, nullptr);
-	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
-	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
-	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
-
-	logical_device = nullptr;
-	
+ImGuiMenu::~ImGuiMenu() {	
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Menu object destroyed\n";
+	std::cout << "ImGui object destroyed\n";
 #endif
 }
 
-void ImGuiMenu::InitMenu(std::shared_ptr<Device> device, VkRenderPass render_pass, float width, float height)
-{
+void ImGuiMenu::InitMenu(std::shared_ptr<Device> device) {
 	logical_device = device;
-	this->render_pass = render_pass;
 
 	//ImGui::StyleColorsDark();
 	//ImGui::StyleColorsClassic();
@@ -54,7 +35,7 @@ void ImGuiMenu::InitMenu(std::shared_ptr<Device> device, VkRenderPass render_pas
 
 	// Dimensions
 	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)width, (float)height);
+	io.DisplaySize = ImVec2((float)logical_device->swapchain_extent.width, (float)logical_device->swapchain_extent.height);
 	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 
 	// Init resources
@@ -556,7 +537,7 @@ void ImGuiMenu::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = gui_pipeline_layout;
-	PipelineInfo.renderPass = render_pass;
+	PipelineInfo.renderPass = logical_device->renderPass;
 
 	auto vertModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); // DRY
 	auto fragModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); // DRY 
@@ -702,4 +683,19 @@ void ImGuiMenu::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 		}
 		vertex_offset += cmd_list->VtxBuffer.Size;
 	}
+}
+
+void ImGuiMenu::DeInitMenu() {
+	vertex_buffer.Destroy();
+	index_buffer.Destroy();
+	vkDestroyImageView(logical_device->device, ui_image_view, nullptr);
+	vkDestroyImage(logical_device->device, font_image, nullptr);
+	vkFreeMemory(logical_device->device, font_memory, nullptr);
+	vkDestroySampler(logical_device->device, ui_texture_sampler, nullptr);
+	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
+	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, gui_pipeline_layout, nullptr);
+	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
+	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
+	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
 }

@@ -14,7 +14,8 @@ public:
 	~ImGuiMenu();
 
 	void CreateUniformBuffer(VkCommandBuffer);
-	void InitMenu(std::shared_ptr<Device>, VkRenderPass, float, float);
+	void DeInitMenu();
+	void InitMenu(std::shared_ptr<Device>);
 	void InitResources();
 	void NewFrame();
 	void RenderDrawData();
@@ -64,7 +65,6 @@ private:
 	VkPipeline pipeline;
 	VkPipelineCache pipeline_cache;
 
-	VkRenderPass render_pass;	
 	std::shared_ptr<Device> logical_device;
 
 	VkViewport viewport = {};
