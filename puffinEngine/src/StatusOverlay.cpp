@@ -9,15 +9,13 @@
 
 //---------- Constructors and dectructors ---------- //
 
-StatusOverlay::StatusOverlay()
-{
+StatusOverlay::StatusOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Performance statistics overlay object created\n";
 #endif 
 }
 
-StatusOverlay::~StatusOverlay()
-{
+StatusOverlay::~StatusOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Performance statistics overlay object destroyed\n";
 #endif
@@ -29,12 +27,11 @@ StatusOverlay::~StatusOverlay()
 
 // ---------------- Main functions ------------------ //
 
-void StatusOverlay::InitStatusOverlay(std::shared_ptr<Device> device, std::shared_ptr<ImGuiMenu> cnsl, VkFormat d_format)
+void StatusOverlay::InitStatusOverlay(std::shared_ptr<Device> device, std::shared_ptr<ImGuiMenu> console)
 {
-	console = cnsl;
+	this->console = console;
 	logical_device = device; 
-	depth_format = d_format;
-
+	
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
 
 	CreateRenderPass();
@@ -503,7 +500,7 @@ void StatusOverlay::CreateRenderPass()
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = depth_format;
+	depth_attachment.format = logical_device->depthFormat;
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -722,7 +719,6 @@ void StatusOverlay::UpdateCommandBuffers() {
 }
 
 void StatusOverlay::DeInitStatusOverlay() {
-    std::cout << "Here\n";
 	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
 	vkDestroyImage(logical_device->device, image, nullptr);
 	vkDestroyImageView(logical_device->device, image_view, nullptr);

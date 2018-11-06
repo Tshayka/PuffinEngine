@@ -18,7 +18,7 @@ static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 
 enum TextAlignment { alignLeft, alignCenter, alignRight };
 
-class StatusOverlay
+class StatusOverlay //rename me to GUI amd move overlay to separate class
 {
 public:
 	StatusOverlay();
@@ -27,7 +27,7 @@ public:
 	void BeginTextUpdate();
     void DeInitStatusOverlay();
 	void EndTextUpdate();
-	void InitStatusOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>, VkFormat);
+	void InitStatusOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>);
 	void RenderText(std::string, float, float, enum TextAlignment);
 	void Submit(VkQueue, uint32_t);
 
@@ -57,7 +57,6 @@ private:
 
 	uint32_t buffer_index;
 	VkCommandPool command_pool;
-	VkFormat depth_format;
 	VkDescriptorPool descriptor_pool;
 	VkDescriptorSet descriptor_set;
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
