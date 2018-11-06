@@ -6,7 +6,7 @@
 
 #define DYNAMIC_UB_OBJECTS 216 // Clouds
 
-#include "Actor.hpp"
+#include "Character.hpp"
 #include "Camera.hpp"
 #include "Device.hpp"
 #include "Light.hpp"
@@ -33,9 +33,7 @@ public:
 	void UpdateGUI(float, uint32_t);
 	void UpdateScene(float);
 
-	VkRenderPass render_pass;
-
-	std::shared_ptr<ImGuiMenu> console = nullptr;
+	std::shared_ptr<ImGuiMenu> console;
 	
 	Camera *camera = nullptr;
 	StatusOverlay *status_overlay = nullptr;
@@ -59,14 +57,11 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
-	void CreateRenderPass();
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateTextureImageView(enginetool::TextureLayout&);
 	void CreateTextureSampler(enginetool::TextureLayout&);
 	void CreateUniformBuffer();
 	void EndSingleTimeCommands(VkCommandBuffer);
-	VkFormat FindDepthFormat();
-	VkFormat FindSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
 	bool HasStencilComponent(VkFormat);
 	void InitCamera();
 	void InitActor();
@@ -91,7 +86,6 @@ private:
 	void DeInitTextureImage();
 	void DeInitUniformBuffer();
 	void DestroyPipeline();
-	void DestroyRenderPass();
 	void FreeCommandBuffers();
 	
 	// UBO Static scene objects
@@ -207,7 +201,6 @@ private:
 
 	VkCommandPool command_pool;
 	size_t dynamicAlignment;
-	VkFormat depth_format;
 	VkDescriptorPool descriptor_pool;
 	VkPipelineLayout pipeline_layout;
 
@@ -218,5 +211,5 @@ private:
 	GLFWwindow *window = nullptr;
 	
 	Light *lightbulb = nullptr;
-	Actor *player = nullptr;
+	Character *player = nullptr;
 };

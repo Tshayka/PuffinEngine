@@ -39,17 +39,13 @@ void alignedFree(void* data)
 
 //---------- Constructors and dectructors ---------- //
 
-Scene::Scene()
-{
+Scene::Scene() {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Scene object created\n";
 #endif 
 }
 
-Scene::~Scene()
-{
-	DeInitScene();
-
+Scene::~Scene() {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Scene object destroyed\n";
 #endif
@@ -69,7 +65,6 @@ void Scene::InitScene(std::shared_ptr<Device> dvc, GLFWwindow* wdw, std::shared_
 	window = wdw;
 
 	InitSwapchainImageViews();
-	CreateRenderPass();
 	CreateCommandPool();
 	CreateDepthResources();
 	CreateFramebuffers();
@@ -80,73 +75,8 @@ void Scene::InitScene(std::shared_ptr<Device> dvc, GLFWwindow* wdw, std::shared_
 	CreateDescriptorSetLayout();
 	CreateDescriptorSet();
 	CreateGraphicsPipeline();
-	CreateGUI(0.0f, 0);
+	UpdateGUI(0.0f, 0);
 	CreateCommandBuffers();
-}
-
-// ----------------- Render pass -------------------- //
-
-// Specify number of color and depth buffers, how many samples to use for each of them and how their contents should be handled throughout the rendering operations
-
-void Scene::CreateRenderPass()
-{
-	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = logical_device->swapchain_image_format;
-	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
-	depth_format = FindDepthFormat();
-
-	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = depth_format;
-	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
-	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference color_attachment_references = {};
-	color_attachment_references.attachment = 0;
-	color_attachment_references.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-
-	VkAttachmentReference depth_attachment_references = {};
-	depth_attachment_references.attachment = 1;
-	depth_attachment_references.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-
-	VkSubpassDescription subpass = {};
-	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &color_attachment_references;
-	subpass.pDepthStencilAttachment = &depth_attachment_references;
-
-	// specify memory and execution dependencies between subpasses
-	VkSubpassDependency dependency = {};
-	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-	dependency.dstSubpass = 0;
-	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.srcAccessMask = 0;
-	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-	std::array<VkAttachmentDescription, 2> attachments = { color_attachment, depth_attachment };
-
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.attachmentCount = static_cast<uint32_t>(attachments.size());
-	render_pass_info.pAttachments = attachments.data();
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &subpass;
-	render_pass_info.dependencyCount = 1;
-	render_pass_info.pDependencies = &dependency;
-
-	ErrorCheck(vkCreateRenderPass(logical_device->device, &render_pass_info, nullptr, &render_pass));
 }
 
 // --------------- Command buffers ------------------ //
@@ -170,7 +100,6 @@ void Scene::InitSwapchainImageViews()
 void Scene::RecreateForSwapchain()
 {
 	InitSwapchainImageViews();
-	CreateRenderPass();
 	CreateGraphicsPipeline();
 	CreateDepthResources();
 	CreateFramebuffers();
@@ -187,7 +116,7 @@ void Scene::CreateFramebuffers()
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = render_pass; // specify with which render pass the framebuffer needs to be compatible
+		framebufferInfo.renderPass = logical_device->renderPass; // specify with which render pass the framebuffer needs to be compatible
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = logical_device->swapchain_extent.width;
@@ -268,7 +197,7 @@ void Scene::CreateCommandBuffers()
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = render_pass;
+	renderPassInfo.renderPass = logical_device->renderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = logical_device->swapchain_extent.width;
 	renderPassInfo.renderArea.extent.height = logical_device->swapchain_extent.height;
@@ -480,7 +409,7 @@ void Scene::CreateGraphicsPipeline()
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = pipeline_layout;
-	PipelineInfo.renderPass = render_pass;
+	PipelineInfo.renderPass = logical_device->renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -706,8 +635,8 @@ void Scene::UpdateUBOParameters()
 	UniformBufferObjectParam UBO_Param = {};
 	UBO_Param.exposure = 1.0f;
 	UBO_Param.gamma = 1.0f;
-	UBO_Param.light_pos[0] = glm::vec4(lightbulb->GetPosition());
-	UBO_Param.light_col = glm::vec3(lightbulb->GetColor());
+	UBO_Param.light_pos[0] = glm::vec4(lightbulb->GetLightPosition());
+	UBO_Param.light_col = glm::vec3(lightbulb->GetLightColor());
 
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
@@ -728,14 +657,6 @@ void Scene::UpdateSkyboxUniformBuffer() {
 }
 
 // ------ Text overlay - performance statistics ----- //
-
-void Scene::CreateGUI(float frame_timer, uint32_t last_FPS)
-{
-	console->InitMenu(logical_device, render_pass, (float)logical_device->swapchain_extent.width, (float)logical_device->swapchain_extent.height);
-	status_overlay->InitStatusOverlay(logical_device, console, depth_format);
-	
-	UpdateGUI(frame_timer, last_FPS);
-}
 
 void Scene::UpdateGUI(float frame_timer, uint32_t last_FPS)
 {
@@ -1224,16 +1145,15 @@ void Scene::InitCamera()
 	camera->InitCamera(3.0f, 3.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 }
 
-void Scene::InitActor()
-{
-	player = new Actor();
-	player->InitCharacter(4.0f, 4.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, -2.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+void Scene::InitActor() {
+	player = new Character("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
+	player->Init(1000, 1000, 1000);
 }
 
 void Scene::InitLight()
 {
-	lightbulb = new SphereLight();
-	lightbulb->InitLight(0.0f, 6.0f, 5.0f, 0.0f, 255.0f, 210.0f, 160.0f);
+	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
+	lightbulb->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
 }
 
 void Scene::InitMaterials()
@@ -1675,39 +1595,12 @@ void Scene::CreateTextureSampler(enginetool::TextureLayout& tex)
 
 void Scene::CreateDepthResources()
 {
-	VkFormat depth_format = FindDepthFormat();
+	VkFormat depth_format = logical_device->FindDepthFormat();
 
 	CreateImage(logical_device->swapchain_extent.width, logical_device->swapchain_extent.height, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
 	depth_image_view = CreateImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
 
 	TransitionImageLayout(depth_image, depth_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-}
-
-VkFormat Scene::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
-{
-	for (VkFormat format : candidates)
-	{
-		VkFormatProperties props;
-		vkGetPhysicalDeviceFormatProperties(logical_device->gpu, format, &props);
-
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-		{
-			return format;
-		}
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-		{
-			return format;
-		}
-	}
-
-	assert(0 && "Vulkan ERROR: failed to find supported format!");
-	std::exit(-1);
-}
-
-VkFormat Scene::FindDepthFormat()
-{
-	return FindSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
 }
 
 bool Scene::HasStencilComponent(VkFormat format)
@@ -1823,35 +1716,35 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_9:
 			std::cout << "Moving light up " << key << std::endl;
-			lightbulb->SetPosition(glm::vec4(0.0f, 0.0f, 10.0f, 0.0f));
+			lightbulb->SetLightPosition(glm::vec4(0.0f, 0.0f, 10.0f, 0.0f));
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving light down " << key << std::endl;
-			lightbulb->SetPosition(glm::vec4(0.0f, 0.0f, 5.0f, 0.0f));
+			lightbulb->SetLightPosition(glm::vec4(0.0f, 0.0f, 5.0f, 0.0f));
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Moving light left" << key << std::endl;
-			lightbulb->SetPosition(glm::vec4(10.0f, 0.0f, 0.0f, 0.0f));
+			lightbulb->SetLightPosition(glm::vec4(10.0f, 0.0f, 0.0f, 0.0f));
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Moving light right " << key << std::endl;
-			lightbulb->SetPosition(glm::vec4(0.0f, 10.0f, 0.0f, 0.0f));
+			lightbulb->SetLightPosition(glm::vec4(0.0f, 10.0f, 0.0f, 0.0f));
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Moving character foward " << key << std::endl;
-			player->DollyCharacter(15.0f);
+			player->Dolly(15.0f);
 			break;
 		case GLFW_KEY_DOWN:
 			std::cout << "Moving character back " << key << std::endl;
-			player->DollyCharacter(-15.0f);
+			player->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_LEFT:
 			std::cout << "Moving character left" << key << std::endl;
-			player->StrafeCharacter(-15.0f);
+			player->Strafe(-15.0f);
 			break;
 		case GLFW_KEY_RIGHT:
 			std::cout << "Moving character right " << key << std::endl;
-			player->StrafeCharacter(15.0f);
+			player->Strafe(15.0f);
 			break;
 		case GLFW_KEY_SPACE:
 			std::cout << "Character makes a jump! " << key << std::endl;
@@ -1913,19 +1806,19 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Key released: " << key << std::endl;
-			player->DollyCharacter(0.0f);
+			player->Dolly(0.0f);
 			break;
 		case GLFW_KEY_DOWN:
 			std::cout << "Key released: " << key << std::endl;
-			player->DollyCharacter(0.0f);
+			player->Dolly(0.0f);
 			break;
 		case GLFW_KEY_LEFT:
 			std::cout << "Key released:" << key << std::endl;
-			player->StrafeCharacter(0.0f);
+			player->Strafe(0.0f);
 			break;
 		case GLFW_KEY_RIGHT:
 			std::cout << "Key released: " << key << std::endl;
-			player->StrafeCharacter(0.0f);
+			player->Strafe(0.0f);
 			break;
 		case GLFW_KEY_Z:
 			std::cout <<  "Key released: " << key << std::endl;
@@ -1952,7 +1845,7 @@ void Scene::CleanUpForSwapchain()
 	FreeCommandBuffers();
 	DestroyPipeline();
 	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
-	DestroyRenderPass();
+	//logical_device->DestroyRenderPass();
 }
 
 void Scene::DeInitFramebuffer()
@@ -1983,7 +1876,6 @@ void Scene::DeInitIndexAndVertexBuffer()
 
 void Scene::DeInitScene()
 {
-	console = nullptr;
 	status_overlay = nullptr;
 	
 	DeInitIndexAndVertexBuffer();
@@ -2073,11 +1965,6 @@ void Scene::DestroyPipeline() {
 	vkDestroyPipeline(logical_device->device, skybox_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbr_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
-}
-
-void Scene::DestroyRenderPass()
-{
-	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
 }
 
 void Scene::FreeCommandBuffers()
