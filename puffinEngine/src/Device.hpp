@@ -44,13 +44,17 @@ public:
 	void InitDevice(GLFWwindow*);
 	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
 	void DeInitSwapchainImageViews();
+	void DestroyRenderPass();
 	void DestroySwapchainKHR();
+	VkFormat FindDepthFormat();
 
 	VkDevice device = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties gpu_properties = {};
 	VkQueue present_queue = VK_NULL_HANDLE;
 	VkQueue queue = VK_NULL_HANDLE;
+	VkRenderPass renderPass;
+	VkFormat depthFormat;
 	int* width; 
 	int* height;
 
@@ -73,8 +77,10 @@ private:
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice);
 	void CreateInstance();
 	void CreateLogicalDevice();
+	void CreateRenderPass();
 	void CreateSurface();
 	void DeInitDebug();
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
 	void InitDebug();
 	bool IsDeviceSuitable(VkPhysicalDevice);
 	void PickPhysicalDevice();

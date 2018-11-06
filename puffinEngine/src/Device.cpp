@@ -46,10 +46,12 @@ void Device::InitDevice(GLFWwindow* window)
     CreateSurface();
     PickPhysicalDevice();
 	CreateLogicalDevice();
-    InitSwapChain(); 
+    InitSwapChain();
+	CreateRenderPass(); 
 }
 
 void Device::DeInitDevice(){
+	DestroyRenderPass();
     DeInitDebug();
 	vkDestroyDevice(device, nullptr);
 	vkDestroySurfaceKHR(instance, surface, nullptr);
@@ -413,6 +415,32 @@ bool Device::CheckDeviceExtensionSupport(VkPhysicalDevice device)
 	return requiredExtensions.empty();
 }
 
+VkFormat Device::FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features)
+{
+	for (VkFormat format : candidates)
+	{
+		VkFormatProperties props;
+		vkGetPhysicalDeviceFormatProperties(gpu, format, &props);
+
+
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
+		{
+			return format;
+		}
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
+		{
+			return format;
+		}
+	}
+
+	assert(0 && "Vulkan ERROR: failed to find supported format!");
+	std::exit(-1);
+}
+
+VkFormat Device::FindDepthFormat() {
+	return FindSupportedFormat({ VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT }, VK_IMAGE_TILING_OPTIMAL, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+}
+
 QueueFamilyIndices Device::FindQueueFamilies(VkPhysicalDevice device)
 {
 	QueueFamilyIndices indices;
@@ -542,6 +570,71 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	buffer->Bind();
 }
 
+// ----------------- Render pass -------------------- //
+
+// Specify number of color and depth buffers, how many samples to use for each of them and how their contents should be handled throughout the rendering operations
+
+void Device::CreateRenderPass()
+{
+	VkAttachmentDescription color_attachment = {};
+	color_attachment.format = swapchain_image_format;
+	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+	depthFormat = FindDepthFormat();
+
+	VkAttachmentDescription depth_attachment = {};
+	depth_attachment.format = depthFormat;
+	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference color_attachment_references = {};
+	color_attachment_references.attachment = 0;
+	color_attachment_references.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkAttachmentReference depth_attachment_references = {};
+	depth_attachment_references.attachment = 1;
+	depth_attachment_references.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpass = {};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &color_attachment_references;
+	subpass.pDepthStencilAttachment = &depth_attachment_references;
+
+	// specify memory and execution dependencies between subpasses
+	VkSubpassDependency dependency = {};
+	dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+	dependency.dstSubpass = 0;
+	dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.srcAccessMask = 0;
+	dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+	dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+	std::array<VkAttachmentDescription, 2> attachments = { color_attachment, depth_attachment };
+
+	VkRenderPassCreateInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPassInfo.pAttachments = attachments.data();
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+	renderPassInfo.dependencyCount = 1;
+	renderPassInfo.pDependencies = &dependency;
+
+	ErrorCheck(vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass));
+}
+
 void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory)
 {
 	VkBufferCreateInfo BufferInfo = {};
@@ -621,8 +714,11 @@ void Device::InitDebug()
 	//	vkCreateDebugReportCallbackEXT( _instance, nullptr, nullptr, nullptr );
 }
 
-void Device::DeInitDebug()
-{
+void Device::DestroyRenderPass() {
+	vkDestroyRenderPass(device, renderPass, nullptr);
+}
+
+void Device::DeInitDebug() {
 	DestroyDebugReportCallback(instance, callback, VK_NULL_HANDLE);
 	callback = VK_NULL_HANDLE;
 }
