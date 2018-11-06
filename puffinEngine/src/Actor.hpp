@@ -2,42 +2,41 @@
 
 #include <glm/glm.hpp>
 
-class Actor
-{
-public:
+enum class ActorType {
+        Light, Character, Camera
+};
 
-	Actor();
+class Actor {
+public:
+	Actor(std::string name, std::string description, glm::vec3 position);
 	~Actor();
 
 	// ---------------- Main functions ------------------ //
 
-	std::string CreateId();
-	void LoadFromFile();
-	void SaveToFile();
-
-	std::string actor_id;
-
-	// -------------- Moving across scene --------------- //
-
-	float ActorApproach(float, float, float);
-	void DollyCharacter(float);
-	void InitCharacter(float, float, float, float, float, float, float, float, float, float, float, float);
-	void ActorResetPosition();
-	void StrafeCharacter(float);
-	void UpdateCharacter(float);
+	std::string GetId() const;
+	glm::vec3 GetPosition() const;
+	virtual ActorType GetType() = 0;
 	
-	glm::vec3 GetActorPosition() const;
-
-	glm::vec3 actor_position;
-	glm::vec3 actor_velocty_goal;
-	glm::vec3 actor_veloc;
-	glm::vec3 actor_gravity;
+	float Approach(float, float, float);
+	std::string CreateId();
+	void Dolly(float);
+   	void LoadFromFile();
+	void SaveToFile();
+	void Strafe(float);
+	void ResetPosition();
+	void UpdatePosition(float);
+	
 
 	std::string description;
 	std::string id;
 	std::string name;
-	unsigned int max_health;
-	int current_health;
-	unsigned int gold;
+	glm::vec3 position;
 
+	glm::vec3 gravity = glm::vec3(0.0f, -2.0f, 0.0f);
+	glm::vec3 velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+	glm::vec3 velocityGoal = glm::vec3(0.0f, 0.0f, 0.0f);
+	
+
+private:
+	
 };
