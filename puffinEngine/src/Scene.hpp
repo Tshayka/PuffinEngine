@@ -210,6 +210,6 @@ private:
 	std::shared_ptr<Device> logical_device = nullptr;
 	GLFWwindow *window = nullptr;
 	
-	Light *lightbulb = nullptr;
-	Character *player = nullptr;
+	Actor *lightbulb = nullptr;
+	Actor *player = nullptr;
 };

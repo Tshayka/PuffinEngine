@@ -635,8 +635,8 @@ void Scene::UpdateUBOParameters()
 	UniformBufferObjectParam UBO_Param = {};
 	UBO_Param.exposure = 1.0f;
 	UBO_Param.gamma = 1.0f;
-	UBO_Param.light_pos[0] = glm::vec4(lightbulb->GetLightPosition());
-	UBO_Param.light_col = glm::vec3(lightbulb->GetLightColor());
+	UBO_Param.light_pos[0] = glm::vec4(dynamic_cast<Light*>(lightbulb)->GetLightPosition());
+	UBO_Param.light_col = glm::vec3(dynamic_cast<Light*>(lightbulb)->GetLightColor());
 
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
@@ -1147,13 +1147,13 @@ void Scene::InitCamera()
 
 void Scene::InitActor() {
 	player = new Character("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
-	player->Init(1000, 1000, 1000);
+	dynamic_cast<Character*>(player)->Init(1000, 1000, 1000);
 }
 
 void Scene::InitLight()
 {
 	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
-	lightbulb->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
+	dynamic_cast<Light*>(lightbulb)->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
 }
 
 void Scene::InitMaterials()
@@ -1716,19 +1716,19 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_9:
 			std::cout << "Moving light up " << key << std::endl;
-			lightbulb->SetLightPosition(glm::vec4(0.0f, 0.0f, 10.0f, 0.0f));
+			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 0.0f, 10.0f, 0.0f));
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving light down " << key << std::endl;
-			lightbulb->SetLightPosition(glm::vec4(0.0f, 0.0f, 5.0f, 0.0f));
+			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 0.0f, 5.0f, 0.0f));
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Moving light left" << key << std::endl;
-			lightbulb->SetLightPosition(glm::vec4(10.0f, 0.0f, 0.0f, 0.0f));
+			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(10.0f, 0.0f, 0.0f, 0.0f));
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Moving light right " << key << std::endl;
-			lightbulb->SetLightPosition(glm::vec4(0.0f, 10.0f, 0.0f, 0.0f));
+			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 10.0f, 0.0f, 0.0f));
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Moving character foward " << key << std::endl;
