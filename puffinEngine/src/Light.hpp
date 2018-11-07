@@ -8,15 +8,12 @@ public:
 	Light(std::string name, std::string description, glm::vec3 position);
 	virtual ~Light();
 
-	virtual ActorType GetType() = 0;
+	ActorType GetType() = 0;
 	glm::vec3 GetLightColor() const;
-	glm::vec4 GetLightPosition() const;
 	void SetLightColor(glm::vec3 lightColor);
-	void SetLightPosition(glm::vec4 lightPosition);
-
-	float alpha = 0.0f;
+	
+private:
 	glm::vec3 lightColor;
-	glm::vec4 lightPosition;
 };
 
 class SphereLight : public Light {

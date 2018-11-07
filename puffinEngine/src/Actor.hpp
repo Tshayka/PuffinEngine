@@ -14,7 +14,6 @@ public:
 	// ---------------- Main functions ------------------ //
 
 	std::string GetId() const;
-	glm::vec3 GetPosition() const;
 	virtual ActorType GetType() = 0;
 	
 	float Approach(float, float, float);
@@ -27,7 +26,6 @@ public:
 	void UpdatePosition(float);
 	
 	std::string description;
-	std::string id;
 	std::string name;
 	glm::vec3 position;
 
@@ -37,5 +35,6 @@ public:
 	
 
 private:
+	std::string id;
 	std::string CreateId();
 };

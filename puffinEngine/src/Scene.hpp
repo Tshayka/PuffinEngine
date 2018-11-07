@@ -31,11 +31,12 @@ public:
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
 	void UpdateGUI(float, uint32_t);
-	void UpdateScene(float);
+	void UpdateScene(const float &);
 
 	std::shared_ptr<ImGuiMenu> console;
 	
 	Camera *camera = nullptr;
+		
 	StatusOverlay *status_overlay = nullptr;
 	
 	std::vector<VkCommandBuffer> command_buffers;
@@ -100,7 +101,7 @@ private:
 	struct UniformBufferObjectParam
 	{
 		glm::vec3 light_col; // TODO (NEVER use `vec3` in blocks)
-		glm::vec4 light_pos[1];
+		glm::vec3 light_pos[1];
 		float exposure;
 		float gamma;
 	};
@@ -209,7 +210,7 @@ private:
 
 	std::shared_ptr<Device> logical_device = nullptr;
 	GLFWwindow *window = nullptr;
-	
+
 	Actor *lightbulb = nullptr;
 	Actor *player = nullptr;
 };

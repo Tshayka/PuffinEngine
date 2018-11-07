@@ -1,25 +1,33 @@
 #include <iostream>
 #include "Light.hpp"
+#include "ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
 
 Light::Light(std::string name, std::string description, glm::vec3 position) 
 : Actor(name, description, position) {
-	lightPosition = glm::vec4(glm::vec3(position), alpha);
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Light created\n";
+#endif
 }
 
 Light::~Light() {
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Light destroyed\n";
+#endif
 }
 
 SphereLight::SphereLight(std::string name, std::string description, glm::vec3 position) 
 : Light(name, description, position) {
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Sphere light created\n";
+#endif
 }
 
 SphereLight::~SphereLight() {
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Sphere light destroyed\n";
+#endif
 }
 
 // --------------- Setters and getters -------------- //
@@ -32,13 +40,6 @@ glm::vec3 Light::GetLightColor() const {
 	return lightColor;
 }
 
-glm::vec4 Light::GetLightPosition() const {
-	return lightPosition;
-}
-
 void Light::SetLightColor(glm::vec3 lightColor) {
 	this->lightColor = lightColor;
-}
-void Light::SetLightPosition(glm::vec4 lightPosition) {
-	this->lightPosition = lightPosition;
 }

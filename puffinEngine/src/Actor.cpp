@@ -9,6 +9,7 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position) {
 	this->position = position;
 	id = CreateId();
 
+
 	// create save file
 	std::cout << "Actor created\n";
 }
@@ -22,25 +23,21 @@ std::string Actor::GetId() const {
 	return id;
 }
 
-glm::vec3 Actor::GetPosition() const {
-	return position;
-}
-
 // ---------------- Main functions ------------------ //
 
-float Actor::Approach(float character_goal, float character_current, float dt) {
-	float flDifference = character_goal - character_current;
-	if (flDifference > dt) { return character_current + dt;}
-	if (flDifference < -dt) { return character_current - dt;}
-	return character_goal;
+float Actor::Approach(float actorGoal, float actorCurrent, float dt) {
+	float flDifference = actorGoal - actorCurrent;
+	if (flDifference > dt) { return actorCurrent + dt;}
+	if (flDifference < -dt) { return actorCurrent - dt;}
+	return actorGoal;
 }
 
 std::string Actor::CreateId() {
 	return "TEMP_ID";
 }
 
-void Actor::Dolly(float charVelocityGoal) {
-	velocityGoal.x = charVelocityGoal;
+void Actor::Dolly(float actorVelocGoal) {
+	velocityGoal.x = actorVelocGoal;
 }
 
 void Actor::LoadFromFile( ){
@@ -61,8 +58,8 @@ void Actor::ResetPosition() {
 	velocity = glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
-void Actor::Strafe(float charVelocityGoal) {
-	velocityGoal.z = charVelocityGoal;
+void Actor::Strafe(float actorVelocGoal) {
+	velocityGoal.z = actorVelocGoal;
 }
 
 void Actor::UpdatePosition(float dt) {

@@ -555,7 +555,7 @@ void Scene::CreateUniformBuffer()
 	}
 }
 
-void Scene::UpdateScene(float frameTime)
+void Scene::UpdateScene(const float &frameTime)
 {
 	UpdateDynamicUniformBuffer(frameTime);
 	UpdateSkyboxUniformBuffer();
@@ -563,29 +563,27 @@ void Scene::UpdateScene(float frameTime)
 	UpdateUniformBuffer(frameTime);
 }
 
-void Scene::UpdateUniformBuffer(float time)
-{
+void Scene::UpdateUniformBuffer(float time) {
 	UniformBufferObject UBO = {};
-	UBO.proj = glm::perspective(glm::radians(camera->cam_FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->cam_clip_near, camera->cam_clip_far);
+	UBO.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
 	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBO.view = glm::lookAt(camera->cam_pos, camera->cam_view, camera->cam_up);
-	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), camera->cam_up);
-	UBO.camera_pos = glm::vec3(camera->cam_pos);
+	UBO.view = glm::lookAt(camera->position, camera->view, camera->up);
+	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), camera->up);
+	UBO.camera_pos = glm::vec3(camera->position);
 
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
-	UBOC.proj = glm::perspective(glm::radians(camera->cam_FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->cam_clip_near, camera->cam_clip_far);
+	UBOC.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
 	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBOC.view = glm::lookAt(camera->cam_pos, camera->cam_view, camera->cam_up);
+	UBOC.view = glm::lookAt(camera->position, camera->view, camera->up);
 	/*UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;*/
 	UBOC.time = time;
-	UBOC.camera_pos = camera->cam_pos;
+	UBOC.camera_pos = camera->position;
 
-	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));
-	
+	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
 
 void Scene::UpdateDynamicUniformBuffer(float time) 
@@ -630,23 +628,21 @@ void Scene::UpdateDynamicUniformBuffer(float time)
 		vkFlushMappedMemoryRanges(logical_device->device, 1, &memoryRange);
 }
 
-void Scene::UpdateUBOParameters()
-{
+void Scene::UpdateUBOParameters() {
 	UniformBufferObjectParam UBO_Param = {};
 	UBO_Param.exposure = 1.0f;
 	UBO_Param.gamma = 1.0f;
-	UBO_Param.light_pos[0] = glm::vec4(dynamic_cast<Light*>(lightbulb)->GetLightPosition());
+	UBO_Param.light_pos[0] = glm::vec3(dynamic_cast<Light*>(lightbulb)->position);
 	UBO_Param.light_col = glm::vec3(dynamic_cast<Light*>(lightbulb)->GetLightColor());
 
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
-
 	UniformBufferObjectSky UBO_Sky = {};
-	UBO_Sky.proj = glm::perspective(glm::radians(camera->cam_FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->cam_clip_near, camera->cam_clip_far);
+	UBO_Sky.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
 	UBO_Sky.proj[1][1] *= -1;
-	UBO_Sky.view = glm::lookAt(camera->cam_pos, camera->cam_view, camera->cam_up);
+	UBO_Sky.view = glm::lookAt(camera->position, camera->view, camera->up);
 	UBO_Sky.view[3][0] *= 0;
 	UBO_Sky.view[3][1] *= 0;
 	UBO_Sky.view[3][2] *= 0;
@@ -817,12 +813,7 @@ void Scene::CreateDescriptorPool()
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
 
-void Scene::CreateDescriptorSet()
-{
-	InitLight();
-	InitCamera();
-	InitActor();
-
+void Scene::CreateDescriptorSet() {
 	// 3D object descriptor set
 	for (size_t i = 0; i < scene_material.size(); i++)
 	{
@@ -1139,10 +1130,9 @@ void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, st
 	index_staging_buffer.Destroy();
 }
 
-void Scene::InitCamera()
-{
-	camera = new Camera();
-	camera->InitCamera(3.0f, 3.0f, 3.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+void Scene::InitCamera() {
+	camera = new Camera("Test Character", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	camera->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 }
 
 void Scene::InitActor() {
@@ -1150,14 +1140,17 @@ void Scene::InitActor() {
 	dynamic_cast<Character*>(player)->Init(1000, 1000, 1000);
 }
 
-void Scene::InitLight()
-{
+void Scene::InitLight() {
 	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
 	dynamic_cast<Light*>(lightbulb)->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
 }
 
-void Scene::InitMaterials()
-{
+void Scene::InitMaterials() {
+
+	InitLight();
+	InitCamera();
+	InitActor();
+
 	if (display_skybox)
 	{
 		sky->name = "Sky_materal";
@@ -1715,20 +1708,20 @@ void Scene::PressKey(int key)
 			camera->ResetPosition();
 			break;
 		case GLFW_KEY_9:
-			std::cout << "Moving light up " << key << std::endl;
-			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 0.0f, 10.0f, 0.0f));
+			std::cout << "Moving light foward " << key << std::endl;
+			lightbulb->Dolly(15.0f);
 			break;
 		case GLFW_KEY_8:
-			std::cout << "Moving light down " << key << std::endl;
-			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 0.0f, 5.0f, 0.0f));
+			std::cout << "Moving light back " << key << std::endl;
+			lightbulb->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_7:
-			std::cout << "Moving light left" << key << std::endl;
-			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(10.0f, 0.0f, 0.0f, 0.0f));
+			std::cout << "Moving light left " << key << std::endl;
+			lightbulb->Strafe(-15.0f);
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Moving light right " << key << std::endl;
-			dynamic_cast<Light*>(lightbulb)->SetLightPosition(glm::vec4(0.0f, 10.0f, 0.0f, 0.0f));
+			lightbulb->Strafe(15.0f);
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Moving character foward " << key << std::endl;

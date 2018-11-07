@@ -92,15 +92,13 @@ void PuffinEngine::MainLoop() {
 		
 		accumulator += frameTime;
 
-		while (accumulator >= fixed_frame_time)
-		{
+		while (accumulator >= fixed_frame_time) {
 			scene_1->UpdateGUI((float)accumulator, (uint32_t)total_time);
 			scene_1->UpdateScene((float)total_time);
 
 			total_time += fixed_frame_time;
 			accumulator -= fixed_frame_time;
-}
-
+		}
 
 		//std::cout << "Inside Loop!" << '\n';
 		UpdateCameras((float)frameTime);
@@ -111,7 +109,7 @@ void PuffinEngine::MainLoop() {
 }
 
 void PuffinEngine::UpdateCameras(float dt) {
-	scene_1->camera->UpdateCamera(static_cast<float>(dt)); // TODO not update when camera not moving
+	scene_1->camera->UpdatePosition(static_cast<float>(dt)); // TODO not update when camera not moving
 }
 
 

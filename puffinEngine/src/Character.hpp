@@ -4,7 +4,6 @@
 
 class Character : public Actor {
 public:
-
 	Character(std::string name, std::string description, glm::vec3 position);
 	virtual ~Character();
 
