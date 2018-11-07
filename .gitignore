@@ -1,7 +1,8 @@
-
 # Build results
 bin/
 build/
 puffinEngine/lib/
 .vscode/
 imgui.ini
+puffinEngine/shaders/compile.sh
+puffinEngine/shaders/compile.bat
