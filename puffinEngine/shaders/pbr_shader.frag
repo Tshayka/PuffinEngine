@@ -4,7 +4,7 @@
 layout (set = 0, binding = 1) uniform UniformBufferObjectParam 
 {
 	vec3 light_color;
-	vec4 light_pos[1];
+	vec3 light_pos[1];
 	float exposure;
 	float gamma;
 } ubo_parameters;
