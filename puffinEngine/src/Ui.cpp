@@ -603,7 +603,7 @@ void ImGuiMenu::RenderDrawData() {
 		index_buffer.Unmap();
 		index_buffer.Destroy();
 
-		logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, index_buffer.buffer, index_buffer.memory);
+		logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, index_buffer.buffer, index_buffer.memory);
 		index_buffer.device = logical_device->device;
 		index_count = draw_data->TotalIdxCount;
 		index_buffer.Map();
