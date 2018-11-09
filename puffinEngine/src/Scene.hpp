@@ -69,8 +69,9 @@ private:
 	void InitLight();
 	void InitMaterials();
 	void InitSwapchainImageViews();
-	void LoadFromFile(bool, std::string, enginetool::ScenePart&, std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&);
-	void LoadModels();
+	void LoadFromFile(std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
+	void CreateBuffers(std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&); //TODO
+	void LoadAssets();
 	void LoadSkyboxTexture(enginetool::TextureLayout&);
 	void LoadTexture(std::string, enginetool::TextureLayout&);
 	void TransitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
@@ -136,8 +137,7 @@ private:
 		glm::vec3 pos;
 	} pushConstants;
 
-	struct
-	{
+	struct {
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;

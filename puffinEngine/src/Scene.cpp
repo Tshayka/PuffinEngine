@@ -68,8 +68,7 @@ void Scene::InitScene(Device* dvc, GLFWwindow* wdw, ImGuiMenu* cnsl, StatusOverl
 	CreateCommandPool();
 	CreateDepthResources();
 	CreateFramebuffers();
-	InitMaterials();
-	LoadModels();
+	LoadAssets();
 	CreateUniformBuffer();
 	CreateDescriptorPool();
 	CreateDescriptorSetLayout();
@@ -248,8 +247,8 @@ void Scene::CreateCommandBuffers()
 		}
 
 		// 3d object
-		pushConstants.pos = glm::vec3(-1.0f, -5.0f, 5.0f);
-		vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		std::vector<glm::vec3> positions = {glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(10.0f, 5.0f, 0.0f), glm::vec3(5.0f, 5.0f, -10.0f)};
+
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
@@ -259,6 +258,8 @@ void Scene::CreateCommandBuffers()
 			descriptorSets[0] = meshes[j].assigned_material->descriptor_set;
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *meshes[j].assigned_material->assigned_pipeline);
+			pushConstants.pos = positions[j];
+			vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 			vkCmdDrawIndexed(command_buffers[i], meshes[j].indexCount, 1, 0, meshes[j].indexBase, 0);
 		}
 
@@ -1020,31 +1021,29 @@ void Scene::CreateDescriptorSet() {
 
 // ------------- Populate scene --------------------- //
 
-void Scene::LoadModels() {
+void Scene::LoadAssets() {
+	InitMaterials();
 	// Skybox
 	if (display_skybox)	{
-		bool create = true;
 		std::string skybox_filename = "puffinEngine/assets/models/skybox.obj";
-		LoadFromFile(create, skybox_filename, skybox_mesh, skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
+		LoadFromFile(skybox_filename, skybox_mesh, skybox_indices, skybox_vertices);
+		CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
 	}
 
 	// Clouds
 	if (display_clouds)	{
-		bool create = true;
 		std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
-		LoadFromFile(create, cloud_filename, cloud_mesh, clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
+		LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
+		CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	}
 
 	// Objects
 	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj"};
 	for (uint32_t i = 0; i < filenames.size(); i++) {
-		bool create = false;
-
-		if(i == filenames.size()-1) create = true;
-
-		LoadFromFile(create, filenames[i], element, objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
+		LoadFromFile(filenames[i], element, objects_indices, objects_vertices);
 		meshes.emplace_back(element);
 	}
+	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
 
 	// assign shaders to meshes
 	meshes[0].assigned_material = &scene_material[1];
@@ -1054,7 +1053,7 @@ void Scene::LoadModels() {
 }
 
 // Use proxy design pattern!
-void Scene::LoadFromFile(bool create, std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer)
+void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices)
 {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -1111,27 +1110,28 @@ void Scene::LoadFromFile(bool create, std::string filename, enginetool::ScenePar
 			index_offset += fv;
 		}
 	}
-
-	if (create) {
-		VkDeviceSize vertex_buffer_size = sizeof(enginetool::VertexLayout) * vertices.size();
-		VkDeviceSize index_buffer_size = sizeof(uint32_t) * indices.size(); // now equal to the number of indices times the size of the index type
-
-		enginetool::Buffer vertexStagingBuffer, index_staging_buffer;
-
-		logical_device->CreateStagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
-		logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertex_buffer);
-
-		CopyBuffer(vertexStagingBuffer.buffer, vertex_buffer.buffer, vertex_buffer_size);
-
-		logical_device->CreateStagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &index_staging_buffer, indices.data());
-		logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &index_buffer);
-
-		CopyBuffer(index_staging_buffer.buffer, index_buffer.buffer, index_buffer_size);
-
-		vertexStagingBuffer.Destroy();
-		index_staging_buffer.Destroy();
-	}
 }
+
+void Scene::CreateBuffers(std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer) {
+	VkDeviceSize vertex_buffer_size = sizeof(enginetool::VertexLayout) * vertices.size();
+	VkDeviceSize index_buffer_size = sizeof(uint32_t) * indices.size(); // now equal to the number of indices times the size of the index type
+
+	enginetool::Buffer vertexStagingBuffer, index_staging_buffer;
+
+	logical_device->CreateStagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
+	logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertex_buffer);
+
+	CopyBuffer(vertexStagingBuffer.buffer, vertex_buffer.buffer, vertex_buffer_size);
+
+	logical_device->CreateStagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &index_staging_buffer, indices.data());
+	logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &index_buffer);
+
+	CopyBuffer(index_staging_buffer.buffer, index_buffer.buffer, index_buffer_size);
+
+	vertexStagingBuffer.Destroy();
+	index_staging_buffer.Destroy();
+}
+
 
 void Scene::InitCamera() {
 	camera = new Camera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
