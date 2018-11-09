@@ -19,7 +19,7 @@ ImGuiMenu::~ImGuiMenu() {
 #endif
 }
 
-void ImGuiMenu::InitMenu(std::shared_ptr<Device> device) {
+void ImGuiMenu::InitMenu(Device* device) {
 	logical_device = device;
 
 	//ImGui::StyleColorsDark();
@@ -234,7 +234,6 @@ void ImGuiMenu::CreateSampler() {
 }
 
 void ImGuiMenu::CreateDescriptorSetLayout()	{
-
 	VkDescriptorSetLayoutBinding ConsoleLayoutBinding = {};
 	ConsoleLayoutBinding.binding = 0;
 	ConsoleLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -686,16 +685,18 @@ void ImGuiMenu::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 }
 
 void ImGuiMenu::DeInitMenu() {
-	vertex_buffer.Destroy();
 	index_buffer.Destroy();
-	vkDestroyImageView(logical_device->device, ui_image_view, nullptr);
+	vertex_buffer.Destroy();
 	vkDestroyImage(logical_device->device, font_image, nullptr);
+	vkDestroyImageView(logical_device->device, ui_image_view, nullptr);
 	vkFreeMemory(logical_device->device, font_memory, nullptr);
 	vkDestroySampler(logical_device->device, ui_texture_sampler, nullptr);
-	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, gui_pipeline_layout, nullptr);
 	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
 	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, gui_pipeline_layout, nullptr);
+
 	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
+	
+	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
+	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
 }

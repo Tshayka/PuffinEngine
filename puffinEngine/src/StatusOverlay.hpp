@@ -27,7 +27,7 @@ public:
 	void BeginTextUpdate();
     void DeInitStatusOverlay();
 	void EndTextUpdate();
-	void InitStatusOverlay(std::shared_ptr<Device>, std::shared_ptr<ImGuiMenu>);
+	void InitStatusOverlay(Device*, ImGuiMenu*);
 	void RenderText(std::string, float, float, enum TextAlignment);
 	void Submit(VkQueue, uint32_t);
 
@@ -75,6 +75,6 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {}; 
 
-	std::shared_ptr<ImGuiMenu> console = nullptr;
-	std::shared_ptr<Device> logical_device = nullptr;
+	ImGuiMenu* console = nullptr;
+	Device* logical_device = nullptr;
 };

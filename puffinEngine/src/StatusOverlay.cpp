@@ -27,7 +27,7 @@ StatusOverlay::~StatusOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void StatusOverlay::InitStatusOverlay(std::shared_ptr<Device> device, std::shared_ptr<ImGuiMenu> console)
+void StatusOverlay::InitStatusOverlay(Device* device, ImGuiMenu* console)
 {
 	this->console = console;
 	logical_device = device; 
@@ -292,7 +292,7 @@ void StatusOverlay::CreateDescriptorSet() {
 		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &descriptor_set));
 
 		VkDescriptorImageInfo ImageInfo = {};
-		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		ImageInfo.imageView = image_view;
 		ImageInfo.sampler = texture_sampler;
 

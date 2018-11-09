@@ -15,7 +15,7 @@ public:
 
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInitMenu();
-	void InitMenu(std::shared_ptr<Device>);
+	void InitMenu(Device*);
 	void InitResources();
 	void NewFrame();
 	void RenderDrawData();
@@ -65,7 +65,7 @@ private:
 	VkPipeline pipeline;
 	VkPipelineCache pipeline_cache;
 
-	std::shared_ptr<Device> logical_device;
+	Device* logical_device;
 
 	VkViewport viewport = {};
 	VkRect2D scissor = {};
