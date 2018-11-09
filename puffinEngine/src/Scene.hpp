@@ -25,7 +25,7 @@ public:
 
 	void ConnectGamepad();
 	void DeInitScene();
-	void InitScene(std::shared_ptr<Device>, GLFWwindow*, std::shared_ptr<ImGuiMenu>, StatusOverlay*);
+	void InitScene(Device*, GLFWwindow*, ImGuiMenu*, StatusOverlay*);
 	void PressKey(int);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
@@ -33,7 +33,7 @@ public:
 	void UpdateGUI(float, uint32_t);
 	void UpdateScene(const float &);
 
-	std::shared_ptr<ImGuiMenu> console;
+	ImGuiMenu* console = nullptr;
 	
 	Camera *camera = nullptr;
 		
@@ -69,7 +69,7 @@ private:
 	void InitLight();
 	void InitMaterials();
 	void InitSwapchainImageViews();
-	void LoadFromFile(std::string, enginetool::ScenePart&, std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&);
+	void LoadFromFile(bool, std::string, enginetool::ScenePart&, std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&);
 	void LoadModels();
 	void LoadSkyboxTexture(enginetool::TextureLayout&);
 	void LoadTexture(std::string, enginetool::TextureLayout&);
@@ -146,20 +146,16 @@ private:
 		enginetool::Buffer parameters;
 	} uniform_buffers;
 
-	struct
-	{
+	struct {
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
-		
 	} vertex_buffers;
 
-	struct
-	{
+	struct {
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
-
 	} index_buffers;
 
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
@@ -208,7 +204,7 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
 
-	std::shared_ptr<Device> logical_device = nullptr;
+	Device* logical_device = nullptr;
 	GLFWwindow *window = nullptr;
 
 	Actor *lightbulb = nullptr;

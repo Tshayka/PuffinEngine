@@ -57,7 +57,7 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(std::shared_ptr<Device> dvc, GLFWwindow* wdw, std::shared_ptr<ImGuiMenu> cnsl, StatusOverlay* sts_ovrly)
+void Scene::InitScene(Device* dvc, GLFWwindow* wdw, ImGuiMenu* cnsl, StatusOverlay* sts_ovrly)
 {
 	console = cnsl;
 	logical_device = dvc;
@@ -178,9 +178,9 @@ void Scene::CopyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize si
 {
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
-	VkBufferCopy CopyRegion = {};
-	CopyRegion.size = size;
-	vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &CopyRegion);
+	VkBufferCopy copyRegion = {};
+	copyRegion.size = size;
+	vkCmdCopyBuffer(command_buffer, src_buffer, dst_buffer, 1, &copyRegion);
 
 	EndSingleTimeCommands(command_buffer);
 }
@@ -977,8 +977,7 @@ void Scene::CreateDescriptorSet() {
 	}
 
 	// Clouds descriptor set
-	if (display_clouds)
-	{
+	if (display_clouds) {
 		VkDescriptorSetAllocateInfo CloudsAllocInfo = {};
 		CloudsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		CloudsAllocInfo.descriptorPool = descriptor_pool;
@@ -1021,28 +1020,30 @@ void Scene::CreateDescriptorSet() {
 
 // ------------- Populate scene --------------------- //
 
-void Scene::LoadModels()
-{
+void Scene::LoadModels() {
 	// Skybox
-	if (display_skybox)
-	{
+	if (display_skybox)	{
+		bool create = true;
 		std::string skybox_filename = "puffinEngine/assets/models/skybox.obj";
-		LoadFromFile(skybox_filename, skybox_mesh, skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
+		LoadFromFile(create, skybox_filename, skybox_mesh, skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
 	}
 
 	// Clouds
-	if (display_clouds)
-	{
+	if (display_clouds)	{
+		bool create = true;
 		std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
-		LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
+		LoadFromFile(create, cloud_filename, cloud_mesh, clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	}
 
 	// Objects
 	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj"};
-	for (uint32_t i = 0; i < filenames.size(); i++)
-	{
-		LoadFromFile(filenames[i], element, objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
-		meshes.push_back(element);
+	for (uint32_t i = 0; i < filenames.size(); i++) {
+		bool create = false;
+
+		if(i == filenames.size()-1) create = true;
+
+		LoadFromFile(create, filenames[i], element, objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
+		meshes.emplace_back(element);
 	}
 
 	// assign shaders to meshes
@@ -1053,7 +1054,7 @@ void Scene::LoadModels()
 }
 
 // Use proxy design pattern!
-void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer)
+void Scene::LoadFromFile(bool create, std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer)
 {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
@@ -1101,37 +1102,39 @@ void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, st
 
 				if (uniqueVertices.count(vertex) == 0) {
 					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.push_back(vertex);
+					vertices.emplace_back(vertex);
 				}
 
-				indices.push_back(uniqueVertices[vertex]);
+				indices.emplace_back(uniqueVertices[vertex]);
 			}
 			meshes.indexCount = static_cast<uint32_t>(indices.size());
 			index_offset += fv;
 		}
 	}
 
-	VkDeviceSize vertex_buffer_size = sizeof(vertices[0]) * vertices.size();
-	VkDeviceSize index_buffer_size = sizeof(indices[0]) * indices.size(); // now equal to the number of indices times the size of the index type
+	if (create) {
+		VkDeviceSize vertex_buffer_size = sizeof(enginetool::VertexLayout) * vertices.size();
+		VkDeviceSize index_buffer_size = sizeof(uint32_t) * indices.size(); // now equal to the number of indices times the size of the index type
 
-	enginetool::Buffer vertex_staging_buffer, index_staging_buffer;
+		enginetool::Buffer vertexStagingBuffer, index_staging_buffer;
 
-	logical_device->CreateStagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertex_staging_buffer, vertices.data());
-	logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertex_buffer);
+		logical_device->CreateStagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
+		logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(vertex_buffer_size), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertex_buffer);
 
-	CopyBuffer(vertex_staging_buffer.buffer, vertex_buffer.buffer, vertex_buffer_size);
+		CopyBuffer(vertexStagingBuffer.buffer, vertex_buffer.buffer, vertex_buffer_size);
 
-	logical_device->CreateStagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &index_staging_buffer, indices.data());
-	logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &index_buffer);
+		logical_device->CreateStagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &index_staging_buffer, indices.data());
+		logical_device->CreateUnstagedBuffer(static_cast<uint32_t>(index_buffer_size), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &index_buffer);
 
-	CopyBuffer(index_staging_buffer.buffer, index_buffer.buffer, index_buffer_size);
+		CopyBuffer(index_staging_buffer.buffer, index_buffer.buffer, index_buffer_size);
 
-	vertex_staging_buffer.Destroy();
-	index_staging_buffer.Destroy();
+		vertexStagingBuffer.Destroy();
+		index_staging_buffer.Destroy();
+	}
 }
 
 void Scene::InitCamera() {
-	camera = new Camera("Test Character", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	camera = new Camera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
 	camera->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 }
 
@@ -1151,8 +1154,7 @@ void Scene::InitMaterials() {
 	InitCamera();
 	InitActor();
 
-	if (display_skybox)
-	{
+	if (display_skybox) {
 		sky->name = "Sky_materal";
 		LoadSkyboxTexture(sky->skybox_texture);
 		sky->assigned_pipeline = &skybox_pipeline;
@@ -1175,7 +1177,7 @@ void Scene::InitMaterials() {
 	CreateTextureImageView(rust->ambient_occlucion_map);
 	CreateTextureSampler(rust->ambient_occlucion_map);
 	rust->assigned_pipeline = &pbr_pipeline;
-	scene_material.push_back(*rust);
+	scene_material.emplace_back(*rust);
 
 	chrome->name = "Chrome";
 	LoadTexture("puffinEngine/assets/textures/chromeAlbedo.jpg", chrome->albedo);
@@ -1194,7 +1196,7 @@ void Scene::InitMaterials() {
 	CreateTextureImageView(chrome->ambient_occlucion_map);
 	CreateTextureSampler(chrome->ambient_occlucion_map);
 	chrome->assigned_pipeline = &pbr_pipeline;
-	scene_material.push_back(*chrome);
+	scene_material.emplace_back(*chrome);
 
 	plastic->name = "Plastic";
 	LoadTexture("puffinEngine/assets/textures/plasticAlbedo.jpg", plastic->albedo);
@@ -1213,7 +1215,7 @@ void Scene::InitMaterials() {
 	CreateTextureImageView(plastic->ambient_occlucion_map);
 	CreateTextureSampler(plastic->ambient_occlucion_map);
 	plastic->assigned_pipeline = &pbr_pipeline;
-	scene_material.push_back(*plastic);
+	scene_material.emplace_back(*plastic);
 }
 
 // ------------------ Textures ---------------------- //
@@ -1292,7 +1294,7 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 			Region.imageExtent.depth = 1;
 			Region.bufferOffset = offset;
 
-			bufferCopyRegions.push_back(Region);
+			bufferCopyRegions.emplace_back(Region);
 
 			offset += static_cast<uint32_t>(texCube[face][level].size());
 		}
@@ -1617,8 +1619,8 @@ void Scene::ConnectGamepad()
 		int axes_count;
 		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axes_count);
 		//std::cout << "Joystick/Gamepad 1 axes avaliable: " << axes_count << std::endl;
-		camera->TruckCamera(-axes[0] * 15.0f);
-		camera->DollyCamera(axes[1] * 15.0f);
+		camera->Truck(-axes[0] * 15.0f);
+		camera->Dolly(axes[1] * 15.0f);
 
 		camera->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
 
@@ -1681,27 +1683,27 @@ void Scene::PressKey(int key)
 		{
 		case GLFW_KEY_W:
 			std::cout << "Moving camera foward " << key << std::endl;
-			camera->DollyCamera(15.0f);
+			camera->Dolly(15.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Moving camera backward " << key << std::endl;
-			camera->DollyCamera(-15.0f);
+			camera->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Moving camera up " << key << std::endl;
-			camera->PedestalCamera(15.0f);
+			camera->Pedestal(15.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Moving camera down " << key << std::endl;
-			camera->PedestalCamera(-15.0f);
+			camera->Pedestal(-15.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Moving camera right " << key << std::endl;
-			camera->TruckCamera(-15.0f);
+			camera->Truck(-15.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Moving camera left " << key << std::endl;
-			camera->TruckCamera(15.0f);
+			camera->Truck(15.0f);
 			break;
 		case GLFW_KEY_R:
 			std::cout << "Reset camera" << key << std::endl;
@@ -1775,27 +1777,43 @@ void Scene::PressKey(int key)
 		{
 		case GLFW_KEY_W:
 			std::cout << "Key released: " << key << std::endl;
-			camera->DollyCamera(0.0f);
+			camera->Dolly(0.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Key released: " << key << std::endl;
-			camera->PedestalCamera(0.0f);
+			camera->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Key released: " << key << std::endl;
-			camera->DollyCamera(0.0f);
+			camera->Dolly(0.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Key released: " << key << std::endl;
-			camera->PedestalCamera(0.0f);
+			camera->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Key released: " << key << std::endl;
-			camera->TruckCamera(0.0f);
+			camera->Truck(0.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Key released: " << key << std::endl;
-			camera->TruckCamera(0.0f);
+			camera->Truck(0.0f);
+			break;
+		case GLFW_KEY_9:
+			std::cout << "Key released: " << key << std::endl;
+			lightbulb->Dolly(0.0f);
+			break;
+		case GLFW_KEY_8:
+			std::cout << "Key released: " << key << std::endl;
+			lightbulb->Dolly(0.0f);
+			break;
+		case GLFW_KEY_7:
+			std::cout << "Key released: " << key << std::endl;
+			lightbulb->Strafe(0.0f);
+			break;
+		case GLFW_KEY_6:
+			std::cout << "Key released: " << key << std::endl;
+			lightbulb->Strafe(0.0f);
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Key released: " << key << std::endl;
@@ -1848,8 +1866,7 @@ void Scene::DeInitFramebuffer()
 	}
 }
 
-void Scene::DeInitImageView()
-{
+void Scene::DeInitImageView() {
 	vkDestroyImageView(logical_device->device, depth_image_view, nullptr);
 	vkDestroyImage(logical_device->device, depth_image, nullptr);
 	vkFreeMemory(logical_device->device, depth_image_memory, nullptr);
@@ -1863,13 +1880,14 @@ void Scene::DeInitIndexAndVertexBuffer()
 	index_buffers.clouds.Destroy();
 	vertex_buffers.clouds.Destroy();
 	
-	index_buffers.objects.Destroy();
-	vertex_buffers.objects.Destroy();
+	index_buffers.objects.Destroy();//destroy only first model!
+	vertex_buffers.objects.Destroy();//destroy only first model!
 }
 
 void Scene::DeInitScene()
 {
 	status_overlay = nullptr;
+	console = nullptr;
 	
 	DeInitIndexAndVertexBuffer();
 	DeInitTextureImage();
@@ -1878,7 +1896,6 @@ void Scene::DeInitScene()
 	vkDestroyDescriptorSetLayout(logical_device->device, skybox_descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, clouds_descriptor_set_layout, nullptr);
 
-	
 	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
 	DeInitUniformBuffer();
 	
@@ -1904,15 +1921,13 @@ void Scene::DeInitScene()
 	plastic = nullptr;
 }
 
-void Scene::DeInitTextureImage()
-{
+void Scene::DeInitTextureImage() {
 	vkDestroyImageView(logical_device->device, sky->skybox_texture.texture_image_view, nullptr);
 	vkDestroyImage(logical_device->device, sky->skybox_texture.texture, nullptr);
 	vkDestroySampler(logical_device->device, sky->skybox_texture.texture_sampler, nullptr);
 	vkFreeMemory(logical_device->device, sky->skybox_texture.texture_image_memory, nullptr);
 
-	for (size_t i = 0; i < scene_material.size(); i++)
-	{
+	for (size_t i = 0; i < scene_material.size(); i++) {
 		vkDestroySampler(logical_device->device, scene_material[i].albedo.texture_sampler, nullptr);
 		vkDestroyImageView(logical_device->device, scene_material[i].albedo.texture_image_view, nullptr);
 		vkDestroyImage(logical_device->device, scene_material[i].albedo.texture, nullptr);
@@ -1941,7 +1956,6 @@ void Scene::DeInitTextureImage()
 }
 
 void Scene::DeInitUniformBuffer() {
-
 	if (uboDataDynamic.model) {
 		alignedFree(uboDataDynamic.model);
 	}
@@ -1954,13 +1968,11 @@ void Scene::DeInitUniformBuffer() {
 }
 
 void Scene::DestroyPipeline() {
-
 	vkDestroyPipeline(logical_device->device, skybox_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbr_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
 }
 
-void Scene::FreeCommandBuffers()
-{
+void Scene::FreeCommandBuffers() {
 	vkFreeCommandBuffers(logical_device->device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
