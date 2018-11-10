@@ -3,10 +3,8 @@
 #include <string>
 #include <vulkan/vulkan.h>
 
-namespace enginetool
-{
-	struct Buffer
-	{
+namespace enginetool {
+	struct Buffer {
 		VkDevice device = VK_NULL_HANDLE;
 		VkBuffer buffer = VK_NULL_HANDLE;
 		VkDeviceMemory memory = VK_NULL_HANDLE;
@@ -39,12 +37,10 @@ namespace enginetool
 			descriptor.range = size;
 		}
 
-		void CopyTo(void* data, VkDeviceSize size)
-		{
+		void CopyTo(void* data, VkDeviceSize size) {
 			assert(mapped);
 			memcpy(mapped, data, size);
 		}
-
 
 		VkResult Flush(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0) {
 			VkMappedMemoryRange MappedRange = {};
@@ -72,6 +68,5 @@ namespace enginetool
 				vkFreeMemory(device, memory, nullptr);
 			}
 		}
-
 	};
 }
