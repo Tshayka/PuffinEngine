@@ -172,6 +172,9 @@ private:
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial();
 	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial();
 	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial();
+	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial();
+	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial();
+	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial();
 
 	std::vector<enginetool::SceneMaterial> scene_material;
 	std::vector<enginetool::ScenePart> meshes;

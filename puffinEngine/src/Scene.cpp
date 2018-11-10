@@ -247,7 +247,7 @@ void Scene::CreateCommandBuffers()
 		}
 
 		// 3d object
-		std::vector<glm::vec3> positions = {glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(10.0f, 5.0f, 0.0f), glm::vec3(0.0f, 6.0f, 5.0f)};
+		std::vector<glm::vec3> positions = {player->position, glm::vec3(camera->position.x, camera->position.y + 2.0f, camera->position.z), glm::vec3(10.0f, 5.0f, 0.0f), lightbulb->position};
 
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -1043,7 +1043,7 @@ void Scene::LoadAssets() {
 	}
 
 	// Objects
-	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj", "puffinEngine/assets/models/lightbulb.obj"};
+	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj", "puffinEngine/assets/models/cloud.obj"};
 	for (uint32_t i = 0; i < filenames.size(); i++) {
 		LoadFromFile(filenames[i], element, objects_indices, objects_vertices);
 		meshes.emplace_back(element);
@@ -1053,10 +1053,10 @@ void Scene::LoadAssets() {
 	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
 
 	// assign shaders to meshes
-	meshes[0].assigned_material = &scene_material[1];
-	meshes[1].assigned_material = &scene_material[2];
+	meshes[0].assigned_material = &scene_material[5];
+	meshes[1].assigned_material = &scene_material[4];
 	meshes[2].assigned_material = &scene_material[0];
-	meshes[3].assigned_material = &scene_material[0];
+	meshes[3].assigned_material = &scene_material[3];
 }
 
 void Scene::InitCamera() {
@@ -1219,6 +1219,63 @@ void Scene::InitMaterials() {
 	CreateTextureSampler(plastic->ambient_occlucion_map);
 	plastic->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*plastic);
+
+	lightbulbMat->name = "Lightbulb material";
+	LoadTexture("puffinEngine/assets/textures/icons/lightbulbIcon.jpg", lightbulbMat->albedo);
+	LoadTexture("puffinEngine/assets/textures/metallic.jpg", lightbulbMat->metallic);
+	LoadTexture("puffinEngine/assets/textures/roughness.jpg", lightbulbMat->roughness);
+	LoadTexture("puffinEngine/assets/textures/normal.jpg", lightbulbMat->normal_map);
+	LoadTexture("puffinEngine/assets/textures/ao.jpg", lightbulbMat->ambient_occlucion_map);
+	CreateTextureImageView(lightbulbMat->albedo);
+	CreateTextureSampler(lightbulbMat->albedo);
+	CreateTextureImageView(lightbulbMat->metallic);
+	CreateTextureSampler(lightbulbMat->metallic);
+	CreateTextureImageView(lightbulbMat->roughness);
+	CreateTextureSampler(lightbulbMat->roughness);
+	CreateTextureImageView(lightbulbMat->normal_map);
+	CreateTextureSampler(lightbulbMat->normal_map);
+	CreateTextureImageView(lightbulbMat->ambient_occlucion_map);
+	CreateTextureSampler(lightbulbMat->ambient_occlucion_map);
+	lightbulbMat->assigned_pipeline = &pbr_pipeline;
+	scene_material.emplace_back(*lightbulbMat);
+
+	cameraMat->name = "Camera material";
+	LoadTexture("puffinEngine/assets/textures/icons/cameraIcon.jpg", cameraMat->albedo);
+	LoadTexture("puffinEngine/assets/textures/metallic.jpg", cameraMat->metallic);
+	LoadTexture("puffinEngine/assets/textures/roughness.jpg", cameraMat->roughness);
+	LoadTexture("puffinEngine/assets/textures/normal.jpg", cameraMat->normal_map);
+	LoadTexture("puffinEngine/assets/textures/ao.jpg", cameraMat->ambient_occlucion_map);
+	CreateTextureImageView(cameraMat->albedo);
+	CreateTextureSampler(cameraMat->albedo);
+	CreateTextureImageView(cameraMat->metallic);
+	CreateTextureSampler(cameraMat->metallic);
+	CreateTextureImageView(cameraMat->roughness);
+	CreateTextureSampler(cameraMat->roughness);
+	CreateTextureImageView(cameraMat->normal_map);
+	CreateTextureSampler(cameraMat->normal_map);
+	CreateTextureImageView(cameraMat->ambient_occlucion_map);
+	CreateTextureSampler(cameraMat->ambient_occlucion_map);
+	cameraMat->assigned_pipeline = &pbr_pipeline;
+	scene_material.emplace_back(*cameraMat);
+
+	characterMat->name = "Character material";
+	LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg", characterMat->albedo);
+	LoadTexture("puffinEngine/assets/textures/metallic.jpg", characterMat->metallic);
+	LoadTexture("puffinEngine/assets/textures/roughness.jpg", characterMat->roughness);
+	LoadTexture("puffinEngine/assets/textures/normal.jpg", characterMat->normal_map);
+	LoadTexture("puffinEngine/assets/textures/ao.jpg", characterMat->ambient_occlucion_map);
+	CreateTextureImageView(characterMat->albedo);
+	CreateTextureSampler(characterMat->albedo);
+	CreateTextureImageView(characterMat->metallic);
+	CreateTextureSampler(characterMat->metallic);
+	CreateTextureImageView(characterMat->roughness);
+	CreateTextureSampler(characterMat->roughness);
+	CreateTextureImageView(characterMat->normal_map);
+	CreateTextureSampler(characterMat->normal_map);
+	CreateTextureImageView(characterMat->ambient_occlucion_map);
+	CreateTextureSampler(characterMat->ambient_occlucion_map);
+	characterMat->assigned_pipeline = &pbr_pipeline;
+	scene_material.emplace_back(*characterMat);
 }
 
 // ------------------ Textures ---------------------- //
