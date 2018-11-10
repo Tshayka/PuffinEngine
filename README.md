@@ -67,6 +67,7 @@ The following third party packages are included, and carry, their own copyright 
 - [Bitmap fonts for C/C++](https://nothings.org/stb/font/)
 - [stb](https://github.com/nothings/stb)
 - [tinyobjloader](https://github.com/syoyo/tinyobjloader)
+- [Icons](https://www.flaticon.com)
 
 ## License
 The source code and the documentation are licensed under the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html).
