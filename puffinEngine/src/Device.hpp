@@ -86,7 +86,6 @@ private:
 	void PickPhysicalDevice();
 	void SetupDebugCallback();
 			
-	VkCommandPool command_pool = VK_NULL_HANDLE;
 	VkInstance instance = VK_NULL_HANDLE;
 	VkSurfaceKHR surface = VK_NULL_HANDLE;
 
