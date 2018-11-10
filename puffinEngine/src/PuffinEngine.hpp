@@ -47,9 +47,9 @@ class PuffinEngine {
 	void RecreateSwapChain();
     void UpdateCameras(float);
 
-    std::shared_ptr<ImGuiMenu> console;
-    std::shared_ptr<Device> world_device = nullptr;
+    Device* world_device = nullptr;
     Scene *scene_1 = nullptr;
+    ImGuiMenu* console = nullptr;
     StatusOverlay *statusOverlay = nullptr;
 
 	VkSemaphore ImageAvailableSemaphore;
