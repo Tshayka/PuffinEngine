@@ -7,6 +7,7 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position) {
 	this->name = name;
 	this->description = description;
 	this->position = position;
+	initPosition = position;
 	id = CreateId();
 
 
@@ -36,10 +37,6 @@ std::string Actor::CreateId() {
 	return "TEMP_ID";
 }
 
-void Actor::Dolly(float actorVelocGoal) {
-	velocityGoal.x = actorVelocGoal;
-}
-
 void Actor::LoadFromFile( ){
 
 }
@@ -53,23 +50,53 @@ void Actor::SaveToFile() {
 }
 
 void Actor::ResetPosition() {
-	position = glm::vec3(4.0f, 4.0f, 4.0f);
-	velocityGoal = glm::vec3(0.0f, 0.0f, 0.0f);
-	velocity = glm::vec3(0.0f, 0.0f, 0.0f);
+	position = initPosition;
+	movement = glm::vec3(0.0f, 0.0f, 0.0f);
+	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
-void Actor::Strafe(float actorVelocGoal) {
-	velocityGoal.z = actorVelocGoal;
+
+void Actor::Dolly(float actorVelocityGoal) {
+	movementGoal.x = actorVelocityGoal;
+}
+
+void Actor::Pedestal(float actorVelocityGoal) {
+	movementGoal.y = actorVelocityGoal;
+}
+
+void Actor::Strafe(float actorVelocityGoal) {
+	movementGoal.z = actorVelocityGoal;
 }
 
 void Actor::UpdatePosition(float dt) {
 	// Smooth movement and edge case in approach, without is movement is const
-	velocity.x = Approach(velocityGoal.x, velocity.x, dt * 80);
-	velocity.z = Approach(velocityGoal.z, velocity.z, dt * 80);
+	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
+	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
+ 	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
 
-	position = position + velocity * dt;
-	velocity = velocity + gravity * dt;
+	position = position + movement * dt;
+	movement = movement + gravity * dt;
 	
 	if (position.y < 0.0f)
 		position.y = 0.0f;
 }
+
+
+// void Camera::UpdatePosition(float dt)
+// {
+// 	direction = glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
+
+// 	// Smooth movement and edge case in approach, without is movement is const
+// 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
+// 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
+// 	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
+
+// 	foward = direction;
+// 	foward.y = 0.0f;
+// 	glm::normalize(foward);
+
+// 	velocity = foward * movement.x + glm::cross(up, foward) * movement.z;
+// 	velocity.y = movement.y;
+// 	position += velocity * dt;
+// 	view = position + direction; 
+// }
