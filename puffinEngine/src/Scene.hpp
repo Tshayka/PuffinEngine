@@ -69,7 +69,7 @@ private:
 	void InitLight();
 	void InitMaterials();
 	void InitSwapchainImageViews();
-	void LoadFromFile(std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
+	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
 	void CreateBuffers(std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&); //TODO
 	void LoadAssets();
 	void LoadSkyboxTexture(enginetool::TextureLayout&);

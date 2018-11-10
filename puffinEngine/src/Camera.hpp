@@ -12,12 +12,12 @@ public:
 	ActorType GetType() override;
 
 	void Init(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float);
-	void DollyCamera(float);
+	void Dolly(float);
 	void GamepadMove(double, double, int, int, float);
 	void MouseMove(double, double, int, int, float);
-	void PedestalCamera(float);
+	void Pedestal(float);
 	void ResetPosition();
-	void TruckCamera(float);
+	void Truck(float);
 	void UpdatePosition(float);
 
 	glm::vec3 up;

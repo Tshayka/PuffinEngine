@@ -247,7 +247,7 @@ void Scene::CreateCommandBuffers()
 		}
 
 		// 3d object
-		std::vector<glm::vec3> positions = {glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(10.0f, 5.0f, 0.0f), glm::vec3(5.0f, 5.0f, -10.0f)};
+		std::vector<glm::vec3> positions = {glm::vec3(5.0f, 5.0f, 5.0f), glm::vec3(5.0f, 10.0f, 5.0f), glm::vec3(10.0f, 5.0f, 0.0f), glm::vec3(0.0f, 6.0f, 5.0f)};
 
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -1022,6 +1022,11 @@ void Scene::CreateDescriptorSet() {
 // ------------- Populate scene --------------------- //
 
 void Scene::LoadAssets() {
+
+	InitLight();
+	InitCamera();
+	InitActor();
+
 	InitMaterials();
 	// Skybox
 	if (display_skybox)	{
@@ -1038,10 +1043,12 @@ void Scene::LoadAssets() {
 	}
 
 	// Objects
-	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj"};
+	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj", "puffinEngine/assets/models/lightbulb.obj"};
 	for (uint32_t i = 0; i < filenames.size(); i++) {
 		LoadFromFile(filenames[i], element, objects_indices, objects_vertices);
 		meshes.emplace_back(element);
+		std::cout << "indexCount " << element.indexCount << " " << "indexBase: "<< element.indexBase << std::endl;
+
 	}
 	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
 
@@ -1052,9 +1059,23 @@ void Scene::LoadAssets() {
 	meshes[3].assigned_material = &scene_material[0];
 }
 
+void Scene::InitCamera() {
+	camera = new Camera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	camera->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+}
+
+void Scene::InitActor() {
+	player = new Character("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
+	dynamic_cast<Character*>(player)->Init(1000, 1000, 1000);
+}
+
+void Scene::InitLight() {
+	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
+	dynamic_cast<Light*>(lightbulb)->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
+}
+
 // Use proxy design pattern!
-void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices)
-{
+void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices) {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -1064,8 +1085,9 @@ void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, st
 		throw std::runtime_error(warn + err);
 	}
 
+	meshes.indexBase = static_cast<uint32_t>(indices.size());
 	std::unordered_map<enginetool::VertexLayout, uint32_t> uniqueVertices = {};
-
+	
 	// Loop over shapes
 	for (size_t s = 0; s < shapes.size(); s++) {
 		// Loop over faces(polygon)
@@ -1099,16 +1121,18 @@ void Scene::LoadFromFile(std::string filename, enginetool::ScenePart& meshes, st
 
 				vertex.color = { 1.0f, 1.0f, 1.0f };
 
-				if (uniqueVertices.count(vertex) == 0) {
-					uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-					vertices.emplace_back(vertex);
-				}
+				// if (uniqueVertices.count(vertex) == 0) {
+				// 	uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
+				// 	vertices.emplace_back(vertex);
+				// }
+				// indices.emplace_back(uniqueVertices[vertex]);
 
-				indices.emplace_back(uniqueVertices[vertex]);
+				vertices.emplace_back(vertex);
+				indices.emplace_back(indices.size());
 			}
-			meshes.indexCount = static_cast<uint32_t>(indices.size());
 			index_offset += fv;
-		}
+		}	
+		meshes.indexCount = index_offset;
 	}
 }
 
@@ -1132,28 +1156,7 @@ void Scene::CreateBuffers(std::vector<uint32_t>& indices, std::vector<enginetool
 	index_staging_buffer.Destroy();
 }
 
-
-void Scene::InitCamera() {
-	camera = new Camera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
-	camera->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
-}
-
-void Scene::InitActor() {
-	player = new Character("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
-	dynamic_cast<Character*>(player)->Init(1000, 1000, 1000);
-}
-
-void Scene::InitLight() {
-	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
-	dynamic_cast<Light*>(lightbulb)->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
-}
-
 void Scene::InitMaterials() {
-
-	InitLight();
-	InitCamera();
-	InitActor();
-
 	if (display_skybox) {
 		sky->name = "Sky_materal";
 		LoadSkyboxTexture(sky->skybox_texture);
