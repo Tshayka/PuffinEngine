@@ -55,8 +55,8 @@ namespace enginetool {
 	};
 	
 	struct ScenePart {
-		uint32_t indexBase;
-		uint32_t indexCount;
+		uint32_t indexBase = 0;
+		uint32_t indexCount = 0;
 		SceneMaterial* assigned_material;
 	};
 }
