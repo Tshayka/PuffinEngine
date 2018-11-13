@@ -21,15 +21,19 @@ public:
    	void LoadFromFile();
 	void LoadModel();
 	void SaveToFile();
+	void SetPosition(glm::vec3 lightColor);
 	void Pedestal(float);
 	void Strafe(float);
 	void ResetPosition();
-	void UpdatePosition(float);
+	void Truck(float);
+	virtual void UpdatePosition(float);
 	
-	std::string description;
 	std::string name;
 	glm::vec3 position;
 	glm::vec3 initPosition;
+
+	glm::vec3 direction;
+	glm::vec3 foward;
 
 	glm::vec3 gravity = glm::vec3(0.0f, -2.0f, 0.0f);
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
@@ -37,6 +41,7 @@ public:
 	glm::vec3 velocity;
 	
 private:
+	std::string description;
 	std::string id;
 	std::string CreateId();
 };

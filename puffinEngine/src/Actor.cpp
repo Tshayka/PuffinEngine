@@ -10,7 +10,6 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position) {
 	initPosition = position;
 	id = CreateId();
 
-
 	// create save file
 	std::cout << "Actor created\n";
 }
@@ -49,12 +48,15 @@ void Actor::SaveToFile() {
 
 }
 
+void Actor::SetPosition(glm::vec3 position) {
+	this->position = position;
+}
+
 void Actor::ResetPosition() {
 	position = initPosition;
 	movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 }
-
 
 void Actor::Dolly(float actorVelocityGoal) {
 	movementGoal.x = actorVelocityGoal;
@@ -68,15 +70,19 @@ void Actor::Strafe(float actorVelocityGoal) {
 	movementGoal.z = actorVelocityGoal;
 }
 
+void Actor::Truck(float actorVelocityGoal) {// change to function pointer
+	Strafe(actorVelocityGoal);
+}
+
 void Actor::UpdatePosition(float dt) {
 	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
 
-	position = position + movement * dt;
-	movement = movement + gravity * dt;
-	
+	movement += gravity * dt;
+	position += movement * dt;
+
 	if (position.y < 0.0f)
 		position.y = 0.0f;
 }
