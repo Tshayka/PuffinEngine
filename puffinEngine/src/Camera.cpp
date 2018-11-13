@@ -64,31 +64,10 @@ void Camera::UpdatePosition(float dt)
 	view = position + direction; 
 }
 
-void Camera::Dolly(float cam_velocity_goal) // moving directly fovard or backward
-{
-	movementGoal.x = cam_velocity_goal;
-}
-
-void Camera::Pedestal(float cam_velocity_goal) // moving directly up or down
-{
-	movementGoal.y = cam_velocity_goal;
-}
-
-void Camera::Truck(float cam_velocity_goal) 
-{
-	movementGoal.z = cam_velocity_goal;
-}
-
-
-
 void Camera::ResetPosition(){
-	position = glm::vec3(3.0f, 3.0f, 3.0f);
-	movement = glm::vec3(0.0f, 0.0f, 0.0f);
-	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f); 
-	
+	Actor::ResetPosition();
 	view = glm::vec3(0.0f, 0.0f, 0.0f); 
 	up = glm::vec3(0.0f, 1.0f, 0.0f); 
-
 	FOV = 60.0f;
 	clippingNear = 0.001f;
 	clippingFar = 1000.0f;

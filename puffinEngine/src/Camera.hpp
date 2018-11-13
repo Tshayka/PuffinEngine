@@ -10,15 +10,13 @@ public:
 	virtual ~Camera();
 
 	ActorType GetType() override;
+	void UpdatePosition(float) override;
 
 	void Init(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float);
-	void Dolly(float);
 	void GamepadMove(double, double, int, int, float);
 	void MouseMove(double, double, int, int, float);
-	void Pedestal(float);
 	void ResetPosition();
-	void Truck(float);
-	void UpdatePosition(float);
+	
 
 	glm::vec3 up;
 	glm::vec3 view;
@@ -28,11 +26,7 @@ public:
 	float clippingFar;
 
 private:
-	glm::vec3 movement;
-	glm::vec3 movementGoal;
-	glm::vec3 velocity;
-	glm::vec3 direction;
-	glm::vec3 foward;
+	std::string albedoTexture = "puffinEngine/assets/textures/icons/cameraIcon.jpg";
 	
 	float pitch;
 	float yaw;
