@@ -30,12 +30,12 @@ public:
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
-	void UpdateGUI(float, uint32_t);
-	void UpdateScene(const float &);
+	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
+	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
 	ImGuiMenu* console = nullptr;
 	
-	Camera *camera = nullptr;
+	std::vector<std::shared_ptr<Actor>> actors;
 		
 	StatusOverlay *status_overlay = nullptr;
 	
@@ -64,9 +64,10 @@ private:
 	void CreateUniformBuffer();
 	void EndSingleTimeCommands(VkCommandBuffer);
 	bool HasStencilComponent(VkFormat);
-	void InitCamera();
-	void InitActor();
-	void InitLight();
+	void CreateCamera();
+	void CreateCharacter();
+	void CreateSphereLight();
+	void CreateStillObject();
 	void InitMaterials();
 	void InitSwapchainImageViews();
 	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
@@ -75,10 +76,10 @@ private:
 	void LoadSkyboxTexture(enginetool::TextureLayout&);
 	void LoadTexture(std::string, enginetool::TextureLayout&);
 	void TransitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
-	void UpdateDynamicUniformBuffer(float);
+	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSkyboxUniformBuffer();
 	void UpdateUBOParameters();
-	void UpdateUniformBuffer(float);
+	void UpdateUniformBuffer(const float& time);
 
 	// ---------------- Deinitialisation ---------------- //
 
@@ -209,7 +210,4 @@ private:
 
 	Device* logical_device = nullptr;
 	GLFWwindow *window = nullptr;
-
-	Actor *lightbulb = nullptr;
-	Actor *player = nullptr;
 };

@@ -247,7 +247,7 @@ void Scene::CreateCommandBuffers()
 		}
 
 		// 3d object
-		std::vector<glm::vec3> positions = {player->position, glm::vec3(camera->position.x, camera->position.y + 2.0f, camera->position.z), glm::vec3(10.0f, 5.0f, 0.0f), lightbulb->position};
+		std::vector<glm::vec3> positions = {actors[1]->position, glm::vec3(actors[0]->position.x, actors[0]->position.y + 2.0f, actors[0]->position.z),  actors[3]->position, actors[2]->position};
 
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -556,39 +556,45 @@ void Scene::CreateUniformBuffer()
 	}
 }
 
-void Scene::UpdateScene(const float &frameTime)
-{
-	UpdateDynamicUniformBuffer(frameTime);
+void Scene::UpdateScene(const float &dt, const float &time, float const &accumulator) {
+	UpdateGUI((float)accumulator, (uint32_t)time);
+
+	UpdateDynamicUniformBuffer(time);
 	UpdateSkyboxUniformBuffer();
 	UpdateUBOParameters();
-	UpdateUniformBuffer(frameTime);
+	UpdateUniformBuffer(time);
+
+	std::dynamic_pointer_cast<Camera>(actors[0])->UpdatePosition(dt); // TODO not update when camera not moving?
+	actors[1]->UpdatePosition(dt); 
+	actors[2]->UpdatePosition(dt);  
+
+	//for(auto const a : actors) a->UpdatePosition(dt);
 }
 
-void Scene::UpdateUniformBuffer(float time) {
+void Scene::UpdateUniformBuffer(const float& time) {
 	UniformBufferObject UBO = {};
-	UBO.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
+	UBO.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBO.view = glm::lookAt(camera->position, camera->view, camera->up);
-	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), camera->up);
-	UBO.camera_pos = glm::vec3(camera->position);
+	UBO.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	UBO.camera_pos = glm::vec3(actors[0]->position);
 
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
-	UBOC.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
+	UBOC.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBOC.view = glm::lookAt(camera->position, camera->view, camera->up);
+	UBOC.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
 	/*UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;*/
 	UBOC.time = time;
-	UBOC.camera_pos = camera->position;
+	UBOC.camera_pos = actors[0]->position;
 
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
 
-void Scene::UpdateDynamicUniformBuffer(float time) 
-{
+void Scene::UpdateDynamicUniformBuffer(const float& time) {
 	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
 	glm::vec3 offset(5.0f, 25.0f, 5.0f);
 
@@ -613,7 +619,6 @@ void Scene::UpdateDynamicUniformBuffer(float time)
 					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
 					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
 					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-					
 				}
 			}
 		}
@@ -633,17 +638,17 @@ void Scene::UpdateUBOParameters() {
 	UniformBufferObjectParam UBO_Param = {};
 	UBO_Param.exposure = 1.0f;
 	UBO_Param.gamma = 1.0f;
-	UBO_Param.light_pos[0] = glm::vec3(dynamic_cast<Light*>(lightbulb)->position);
-	UBO_Param.light_col = glm::vec3(dynamic_cast<Light*>(lightbulb)->GetLightColor());
-
+	UBO_Param.light_pos[0] = actors[2]->position;
+	UBO_Param.light_col = glm::vec3(std::dynamic_pointer_cast<SphereLight>(actors[2])->GetLightColor());
+	
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
 	UniformBufferObjectSky UBO_Sky = {};
-	UBO_Sky.proj = glm::perspective(glm::radians(camera->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, camera->clippingNear, camera->clippingFar);
+	UBO_Sky.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	UBO_Sky.proj[1][1] *= -1;
-	UBO_Sky.view = glm::lookAt(camera->position, camera->view, camera->up);
+	UBO_Sky.view = glm::lookAt(std::dynamic_pointer_cast<Camera>(actors[0])->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
 	UBO_Sky.view[3][0] *= 0;
 	UBO_Sky.view[3][1] *= 0;
 	UBO_Sky.view[3][2] *= 0;
@@ -655,12 +660,11 @@ void Scene::UpdateSkyboxUniformBuffer() {
 
 // ------ Text overlay - performance statistics ----- //
 
-void Scene::UpdateGUI(float frame_timer, uint32_t last_FPS)
-{
+void Scene::UpdateGUI(float frameTimer, uint32_t elapsedTime) {
 	status_overlay->BeginTextUpdate();
 	status_overlay->RenderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
 	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << (frame_timer * 1000.0f) << "ms (" << last_FPS << " fps)";
+	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
 	status_overlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
 	status_overlay->RenderText("Press \"1\" to toggle GUI", 5.0f, 65.0f, TextAlignment::alignLeft);
 	status_overlay->RenderText("Press WSAD to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
@@ -1022,12 +1026,16 @@ void Scene::CreateDescriptorSet() {
 // ------------- Populate scene --------------------- //
 
 void Scene::LoadAssets() {
-
-	InitLight();
-	InitCamera();
-	InitActor();
-
 	InitMaterials();
+
+	CreateCamera();
+	CreateCharacter();
+	CreateSphereLight();
+	CreateStillObject();
+
+	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
+
 	// Skybox
 	if (display_skybox)	{
 		std::string skybox_filename = "puffinEngine/assets/models/skybox.obj";
@@ -1047,8 +1055,6 @@ void Scene::LoadAssets() {
 	for (uint32_t i = 0; i < filenames.size(); i++) {
 		LoadFromFile(filenames[i], element, objects_indices, objects_vertices);
 		meshes.emplace_back(element);
-		std::cout << "indexCount " << element.indexCount << " " << "indexBase: "<< element.indexBase << std::endl;
-
 	}
 	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
 
@@ -1056,22 +1062,27 @@ void Scene::LoadAssets() {
 	meshes[0].assigned_material = &scene_material[5];
 	meshes[1].assigned_material = &scene_material[4];
 	meshes[2].assigned_material = &scene_material[0];
-	meshes[3].assigned_material = &scene_material[3];
+	meshes[3].assigned_material = &scene_material[3]; 
 }
 
-void Scene::InitCamera() {
-	camera = new Camera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
-	camera->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+void Scene::CreateCamera() {
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	actors.emplace_back(std::move(camera));
 }
 
-void Scene::InitActor() {
-	player = new Character("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
-	dynamic_cast<Character*>(player)->Init(1000, 1000, 1000);
+void Scene::CreateCharacter() {
+	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
+	actors.emplace_back(std::move(character));
 }
 
-void Scene::InitLight() {
-	lightbulb = new SphereLight("Test Light", "Temporary object created for testing purpose", glm::vec3(0.0f, 6.0f, 5.0f));
-	dynamic_cast<Light*>(lightbulb)->SetLightColor(glm::vec3(255.0f, 210.0f, 160.0f));
+void Scene::CreateSphereLight() {
+	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f));
+	actors.emplace_back(std::move(light));
+}
+
+void Scene::CreateStillObject() {
+	std::shared_ptr<Actor> stillObject = std::make_shared<Actor>("Test object", "I am simple plane", glm::vec3(10.0f, 5.0f, 0.0f));
+	actors.emplace_back(std::move(stillObject));
 }
 
 // Use proxy design pattern!
@@ -1679,10 +1690,10 @@ void Scene::ConnectGamepad()
 		int axes_count;
 		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axes_count);
 		//std::cout << "Joystick/Gamepad 1 axes avaliable: " << axes_count << std::endl;
-		camera->Truck(-axes[0] * 15.0f);
-		camera->Dolly(axes[1] * 15.0f);
+		actors[0]->Truck(-axes[0] * 15.0f);
+		actors[0]->Dolly(axes[1] * 15.0f);
 
-		camera->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
+		std::dynamic_pointer_cast<Camera>(actors[0])->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
 
 		/*std::cout << "Left Stick X Axis: " << axes[0] << std::endl;
 		std::cout << "Left Stick Y Axis: " << axes[1] << std::endl;
@@ -1708,7 +1719,7 @@ void Scene::ConnectGamepad()
 		if (GLFW_PRESS == buttons[4])
 		{
 			std::cout << "Left bumper pressed: reset camera" << std::endl;
-			camera->ResetPosition();
+			actors[0]->ResetPosition();
 			//break;
 		}
 
@@ -1743,63 +1754,63 @@ void Scene::PressKey(int key)
 		{
 		case GLFW_KEY_W:
 			std::cout << "Moving camera foward " << key << std::endl;
-			camera->Dolly(15.0f);
+			actors[0]->Dolly(15.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Moving camera backward " << key << std::endl;
-			camera->Dolly(-15.0f);
+			actors[0]->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Moving camera up " << key << std::endl;
-			camera->Pedestal(15.0f);
+			actors[0]->Pedestal(15.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Moving camera down " << key << std::endl;
-			camera->Pedestal(-15.0f);
+			actors[0]->Pedestal(-15.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Moving camera right " << key << std::endl;
-			camera->Truck(-15.0f);
+			actors[0]->Truck(-15.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Moving camera left " << key << std::endl;
-			camera->Truck(15.0f);
+			actors[0]->Truck(15.0f);
 			break;
 		case GLFW_KEY_R:
 			std::cout << "Reset camera" << key << std::endl;
-			camera->ResetPosition();
+			actors[0]->ResetPosition();
 			break;
 		case GLFW_KEY_9:
 			std::cout << "Moving light foward " << key << std::endl;
-			lightbulb->Dolly(15.0f);
+			actors[2]->Dolly(15.0f);
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving light back " << key << std::endl;
-			lightbulb->Dolly(-15.0f);
+			actors[2]->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Moving light left " << key << std::endl;
-			lightbulb->Strafe(-15.0f);
+			actors[2]->Strafe(15.0f);
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Moving light right " << key << std::endl;
-			lightbulb->Strafe(15.0f);
+			actors[2]->Strafe(-15.0f);
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Moving character foward " << key << std::endl;
-			player->Dolly(15.0f);
+			actors[1]->Dolly(15.0f);
 			break;
 		case GLFW_KEY_DOWN:
 			std::cout << "Moving character back " << key << std::endl;
-			player->Dolly(-15.0f);
+			actors[1]->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_LEFT:
 			std::cout << "Moving character left" << key << std::endl;
-			player->Strafe(-15.0f);
+			actors[1]->Strafe(15.0f);
 			break;
 		case GLFW_KEY_RIGHT:
 			std::cout << "Moving character right " << key << std::endl;
-			player->Strafe(15.0f);
+			actors[1]->Strafe(-15.0f);
 			break;
 		case GLFW_KEY_SPACE:
 			std::cout << "Character makes a jump! " << key << std::endl;
@@ -1807,7 +1818,7 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_Z:
 			std::cout << "Saving to file " << key << std::endl;
-			player->SaveToFile();
+			actors[1]->SaveToFile();
 			break;
 		case GLFW_KEY_1:
 			console->visible = !console->visible;
@@ -1816,13 +1827,11 @@ void Scene::PressKey(int key)
 			console->ui_settings.display_stats_overlay = !console->ui_settings.display_stats_overlay;
 			break;
 		case GLFW_KEY_3:
-			if (console->ui_settings.display_imgui)
-			{
+			if (console->ui_settings.display_imgui)	{
 				console->ui_settings.display_imgui = false;
 				std::cout << "Console turned off! " << key << std::endl;
 			}
-			else
-			{
+			else {
 				console->ui_settings.display_imgui = true;
 				std::cout << "Console turned on! " << key << std::endl;
 			}
@@ -1837,59 +1846,59 @@ void Scene::PressKey(int key)
 		{
 		case GLFW_KEY_W:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Dolly(0.0f);
+			actors[0]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Pedestal(0.0f);
+			actors[0]->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Dolly(0.0f);
+			actors[0]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Pedestal(0.0f);
+			actors[0]->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Truck(0.0f);
+			actors[0]->Truck(0.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Key released: " << key << std::endl;
-			camera->Truck(0.0f);
+			actors[0]->Truck(0.0f);
 			break;
 		case GLFW_KEY_9:
 			std::cout << "Key released: " << key << std::endl;
-			lightbulb->Dolly(0.0f);
+			actors[2]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Key released: " << key << std::endl;
-			lightbulb->Dolly(0.0f);
+			actors[2]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Key released: " << key << std::endl;
-			lightbulb->Strafe(0.0f);
+			actors[2]->Strafe(0.0f);
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Key released: " << key << std::endl;
-			lightbulb->Strafe(0.0f);
+			actors[2]->Strafe(0.0f);
 			break;
 		case GLFW_KEY_UP:
 			std::cout << "Key released: " << key << std::endl;
-			player->Dolly(0.0f);
+			actors[1]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_DOWN:
 			std::cout << "Key released: " << key << std::endl;
-			player->Dolly(0.0f);
+			actors[1]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_LEFT:
 			std::cout << "Key released:" << key << std::endl;
-			player->Strafe(0.0f);
+			actors[1]->Strafe(0.0f);
 			break;
 		case GLFW_KEY_RIGHT:
 			std::cout << "Key released: " << key << std::endl;
-			player->Strafe(0.0f);
+			actors[1]->Strafe(0.0f);
 			break;
 		case GLFW_KEY_Z:
 			std::cout <<  "Key released: " << key << std::endl;
@@ -1959,10 +1968,6 @@ void Scene::DeInitScene()
 	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
 	DeInitUniformBuffer();
 	
-	delete camera;
-	delete lightbulb;
-	delete player;
-
 	delete rust;
 	delete sky;
 	delete chrome;
@@ -1970,10 +1975,6 @@ void Scene::DeInitScene()
 	
 	logical_device = nullptr;
 	window = nullptr;
-
-	camera = nullptr;
-	lightbulb = nullptr;
-	player = nullptr;
 
 	rust = nullptr;
 	sky = nullptr;
