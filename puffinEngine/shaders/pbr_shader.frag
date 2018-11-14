@@ -1,8 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-layout (set = 0, binding = 1) uniform UniformBufferObjectParam 
-{
+layout (set = 0, binding = 1) uniform UniformBufferObjectParam {
 	vec3 light_color;
 	vec3 light_pos[1];
 	float exposure;
@@ -25,15 +24,14 @@ layout(location = 4) in vec3 Color;
 
 layout(location = 0) out vec4 outColor;
 
-#define PI 3.1415926535897
+#define PI 3.14159265359
 
 // Additional resources: 
 // http://byteblacksmith.com/improvements-to-the-canonical-one-liner-glsl-rand-for-opengl-es-2-0/
 // http://filmicgames.com/archives/75
 // http://holger.dammertz.org/stuff/notes_HammersleyOnHemisphere.html
 
-float random(vec2 co)
-{
+float random(vec2 co) {
 	float a = 12.9898;
 	float b = 78.233;
 	float c = 43758.5453;
@@ -42,19 +40,18 @@ float random(vec2 co)
 	return fract(sin(sn) * c);
 }
 
-vec3 Uncharted2Tonemap(vec3 x)
-{
+vec3 Uncharted2Tonemap(vec3 x) {
 	float A = 0.15;
 	float B = 0.50;
 	float C = 0.10;
 	float D = 0.20;
 	float E = 0.02;
 	float F = 0.30;
+	float W = 11.2;
 	return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
-vec2 Hammersley(uint i, uint N)
-{
+vec2 Hammersley(uint i, uint N) {
 	uint bits = (i << 16u) | (i >> 16u);
 	bits = ((bits & 0x55555555u) << 1u) | ((bits & 0xAAAAAAAAu) >> 1u);
 	bits = ((bits & 0x33333333u) << 2u) | ((bits & 0xCCCCCCCCu) >> 2u);
@@ -64,19 +61,18 @@ vec2 Hammersley(uint i, uint N)
 	return vec2(float(i) /float(N), rdi);
 }
 
-vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
-{
+vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N) {
 	float a = Roughness * Roughness;
 	
-	float Phi = 2 * PI * Xi.x + random(N.xz) * 0.1;;
+	float Phi = 2.0 * PI * Xi.x + random(N.xz) * 0.1;
 	float CosTheta = sqrt((1.0 - Xi.y) / ( 1.0 + (a*a - 1.0) * Xi.y));
 	float SinTheta = sqrt(1.0 - CosTheta * CosTheta);
 
 	// from spherical coordinates to cartesian coordinates
-	vec3 H = vec3(SinTheta * cos(Phi), SinTheta * sin(Phi), CosTheta);
+	vec3 H = vec3(cos(Phi) * SinTheta, sin(Phi) * SinTheta, CosTheta);
 	
 	// from tangent-space vector to world-space sample vector
-	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) :vec3(1.0, 0.0, 0.0);
+	vec3 UpVector = abs(N.z) < 0.999 ? vec3(0.0, 0.0, 1.0) : vec3(1.0, 0.0, 0.0);
 	vec3 TangentX = normalize(cross(UpVector, N));
 	vec3 TangentY = cross(N, TangentX);
 	
@@ -84,8 +80,7 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N)
 	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
-float DistributionGGX(float dotNH, float roughness)
-{
+float DistributionGGX(float dotNH, float roughness) {
 	float rough_sq = roughness * roughness;
 	float alpha2 = rough_sq * rough_sq;
 	float denom = dotNH * dotNH * (alpha2 - 1.0) + 1.0;
@@ -106,94 +101,72 @@ vec3 fresnelSchlick(float dotVH, vec3 F0)
 	return F0 + (1.0 - F0) * pow(1.0 - dotVH, 5.0);
 }
 
-vec3 fresnelSchlickRoughness(float dotVH, vec3 F0, vec3 prefiltered_map)
-{
-	return F0 + (clamp(vec3(1.0 - prefiltered_map), 0.0, 1.0) - F0) * pow(1.0 - dotVH, 5.0);
+vec3 fresnelSchlickRoughness(float dotVH, vec3 F0, float roughness) {
+	return F0 + (max(vec3(1.0 - roughness), F0) - F0)  * pow(1.0 - dotVH, 5.0);
 }
 
-vec3 PrefilteredEnvMap( vec3 unitReflection, float roughness, uint NumSamples)
-{
+vec3 PrefilteredEnvMap( vec3 unitReflection, float roughness, uint NumSamples) {
 	vec3 N = unitReflection;
 	vec3 V = unitReflection;
 
-	vec3 PrefilteredColor = vec3(0.0);
-	float TotalWeight = 0.0;
+	vec3 prefilteredColor = vec3(0.0);
+	float totalWeight = 0.0;
 	
-	for( uint sampleIndex = 0; sampleIndex < NumSamples; sampleIndex++ )
-	{
-		vec2 vXi = Hammersley(sampleIndex, NumSamples);
-		vec3 H = ImportanceSampleGGX(vXi, roughness, N);
-		vec3 L = 2.0 * dot( V, H ) * H - V;
-
-		float NoL = clamp(dot(N, L), 0.0, 1.0); 
-		if( NoL > 0.0 )
-		{
-			PrefilteredColor += textureLod(samplerIrradiance, L, 0.0).rgb * NoL;
-			TotalWeight += NoL;
-		}
-	}
-	return PrefilteredColor / TotalWeight;
-}
-
-vec3 specularContribution(vec3 L, vec3 V, vec3 N, vec3 F0, float metallic, float roughness, vec3 albedo)
-{
-	// Precalculate vectors and dot products	
-	vec3 H = normalize (V + L);
-	float dotNH = clamp(dot(N, H), 0.0, 1.0);
-	float dotNV = clamp(dot(N, V), 0.0, 1.0);
-	float dotNL = clamp(dot(N, L), 0.001, 1.0);
-	float dotVH = clamp(dot(V, H), 0.0, 1.0);
- 
-	// Light color fixed
-	vec3 lightColor = vec3(1.0);
-
-	vec3 color = vec3(0.0);
-
-	if (dotNL > 0.0) {
-		// Microfacet SpecularBRDF
-		float D = DistributionGGX(dotNH, roughness); 
-		float G = GeometrySmith(roughness, dotNV, dotNL);
-		vec3 F = fresnelSchlick(dotVH, F0);		
-		
-		vec3 spec = D * F * G / (4.0 * dotNL * dotNV + 0.001);		
-		vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);			
-		color += (kD * albedo / PI + spec) * dotNL;
-	}
-
-	return color;
-}
-
-vec2 BRDF(float NoV, float roughness, uint NumSamples)
-{
-	// Normal always points along z-axis for the 2D lookup 
-	const vec3 N = vec3(0.0, 0.0, 1.0);
-	vec3 V = vec3(sqrt(1.0 - NoV*NoV), 0.0, NoV);
-
-	float A = 0;
-	float B = 0;
-	for(uint i = 0u; i < NumSamples; i++) 
+	for(uint i = 0u; i < NumSamples; ++i)
 	{
 		vec2 Xi = Hammersley(i, NumSamples);
 		vec3 H = ImportanceSampleGGX(Xi, roughness, N);
-		vec3 L = -normalize(reflect(V, H));
+		vec3 L = normalize(2.0 * dot(V, H) * H - V);
 
-		 -normalize(reflect(V, H));
+		float NdotH = clamp(H.z, 0.0, 1.0);
+		float HdotV = max(dot(H, V), 0.0);
 
-		float dotNL = clamp(L.z, 0.001, 1.0);
-		float dotNV = clamp(dot(N, V), 0.0, 1.0);
-		float dotVH = clamp(dot(V, H), 0.0, 1.0); 
-		float dotNH = clamp(H.z, 0.0, 1.0);
+		float NdotL = clamp(dot(N, L), 0.0, 1.0); 
+		if( NdotL > 0.0 ) {
+			float D  = DistributionGGX(NdotH, roughness);
+            float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
 
-		if (dotNL > 0.0) {
-			float G = GeometrySmith(roughness, dotNV, dotNL);
+            float resolution = 512.0; // resolution of source cubemap (per face)
+            float saTexel  = 4.0 * PI / (6.0 * resolution * resolution);
+            float saSample = 1.0 / (float(NumSamples) * pdf + 0.0001);
+
+			float mipLevel = roughness == 0.0 ? 0.0 : 0.5 * log2(saSample / saTexel); 
+			prefilteredColor += textureLod(samplerIrradiance, L, 0.0).rgb * NdotL;
+						
+			totalWeight += NdotL;
+		}
+	}
+	return prefilteredColor / totalWeight;
+}
+
+vec2 IntegrateBRDF(float NdotV, float roughness, uint NumSamples) {
+	const vec3 N = vec3(0.0, 0.0, 1.0);
+	vec3 V = vec3(sqrt(1.0 - NdotV*NdotV), 0.0, NdotV);
+
+	float A = 0.0;
+	float B = 0.0;
+	for(uint i = 0u; i < NumSamples; ++i) {
+		vec2 Xi = Hammersley(i, NumSamples);
+		vec3 H = ImportanceSampleGGX(Xi, roughness, N);
+		vec3 L = normalize(2.0 * dot(V, H) * H - V);
+
+		float NdotL = clamp(L.z, 0.001, 1.0);
+		float VdotH = clamp(dot(V, H), 0.0, 1.0); 
+		float NdotH = clamp(H.z, 0.0, 1.0);
+
+		if (NdotL > 0.0) {
+			float G = GeometrySmith(roughness, NdotV, NdotL);
+			float G_Vis = (G * VdotH) / (NdotH * NdotV);
+			float Fc = pow(1.0 - VdotH, 5.0);
 			
-			float G_Vis = (G * dotVH) / (dotNH * dotNV);
-			float Fc = pow(1.0 - dotVH, 5.0);
 			A += (1.0 - Fc) * G_Vis;
 			B += Fc * G_Vis;
 		}
 	}
-	return vec2(A, B) / float(NumSamples);
+
+	A/= float(NumSamples);
+	B/= float(NumSamples);
+	return vec2(A, B); 
 }
 
 vec3 getNormalFromMap()
@@ -221,44 +194,68 @@ void main()
 	vec3 albedo = pow(texture(albedoMap, TexCoords).rgb, vec3(2.2)); //OK
 	float metallic = texture(metallicMap, TexCoords).r;
 	float roughness = texture(roughnessMap, TexCoords).r;
+	float ao = texture(aoMap, TexCoords).r;
 
 	// input lighting data
-	vec3 N = normalize(Normal); //getNormalFromMap();
+	vec3 N = getNormalFromMap();
 	vec3 V = normalize(CameraPos - WorldPos); 
 	vec3 R = reflect(-V, N); // 2.0 * dot( V,N ) * N - V; 
 		
-	vec3 F0 = vec3(0.04); 
-	vec3 diffuse_color = albedo * (vec3(1.0) - F0);
-	diffuse_color *= 1.0 - metallic;
-	vec3 specular_color = mix(F0, albedo, metallic);
-	//float reflectance = max(max(specular_color.r, specular_color.g), specular_color.b);
-	
+	vec3 F0 = vec3(0.04);
+	F0 = mix(F0, albedo, metallic); 
 
-	float NdotV = clamp(dot(N, V), 0.001, 1.0); // float NdotV = abs(dot(N, V)) + 0.001;
-	vec2 EnvBRDF = BRDF(NdotV, roughness, NumSamples).rg;
-	vec3 prefiltered_color = PrefilteredEnvMap(R, roughness, NumSamples); //OK
-	
-	vec3 specular = prefiltered_color * (specular_color * EnvBRDF.x + EnvBRDF.y); //approximate_specular_IBL
-	vec3 diffuse = prefiltered_color * diffuse_color;
-	vec3 fresnel = fresnelSchlickRoughness(clamp(dot(N, V), 0.0, 1.0), F0, prefiltered_color);
-
-	vec3 color = (diffuse + specular + fresnel); // * texture(aoMap, inUV).r;
-	
 	vec3 Lo = vec3(0.0);
-	for(int i = 0; i < ubo_parameters.light_pos[i].length(); i++) 
-	{
-		vec3 L = normalize(ubo_parameters.light_pos[i].xyz - WorldPos);
-		Lo += specularContribution(L, V, N, specular_color, metallic, roughness, albedo);
+	for(int i = 0; i < ubo_parameters.light_pos.length(); ++i) {
+		vec3 L = normalize(ubo_parameters.light_pos[i] - WorldPos);
+		vec3 H = normalize (V + L);
+		float distance = length(ubo_parameters.light_pos[i] - WorldPos);
+		float attenuation = 1.0 / (distance * distance);
+		vec3 radiance = ubo_parameters.light_color * attenuation;
+
+		float dotNH = clamp(dot(N, H), 0.0, 1.0);
+		float dotNV = clamp(dot(N, V), 0.0, 1.0);
+		float dotNL = clamp(dot(N, L), 0.001, 1.0);
+		float dotVH = clamp(dot(V, H), 0.0, 1.0);
+			
+		// Microfacet SpecularBRDF
+		float NDF = DistributionGGX(dotNH, roughness); 
+		float G = GeometrySmith(roughness, dotNV, dotNL);
+		vec3 F = fresnelSchlick(dotVH, F0);		
+			
+		vec3 nominator = NDF * F * G;
+		float denominator = 4.0 * dotNV * dotNL + 0.001;
+		vec3 specular = nominator / denominator;
+
+		vec3 kS = F;
+		vec3 kD = vec3(1.0) - kS;
+		kD *= 1.0 - metallic; 
+
+		Lo += (kD * albedo / PI + specular) * radiance * dotNL;
 	} 
 
-	color += Lo;
+	vec3 fresnel = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
 
-	// Tone mapping
-	//color = Uncharted2Tonemap(color * ubo_parameters.exposure);
-	//color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f))); 
+	vec3 kS = fresnel;
+    vec3 kD = 1.0 - kS;
+	kD *= 1.0 - metallic; 
+
+	vec3 irradiance = texture(samplerIrradiance, N).rgb;
+	vec3 diffuse = irradiance * albedo;
+
+	vec3 prefilteredColor = PrefilteredEnvMap(R, roughness, NumSamples); //OK
+	vec2 brdf = IntegrateBRDF(max(dot(N, V), 0.0), roughness, NumSamples).rg; // float NdotV = abs(dot(N, V)) + 0.001;
+	vec3 specular = prefilteredColor * (fresnel * brdf.x + brdf.y); //approximate_specular_IBL
+
+	vec3 ambient = (kD * diffuse + specular); // * texture(aoMap, inUV).r;
+	vec3 color = ambient + Lo; 
 	
+	// Tone mapping
+	//color = Uncharted2Tonemap(color * 2.0);
+	//color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f)));
+	color = color / (color + vec3(1.0)); 
+
 	// Gamma correction
-	//color = pow(color, vec3(1.0f / ubo_parameters.gamma));
+	color = pow(color, vec3(1.0 / 2.2));
 		
 	outColor = vec4(color, 1.0);
 }

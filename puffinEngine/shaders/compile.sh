@@ -1,15 +1,15 @@
-VULKAN_SDK/bin/glslangValidator -V pbr_shader.vert -o pbr_shader.vert.spv 
-VULKAN_SDK/bin/glslangValidator -V pbr_shader.frag -o pbr_shader.frag.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/pbr_shader.vert -o puffinEngine/shaders/pbr_shader.vert.spv 
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/pbr_shader.frag -o puffinEngine/shaders/pbr_shader.frag.spv
 
-VULKAN_SDK/bin/glslangValidator -V perform_stats.vert -o imgui_menu_shader.vert.spv
-VULKAN_SDK/bin/glslangValidator -V perform_stats.frag -o imgui_menu_shader.frag.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.vert -o puffinEngine/shaders/imgui_menu_shader.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.frag -o puffinEngine/shaders/imgui_menu_shader.frag.spv
 
-VULKAN_SDK/bin/glslangValidator -V skymap_shader.vert -o skymap_shader.vert.spv
-VULKAN_SDK/bin/glslangValidator -V skymap_shader.frag -o skymap_shader.frag.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/skymap_shader.vert -o puffinEngine/shaders/skymap_shader.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/skymap_shader.frag -o puffinEngine/shaders/skymap_shader.frag.spv
 
-VULKAN_SDK/bin/glslangValidator -V clouds_shader.vert -o clouds_shader.vert.spv
-VULKAN_SDK/bin/glslangValidator -V clouds_shader.frag -o clouds_shader.frag.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/clouds_shader.vert -o puffinEngine/shaders/clouds_shader.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/clouds_shader.frag -o puffinEngine/shaders/clouds_shader.frag.spv
 
-VULKAN_SDK/bin/glslangValidator -V perform_stats.vert -o perform_stats.vert.spv
-VULKAN_SDK/bin/glslangValidator -V perform_stats.frag -o perform_stats.frag.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.vert -o puffinEngine/shaders/perform_stats.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.frag -o puffinEngine/shaders/perform_stats.frag.spv
 
