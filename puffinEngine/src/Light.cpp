@@ -30,11 +30,21 @@ SphereLight::~SphereLight() {
 #endif
 }
 
-// --------------- Setters and getters -------------- //
-
-ActorType SphereLight::GetType() {
-    return type;
+Skybox::Skybox(std::string name, std::string description, glm::vec3 position) 
+: Light(name, description, position) {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Skybox created\n";
+#endif
 }
+
+Skybox::~Skybox() {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Skybox destroyed\n";
+#endif
+}
+
+
+// --------------- Setters and getters -------------- //
 
 glm::vec3 Light::GetLightColor() const {
 	return lightColor;
