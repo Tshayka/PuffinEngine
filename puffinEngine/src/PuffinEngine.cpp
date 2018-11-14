@@ -65,53 +65,42 @@ void PuffinEngine::InitVulkan() {
 }
 
 void PuffinEngine::MainLoop() {
-	double total_time = 0.0;
-	double fixed_frame_time = 0.016666;
+	double totalTime = 0.0;
+	const double fixedTimeValue = 0.016666;
 
-	double current_time = glfwGetTime();
-	double accumulator = 0.0f;
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
 
 	while (!glfwWindowShouldClose(window)) {
+		double newTime = glfwGetTime();
+		double frameTime = newTime - currentTime;
+		if (frameTime > 0.15)
+			frameTime = 0.15;
+		currentTime = newTime;
+		
+		accumulator += frameTime;
+
 		glfwPollEvents();
 		glfwGetCursorPos(window, &xpos, &ypos);
 		glfwGetFramebufferSize(window, &fb_width, &fb_height);
 		glfwGetWindowSize(window, &width, &height);
-	
-		double new_time = glfwGetTime();
-		double frameTime = new_time - current_time;
 
 		ImGuiIO& io = ImGui::GetIO(); 
 		io.DisplaySize = ImVec2((float)width, (float)height);
 		io.DisplayFramebufferScale = ImVec2(width > 0 ? ((float)fb_width / width) : 0, height > 0 ? ((float)fb_height / height) : 0);
-		io.DeltaTime = (float)frameTime;
+		io.DeltaTime = (float)frameTime;	
 
-		if (frameTime > 0.15f)
-			frameTime = 0.15f;
-
-		current_time = glfwGetTime();//TODO
-		
-		accumulator += frameTime;
-
-		while (accumulator >= fixed_frame_time) {
-			scene_1->UpdateGUI((float)accumulator, (uint32_t)total_time);
-			scene_1->UpdateScene((float)total_time);
-
-			total_time += fixed_frame_time;
-			accumulator -= fixed_frame_time;
+		while (accumulator >= fixedTimeValue) {
+			scene_1->UpdateScene((float)fixedTimeValue, (float)totalTime, (float)accumulator);
+			totalTime += fixedTimeValue;
+			accumulator -= fixedTimeValue;
 		}
-
-		//std::cout << "Inside Loop!" << '\n';
-		UpdateCameras((float)frameTime);
-		DrawFrame();		
+		
+		DrawFrame();	
 	}
 
 	vkDeviceWaitIdle(world_device->device);
 }
-
-void PuffinEngine::UpdateCameras(float dt) {
-	scene_1->camera->UpdatePosition(static_cast<float>(dt)); // TODO not update when camera not moving
-}
-
 
 void PuffinEngine::CreateSemaphores() {
 	VkSemaphoreCreateInfo semaphore_info = {};
@@ -269,7 +258,7 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
-	app->scene_1->camera->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
+	std::dynamic_pointer_cast<Camera>(app->scene_1->actors[0])->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
 
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
@@ -380,7 +369,7 @@ void PuffinEngine::DestroyDevice() {
 	world_device = nullptr;
 }
 
-void PuffinEngine::DestroyScene() {
+void PuffinEngine::DestroyScene() {// can't see destructor working
 	scene_1->DeInitScene();
 	delete scene_1;
 	scene_1 = nullptr;

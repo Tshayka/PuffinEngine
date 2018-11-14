@@ -45,7 +45,7 @@ class PuffinEngine {
     void MainLoop();
     //void PollJoypad();
 	void RecreateSwapChain();
-    void UpdateCameras(float);
+    void Update(float);
 
     Device* world_device = nullptr;
     Scene *scene_1 = nullptr;
