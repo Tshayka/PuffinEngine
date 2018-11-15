@@ -9,7 +9,6 @@ public:
 	Camera(std::string name, std::string description, glm::vec3 position);
 	virtual ~Camera();
 
-	ActorType GetType() override;
 	void UpdatePosition(float) override;
 
 	void Init(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float);

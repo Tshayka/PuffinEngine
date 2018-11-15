@@ -21,10 +21,6 @@ Camera::~Camera() {
 
 // ---------------- Main functions ------------------ //
 
-ActorType Camera::GetType() {
-    return type;
-}
-
 void Camera::Init(float move_x, float move_y, float move_z,
 	float move_goal_x, float move_goal_y, float move_goal_z,
 	float dir_x, float dir_y, float dir_z, 
@@ -45,8 +41,7 @@ void Camera::Init(float move_x, float move_y, float move_z,
 	yaw = horiz;
 }
 
-void Camera::UpdatePosition(float dt)
-{
+void Camera::UpdatePosition(float dt) {
 	direction = glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
 
 	// Smooth movement and edge case in approach, without is movement is const
