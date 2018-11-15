@@ -19,10 +19,6 @@ Character::~Character() {
 	std::cout << "Character destroyed\n";
 }
 
-ActorType Character::GetType() {
-    return type;
-}
-
 void Character::Init(unsigned int maxHealth, int currentHealth, unsigned int gold) {
     this->maxHealth = maxHealth;
 	this->currentHealth = currentHealth;
