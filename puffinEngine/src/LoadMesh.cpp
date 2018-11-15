@@ -58,6 +58,7 @@ namespace enginetool {
 		uint32_t indexBase = 0;
 		uint32_t indexCount = 0;
 		SceneMaterial* assigned_material;
+		std::string meshFilename;
 	};
 }
 
