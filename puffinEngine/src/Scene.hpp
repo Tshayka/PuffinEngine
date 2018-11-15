@@ -10,7 +10,6 @@
 #include "Camera.hpp"
 #include "Device.hpp"
 #include "Light.hpp"
-#include "LoadMesh.cpp"
 #include "StatusOverlay.hpp"
 #include "Ui.hpp"
 
@@ -96,16 +95,15 @@ private:
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 camera_pos; // TODO (NEVER use `vec3` in blocks)
+		glm::vec3 camera_pos; 
 	};
 
 	// UBO Static parameters
-	struct UniformBufferObjectParam
-	{
-		glm::vec3 light_col; // TODO (NEVER use `vec3` in blocks)
-		glm::vec3 light_pos[1];
+	// If the member is a three-component vector with components consuming N basic machine units, the base alignment is 4N.
+	struct UniformBufferObjectParam	{
+		glm::vec3 light_col; 
 		float exposure;
-		float gamma;
+		glm::vec3 light_pos[1];
 	};
 
 	// UBO for skybox
@@ -118,8 +116,7 @@ private:
 	};
 
 	// UBO Dynamic for clouds
-	struct UboClouds
-	{
+	struct UboClouds {
 		glm::mat4 proj;
 		glm::mat4 view;
 		glm::vec3 camera_pos;
@@ -178,7 +175,6 @@ private:
 	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial();
 
 	std::vector<enginetool::SceneMaterial> scene_material;
-	std::vector<enginetool::ScenePart> meshes;
 
 	enginetool::ScenePart skybox_mesh;
 	enginetool::ScenePart element;

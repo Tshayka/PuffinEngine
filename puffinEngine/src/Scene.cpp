@@ -237,8 +237,7 @@ void Scene::CreateCommandBuffers()
 		VkDeviceSize offsets[1] = { 0 };
 
 		// Skybox
-		if (display_skybox)
-		{
+		if (display_skybox)	{
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -247,25 +246,21 @@ void Scene::CreateCommandBuffers()
 		}
 
 		// 3d object
-		std::vector<glm::vec3> positions = {actors[1]->position, glm::vec3(actors[0]->position.x, actors[0]->position.y + 2.0f, actors[0]->position.z),  actors[3]->position, actors[2]->position};
-
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-		for (size_t j = 0; j < meshes.size(); j++)
-		{
+		for (size_t j = 0; j < actors.size(); j++) {
 			std::array<VkDescriptorSet, 1> descriptorSets;
-			descriptorSets[0] = meshes[j].assigned_material->descriptor_set;
+			descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *meshes[j].assigned_material->assigned_pipeline);
-			pushConstants.pos = positions[j];
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *actors[j]->mesh.assigned_material->assigned_pipeline);
+			pushConstants.pos = actors[j]->position;
 			vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-			vkCmdDrawIndexed(command_buffers[i], meshes[j].indexCount, 1, 0, meshes[j].indexBase, 0);
+			vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 		}
 
 		// Clouds
-		if (display_clouds)
-		{
+		if (display_clouds)	{
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, clouds_pipeline);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.clouds.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.clouds.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -566,9 +561,12 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 	std::dynamic_pointer_cast<Camera>(actors[0])->UpdatePosition(dt); // TODO not update when camera not moving?
 	actors[1]->UpdatePosition(dt); 
-	actors[2]->UpdatePosition(dt);  
+	std::dynamic_pointer_cast<SphereLight>(actors[2])->UpdatePosition(dt);
+	actors[3]->UpdatePosition(dt);  
 
 	//for(auto const a : actors) a->UpdatePosition(dt);
+
+	CreateCommandBuffers();
 }
 
 void Scene::UpdateUniformBuffer(const float& time) {
@@ -592,6 +590,22 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	UBOC.camera_pos = actors[0]->position;
 
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
+}
+
+void Scene::UpdateUBOParameters() {
+	UniformBufferObjectParam UBO_Param = {};
+	UBO_Param.light_col = std::dynamic_pointer_cast<SphereLight>(actors[2])->GetLightColor();
+	UBO_Param.exposure = 2.5f;
+	UBO_Param.light_pos[0] = actors[2]->position;
+		
+	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
+
+	// VkMappedMemoryRange memoryRange = {};
+	// memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	// memoryRange.memory = uniform_buffers.parameters.memory;
+	// memoryRange.size = uniform_buffers.parameters.size;
+		
+	// vkFlushMappedMemoryRanges(logical_device->device, 1, &memoryRange);
 }
 
 void Scene::UpdateDynamicUniformBuffer(const float& time) {
@@ -632,16 +646,6 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 		memoryRange.size = uniform_buffers.clouds_dynamic.size;
 		
 		vkFlushMappedMemoryRanges(logical_device->device, 1, &memoryRange);
-}
-
-void Scene::UpdateUBOParameters() {
-	UniformBufferObjectParam UBO_Param = {};
-	UBO_Param.exposure = 1.0f;
-	UBO_Param.gamma = 1.0f;
-	UBO_Param.light_pos[0] = actors[2]->position;
-	UBO_Param.light_col = glm::vec3(std::dynamic_pointer_cast<SphereLight>(actors[2])->GetLightColor());
-	
-	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
@@ -1028,14 +1032,6 @@ void Scene::CreateDescriptorSet() {
 void Scene::LoadAssets() {
 	InitMaterials();
 
-	CreateCamera();
-	CreateCharacter();
-	CreateSphereLight();
-	CreateStillObject();
-
-	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
-	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
-
 	// Skybox
 	if (display_skybox)	{
 		std::string skybox_filename = "puffinEngine/assets/models/skybox.obj";
@@ -1050,43 +1046,56 @@ void Scene::LoadAssets() {
 		CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	}
 
-	// Objects
-	const std::vector<std::string> filenames = { "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/cloud.obj", "puffinEngine/assets/models/plane.obj", "puffinEngine/assets/models/cloud.obj"};
-	for (uint32_t i = 0; i < filenames.size(); i++) {
-		LoadFromFile(filenames[i], element, objects_indices, objects_vertices);
-		meshes.emplace_back(element);
+	// Scene objects/actors
+	CreateCamera();
+	CreateCharacter();
+	CreateSphereLight();
+	CreateStillObject();
+	
+
+	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
+
+	for (uint32_t i = 0; i < actors.size(); i++) {
+		LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objects_vertices);
 	}
 	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
 
 	// assign shaders to meshes
-	meshes[0].assigned_material = &scene_material[5];
-	meshes[1].assigned_material = &scene_material[4];
-	meshes[2].assigned_material = &scene_material[0];
-	meshes[3].assigned_material = &scene_material[3]; 
+	actors[0]->mesh.assigned_material = &scene_material[4]; //camera
+	actors[1]->mesh.assigned_material = &scene_material[2]; //character
+	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
+	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane 
+	
 }
 
 void Scene::CreateCamera() {
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	actors.emplace_back(std::move(camera));
 }
 
 void Scene::CreateCharacter() {
 	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
+	character->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	actors.emplace_back(std::move(character));
 }
 
 void Scene::CreateSphereLight() {
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f));
+	light->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
+	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	actors.emplace_back(std::move(light));
 }
 
 void Scene::CreateStillObject() {
 	std::shared_ptr<Actor> stillObject = std::make_shared<Actor>("Test object", "I am simple plane", glm::vec3(10.0f, 5.0f, 0.0f));
+	stillObject->mesh.meshFilename = "puffinEngine/assets/models/plane.obj";
 	actors.emplace_back(std::move(stillObject));
 }
 
 // Use proxy design pattern!
-void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices) {
+void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices) {
 	tinyobj::attrib_t attrib;
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -1096,7 +1105,7 @@ void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mes
 		throw std::runtime_error(warn + err);
 	}
 
-	meshes.indexBase = static_cast<uint32_t>(indices.size());
+	mesh.indexBase = static_cast<uint32_t>(indices.size());
 	std::unordered_map<enginetool::VertexLayout, uint32_t> uniqueVertices = {};
 	
 	// Loop over shapes
@@ -1143,7 +1152,7 @@ void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mes
 			}
 			index_offset += fv;
 		}	
-		meshes.indexCount = index_offset;
+		mesh.indexCount = index_offset;
 	}
 }
 
@@ -1753,63 +1762,71 @@ void Scene::PressKey(int key)
 		switch (key)
 		{
 		case GLFW_KEY_W:
-			std::cout << "Moving camera foward " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " foward " << key << std::endl;
 			actors[0]->Dolly(15.0f);
 			break;
 		case GLFW_KEY_S:
-			std::cout << "Moving camera backward " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " back " << key << std::endl;
 			actors[0]->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_E:
-			std::cout << "Moving camera up " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " up " << key << std::endl;
 			actors[0]->Pedestal(15.0f);
 			break;
 		case GLFW_KEY_Q:
-			std::cout << "Moving camera down " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " down " << key << std::endl;
 			actors[0]->Pedestal(-15.0f);
 			break;
 		case GLFW_KEY_D:
-			std::cout << "Moving camera right " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " right " << key << std::endl;
 			actors[0]->Truck(-15.0f);
 			break;
 		case GLFW_KEY_A:
-			std::cout << "Moving camera left " << key << std::endl;
+			std::cout << "Moving " << actors[0]->name << " left " << key << std::endl;
 			actors[0]->Truck(15.0f);
 			break;
 		case GLFW_KEY_R:
-			std::cout << "Reset camera" << key << std::endl;
+			std::cout << "Reset " << actors[0]->name << " "<< key << std::endl;
 			actors[0]->ResetPosition();
 			break;
-		case GLFW_KEY_9:
-			std::cout << "Moving light foward " << key << std::endl;
+		case GLFW_KEY_8:
+			std::cout << "Moving " << actors[3]->name << " foward " << key << std::endl;
 			actors[2]->Dolly(15.0f);
 			break;
-		case GLFW_KEY_8:
-			std::cout << "Moving light back " << key << std::endl;
+		case GLFW_KEY_7:
+			std::cout << "Moving " << actors[3]->name << " back " << key << std::endl;
 			actors[2]->Dolly(-15.0f);
 			break;
-		case GLFW_KEY_7:
-			std::cout << "Moving light left " << key << std::endl;
+		case GLFW_KEY_6:
+			std::cout << "Moving " << actors[3]->name << " left " << key << std::endl;
 			actors[2]->Strafe(15.0f);
 			break;
-		case GLFW_KEY_6:
-			std::cout << "Moving light right " << key << std::endl;
+		case GLFW_KEY_5:
+			std::cout << "Moving " << actors[3]->name << " right " << key << std::endl;
 			actors[2]->Strafe(-15.0f);
 			break;
+		case GLFW_KEY_0:
+			std::cout << "Moving " << actors[2]->name << " up " << key << std::endl;
+			actors[2]->Pedestal(15.0f);
+			break;
+		case GLFW_KEY_9:
+			std::cout << "Moving " << actors[2]->name << " down " << key << std::endl;
+			actors[2]->Pedestal(-15.0f);
+			break;
 		case GLFW_KEY_UP:
-			std::cout << "Moving character foward " << key << std::endl;
+			std::cout << "Moving " << actors[1]->name << " foward " << key << std::endl;
 			actors[1]->Dolly(15.0f);
 			break;
 		case GLFW_KEY_DOWN:
-			std::cout << "Moving character back " << key << std::endl;
+			std::cout << "Moving " << actors[1]->name << " back " << key << std::endl;
 			actors[1]->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_LEFT:
-			std::cout << "Moving character left" << key << std::endl;
+			std::cout << "Moving " << actors[1]->name << " left " << key << std::endl;
 			actors[1]->Strafe(15.0f);
 			break;
 		case GLFW_KEY_RIGHT:
-			std::cout << "Moving character right " << key << std::endl;
+			std::cout << "Moving " << actors[1]->name << " right " << key << std::endl;
 			actors[1]->Strafe(-15.0f);
 			break;
 		case GLFW_KEY_SPACE:
@@ -1868,9 +1885,13 @@ void Scene::PressKey(int key)
 			std::cout << "Key released: " << key << std::endl;
 			actors[0]->Truck(0.0f);
 			break;
+		case GLFW_KEY_0:
+			std::cout << "Key released: " << key << std::endl;
+			actors[2]->Pedestal(0.0f);
+			break;
 		case GLFW_KEY_9:
 			std::cout << "Key released: " << key << std::endl;
-			actors[2]->Dolly(0.0f);
+			actors[2]->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Key released: " << key << std::endl;
@@ -1878,9 +1899,13 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Key released: " << key << std::endl;
-			actors[2]->Strafe(0.0f);
+			actors[2]->Dolly(0.0f);
 			break;
 		case GLFW_KEY_6:
+			std::cout << "Key released: " << key << std::endl;
+			actors[2]->Strafe(0.0f);
+			break;
+		case GLFW_KEY_5:
 			std::cout << "Key released: " << key << std::endl;
 			actors[2]->Strafe(0.0f);
 			break;
@@ -1972,6 +1997,9 @@ void Scene::DeInitScene()
 	delete sky;
 	delete chrome;
 	delete plastic;
+	delete lightbulbMat;
+	delete cameraMat;
+	delete characterMat;
 	
 	logical_device = nullptr;
 	window = nullptr;
@@ -1980,6 +2008,9 @@ void Scene::DeInitScene()
 	sky = nullptr;
 	chrome = nullptr;
 	plastic = nullptr;
+	lightbulbMat = nullptr;
+	cameraMat = nullptr;
+	characterMat = nullptr;
 }
 
 void Scene::DeInitTextureImage() {
