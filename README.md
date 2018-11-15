@@ -51,10 +51,13 @@ You must add them inside working directory, because they won't be global:
 - $ cmake --build build -- -j4
 
 ## Running program
-./bin/PuffinEngine
+- $ ./bin/PuffinEngine
 
 ## Running tests
-./bin/PuffinEngineTest
+- $ ./bin/PuffinEngineTest
+
+## Compiling shaders
+- $ ./bin/puffinEngine/shaders/compile.sh
 
 ## Third party libraries
 
