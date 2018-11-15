@@ -23,6 +23,10 @@ std::string Actor::GetId() const {
 	return id;
 }
 
+ActorType Actor::GetType() {
+    return type;
+}
+
 // ---------------- Main functions ------------------ //
 
 float Actor::Approach(float actorGoal, float actorCurrent, float dt) {

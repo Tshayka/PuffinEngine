@@ -2,8 +2,10 @@
 
 #include <glm/glm.hpp>
 
+#include "LoadMesh.cpp"
+
 enum class ActorType {
-        SphereLight, RectangularLight, DomeLight, Character, Camera
+    Actor, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera
 };
 
 class Actor {
@@ -14,7 +16,7 @@ public:
 	// ---------------- Main functions ------------------ //
 
 	std::string GetId() const;
-	virtual ActorType GetType() = 0;
+	virtual ActorType GetType();
 	
 	float Approach(float, float, float);
 	void Dolly(float);
@@ -27,6 +29,8 @@ public:
 	void ResetPosition();
 	void Truck(float);
 	virtual void UpdatePosition(float);
+	
+	enginetool::ScenePart mesh;
 	
 	std::string name;
 	glm::vec3 position;
@@ -43,5 +47,7 @@ public:
 private:
 	std::string description;
 	std::string id;
+	ActorType type = ActorType::Actor;
+
 	std::string CreateId();
 };
