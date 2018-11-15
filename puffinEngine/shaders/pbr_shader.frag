@@ -3,10 +3,9 @@
 
 layout (set = 0, binding = 1) uniform UniformBufferObjectParam {
 	vec3 light_color;
-	vec3 light_pos[1];
 	float exposure;
-	float gamma;
-} ubo_parameters;
+	vec3 light_pos[1];
+} uboParam;
 
 // material parameters
 layout(set = 0, binding = 2) uniform samplerCube samplerIrradiance;
@@ -47,7 +46,6 @@ vec3 Uncharted2Tonemap(vec3 x) {
 	float D = 0.20;
 	float E = 0.02;
 	float F = 0.30;
-	float W = 11.2;
 	return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
@@ -80,29 +78,36 @@ vec3 ImportanceSampleGGX(vec2 Xi, float Roughness, vec3 N) {
 	return TangentX * H.x + TangentY * H.y + N * H.z;
 }
 
-float DistributionGGX(float dotNH, float roughness) {
+float DistributionGGX(vec3 N, vec3 H, float roughness) {
 	float rough_sq = roughness * roughness;
 	float alpha2 = rough_sq * rough_sq;
-	float denom = dotNH * dotNH * (alpha2 - 1.0) + 1.0;
+	float NdotH = max(dot(N, H), 0.0);
+	float denom = NdotH * NdotH * (alpha2 - 1.0) + 1.0;
 	return (alpha2)/(PI * denom*denom); 
 }
 
-float GeometrySmith(float roughness, float dotNV, float dotNL)
-{
-	float r = (roughness + 1.0);
-	float k = (r*r) / 8.0;
-	float ggx1 = dotNL / (dotNL * (1.0 - k) + k);
-	float ggx2 = dotNV / (dotNV * (1.0 - k) + k);
+float GeometrySchlickGGX(float NdotV, float roughness) {
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+    return nom / denom;
+}
+
+float GeometrySmith(vec3 N, vec3 V, vec3 L, float roughness) {
+	float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2 = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1 = GeometrySchlickGGX(NdotL, roughness);
 	return ggx1 * ggx2;
 }
 
-vec3 fresnelSchlick(float dotVH, vec3 F0)
-{
-	return F0 + (1.0 - F0) * pow(1.0 - dotVH, 5.0);
+vec3 fresnelSchlick(float cosTheta, vec3 F0) {
+	return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }
 
-vec3 fresnelSchlickRoughness(float dotVH, vec3 F0, float roughness) {
-	return F0 + (max(vec3(1.0 - roughness), F0) - F0)  * pow(1.0 - dotVH, 5.0);
+vec3 fresnelSchlickRoughness(float cosTheta, vec3 F0, float roughness) {
+	return F0 + (max(vec3(1.0 - roughness), F0) - F0)  * pow(1.0 - cosTheta, 5.0);
 }
 
 vec3 PrefilteredEnvMap( vec3 unitReflection, float roughness, uint NumSamples) {
@@ -118,12 +123,12 @@ vec3 PrefilteredEnvMap( vec3 unitReflection, float roughness, uint NumSamples) {
 		vec3 H = ImportanceSampleGGX(Xi, roughness, N);
 		vec3 L = normalize(2.0 * dot(V, H) * H - V);
 
-		float NdotH = clamp(H.z, 0.0, 1.0);
-		float HdotV = max(dot(H, V), 0.0);
+		float NdotL = max(dot(N, L), 0.0); 
 
-		float NdotL = clamp(dot(N, L), 0.0, 1.0); 
 		if( NdotL > 0.0 ) {
-			float D  = DistributionGGX(NdotH, roughness);
+			float D  = DistributionGGX(N, H, roughness);
+			float NdotH = max(dot(N, H), 0.0);
+			float HdotV = max(dot(H, V), 0.0);
             float pdf = D * NdotH / (4.0 * HdotV) + 0.0001; 
 
             float resolution = 512.0; // resolution of source cubemap (per face)
@@ -150,12 +155,12 @@ vec2 IntegrateBRDF(float NdotV, float roughness, uint NumSamples) {
 		vec3 H = ImportanceSampleGGX(Xi, roughness, N);
 		vec3 L = normalize(2.0 * dot(V, H) * H - V);
 
-		float NdotL = clamp(L.z, 0.001, 1.0);
-		float VdotH = clamp(dot(V, H), 0.0, 1.0); 
-		float NdotH = clamp(H.z, 0.0, 1.0);
+		float NdotL = max(L.z, 0.0);
+        float NdotH = max(H.z, 0.0);
+		float VdotH = max(dot(V, H), 0.0);
 
 		if (NdotL > 0.0) {
-			float G = GeometrySmith(roughness, NdotV, NdotL);
+			float G = GeometrySmith(N, V, L, roughness);
 			float G_Vis = (G * VdotH) / (NdotH * NdotV);
 			float Fc = pow(1.0 - VdotH, 5.0);
 			
@@ -205,32 +210,29 @@ void main()
 	F0 = mix(F0, albedo, metallic); 
 
 	vec3 Lo = vec3(0.0);
-	for(int i = 0; i < ubo_parameters.light_pos.length(); ++i) {
-		vec3 L = normalize(ubo_parameters.light_pos[i] - WorldPos);
+	for(int i = 0; i < uboParam.light_pos.length(); ++i) {
+		vec3 L = normalize(uboParam.light_pos[i] - WorldPos);
 		vec3 H = normalize (V + L);
-		float distance = length(ubo_parameters.light_pos[i] - WorldPos);
+		float distance = length(uboParam.light_pos[i] - WorldPos);
 		float attenuation = 1.0 / (distance * distance);
-		vec3 radiance = ubo_parameters.light_color * attenuation;
-
-		float dotNH = clamp(dot(N, H), 0.0, 1.0);
-		float dotNV = clamp(dot(N, V), 0.0, 1.0);
-		float dotNL = clamp(dot(N, L), 0.001, 1.0);
-		float dotVH = clamp(dot(V, H), 0.0, 1.0);
+		vec3 radiance = uboParam.light_color * attenuation;
 			
 		// Microfacet SpecularBRDF
-		float NDF = DistributionGGX(dotNH, roughness); 
-		float G = GeometrySmith(roughness, dotNV, dotNL);
-		vec3 F = fresnelSchlick(dotVH, F0);		
+		float NDF = DistributionGGX(N, H, roughness); 
+		float G = GeometrySmith(N, V, L, roughness);
+		vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0); 		
 			
 		vec3 nominator = NDF * F * G;
-		float denominator = 4.0 * dotNV * dotNL + 0.001;
+		float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; 
 		vec3 specular = nominator / denominator;
 
 		vec3 kS = F;
 		vec3 kD = vec3(1.0) - kS;
 		kD *= 1.0 - metallic; 
+		
+		float NdotL = max(dot(N, L), 0.0); 
 
-		Lo += (kD * albedo / PI + specular) * radiance * dotNL;
+		Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 	} 
 
 	vec3 fresnel = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
@@ -243,16 +245,16 @@ void main()
 	vec3 diffuse = irradiance * albedo;
 
 	vec3 prefilteredColor = PrefilteredEnvMap(R, roughness, NumSamples); //OK
-	vec2 brdf = IntegrateBRDF(max(dot(N, V), 0.0), roughness, NumSamples).rg; // float NdotV = abs(dot(N, V)) + 0.001;
+	vec2 brdf = IntegrateBRDF(max(dot(N, V), 0.0), roughness, NumSamples).xy; // float NdotV = abs(dot(N, V)) + 0.001;
 	vec3 specular = prefilteredColor * (fresnel * brdf.x + brdf.y); //approximate_specular_IBL
 
 	vec3 ambient = (kD * diffuse + specular); // * texture(aoMap, inUV).r;
 	vec3 color = ambient + Lo; 
 	
 	// Tone mapping
-	//color = Uncharted2Tonemap(color * 2.0);
-	//color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f)));
-	color = color / (color + vec3(1.0)); 
+	color = Uncharted2Tonemap(color * uboParam.exposure);
+	color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f)));
+	//color = color / (color + vec3(1.0)); 
 
 	// Gamma correction
 	color = pow(color, vec3(1.0 / 2.2));
