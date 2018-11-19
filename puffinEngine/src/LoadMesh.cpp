@@ -59,6 +59,45 @@ namespace enginetool {
 		uint32_t indexCount = 0;
 		SceneMaterial* assigned_material;
 		std::string meshFilename;
+
+		struct AABB {
+			glm::vec3 min;
+			glm::vec3 max;
+		}; 
+
+		AABB GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {
+			glm::vec3 min; 
+			glm::vec3 max;
+
+			min.x = min.y = min.z = std::numeric_limits<float>::max();
+			max.x = max.y = max.z = std::numeric_limits<float>::lowest();
+
+			for(uint32_t i = indexBase; i < (indexBase + indexCount) ; ++i) {
+				if (vertices[i].pos.x < min.x) min.x = vertices[i].pos.x;
+				if (vertices[i].pos.x > max.x) max.x = vertices[i].pos.x;
+
+				if (vertices[i].pos.y < min.y) min.y = vertices[i].pos.y;
+				if (vertices[i].pos.y > max.y) max.y = vertices[i].pos.y;
+
+				if (vertices[i].pos.z < min.z) min.z = vertices[i].pos.z;
+				if (vertices[i].pos.z > max.z) max.z = vertices[i].pos.z;
+			}
+
+			AABB box;
+			box.min = min;
+    		box.max = max;
+
+			return box; 
+		}
+
+		static bool Overlaps(const AABB& a, const AABB& b){
+			return 	(a.max.x > b.min.x) && 
+					(a.min.x < b.max.x) && 
+					(a.max.y > b.min.y) && 
+					(a.min.y < b.max.y)	&& 
+					(a.max.z > b.min.z) && 
+					(a.min.z < b.max.z);
+		}
 	};
 }
 
