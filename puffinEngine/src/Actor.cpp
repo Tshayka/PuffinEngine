@@ -9,7 +9,6 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position) {
 	this->position = position;
 	initPosition = position;
 	id = CreateId();
-
 	// create save file
 	std::cout << "Actor created\n";
 }
@@ -79,16 +78,11 @@ void Actor::Truck(float actorVelocityGoal) {// change to function pointer
 }
 
 void Actor::UpdatePosition(float dt) {
-	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
 
-	movement += gravity * dt;
 	position += movement * dt;
-
-	if (position.y < 0.0f)
-		position.y = 0.0f;
 }
 
 

@@ -39,7 +39,6 @@ public:
 	glm::vec3 direction;
 	glm::vec3 foward;
 
-	glm::vec3 gravity = glm::vec3(0.0f, -2.0f, 0.0f);
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity;
