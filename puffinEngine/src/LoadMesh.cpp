@@ -55,15 +55,18 @@ namespace enginetool {
 	};
 	
 	struct ScenePart {
+		
+		struct AABB {
+			glm::vec3 min;
+			glm::vec3 max;
+		}; 
+
 		uint32_t indexBase = 0;
 		uint32_t indexCount = 0;
 		SceneMaterial* assigned_material;
 		std::string meshFilename;
 
-		struct AABB {
-			glm::vec3 min;
-			glm::vec3 max;
-		}; 
+		AABB boundingBox;
 
 		AABB GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {
 			glm::vec3 min; 
@@ -97,6 +100,15 @@ namespace enginetool {
 					(a.min.y < b.max.y)	&& 
 					(a.max.z > b.min.z) && 
 					(a.min.z < b.max.z);
+		}
+
+		static bool Contains(const AABB& a, const AABB& b){
+			return  b.min.x >= a.min.x &&
+					b.max.x <= a.max.x &&
+					b.min.y >= a.min.y &&
+					b.max.y <= a.max.y &&
+					b.min.z >= a.min.z &&
+					b.max.z <= a.max.z;
 		}
 	};
 }
