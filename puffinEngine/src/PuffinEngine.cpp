@@ -26,6 +26,11 @@ else
     return "This letter is uppercase!";
 }
 
+template<typename T>
+T clamp(const T& what, const T& a, const T& b) {
+return std::min(b, std::max(what, a)); 
+}
+
 // ---------------- Main functions ------------------ //
 
 void PuffinEngine::Run()
@@ -71,6 +76,9 @@ void PuffinEngine::MainLoop() {
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
 
+	const double MAX_ACCUMULATED_TIME = 1.0
+;
+
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
 		double frameTime = newTime - currentTime;
@@ -79,6 +87,7 @@ void PuffinEngine::MainLoop() {
 		currentTime = newTime;
 		
 		accumulator += frameTime;
+		accumulator = clamp(accumulator, 0.0, MAX_ACCUMULATED_TIME);
 
 		glfwPollEvents();
 		glfwGetCursorPos(window, &xpos, &ypos);
