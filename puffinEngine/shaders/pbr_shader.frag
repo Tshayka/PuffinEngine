@@ -150,6 +150,7 @@ vec2 IntegrateBRDF(float NdotV, float roughness, uint NumSamples) {
 
 	float A = 0.0;
 	float B = 0.0;
+
 	for(uint i = 0u; i < NumSamples; ++i) {
 		vec2 Xi = Hammersley(i, NumSamples);
 		vec3 H = ImportanceSampleGGX(Xi, roughness, N);
@@ -158,6 +159,7 @@ vec2 IntegrateBRDF(float NdotV, float roughness, uint NumSamples) {
 		float NdotL = max(L.z, 0.0);
         float NdotH = max(H.z, 0.0);
 		float VdotH = max(dot(V, H), 0.0);
+		float NoV = max(dot(N, V), 0.0f);
 
 		if (NdotL > 0.0) {
 			float G = GeometrySmith(N, V, L, roughness);
@@ -223,7 +225,7 @@ void main()
 		vec3 F = fresnelSchlick(max(dot(H, V), 0.0), F0); 		
 			
 		vec3 nominator = NDF * F * G;
-		float denominator = 4 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; 
+		float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001; 
 		vec3 specular = nominator / denominator;
 
 		vec3 kS = F;
@@ -235,18 +237,15 @@ void main()
 		Lo += (kD * albedo / PI + specular) * radiance * NdotL;
 	} 
 
-	vec3 fresnel = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness); 
-
-	vec3 kS = fresnel;
-    vec3 kD = 1.0 - kS;
-	kD *= 1.0 - metallic; 
+	vec3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    vec3 kD = (vec3(1.0) - F) * (1.0 - metallic);
 
 	vec3 irradiance = texture(samplerIrradiance, N).rgb;
 	vec3 diffuse = irradiance * albedo;
-
+	
 	vec3 prefilteredColor = PrefilteredEnvMap(R, roughness, NumSamples); //OK
-	vec2 brdf = IntegrateBRDF(max(dot(N, V), 0.0), roughness, NumSamples).xy; // float NdotV = abs(dot(N, V)) + 0.001;
-	vec3 specular = prefilteredColor * (fresnel * brdf.x + brdf.y); //approximate_specular_IBL
+	vec2 brdf = IntegrateBRDF(dot(N, V), roughness, NumSamples).rg; // float NdotV = abs(dot(N, V)) + 0.001;
+	vec3 specular = prefilteredColor * (F * brdf.x + brdf.y); //approximate_specular_IBL
 
 	vec3 ambient = (kD * diffuse + specular); // * texture(aoMap, inUV).r;
 	vec3 color = ambient + Lo; 
@@ -254,8 +253,6 @@ void main()
 	// Tone mapping
 	color = Uncharted2Tonemap(color * uboParam.exposure);
 	color = color * (1.0f / Uncharted2Tonemap(vec3(11.2f)));
-	//color = color / (color + vec3(1.0)); 
-
 	// Gamma correction
 	color = pow(color, vec3(1.0 / 2.2));
 		
