@@ -22,6 +22,7 @@ GuiElement::~GuiElement() {
 void GuiElement::InitMenu(Device* device) {
 	logical_device = device;
 
+	SetUp();
 	CreateCommandPool();
 	InitResources();
 	CreateViewAndSampler();
