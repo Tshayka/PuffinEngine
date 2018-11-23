@@ -27,7 +27,7 @@ StatusOverlay::~StatusOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void StatusOverlay::InitStatusOverlay(Device* device, ImGuiMenu* console)
+void StatusOverlay::InitGuiOverlay(Device* device, GuiElement* console)
 {
 	this->console = console;
 	logical_device = device; 
@@ -38,15 +38,15 @@ void StatusOverlay::InitStatusOverlay(Device* device, ImGuiMenu* console)
 	CreateCommandPool();
 	InitResources();
 	CreateViewAndSampler();
-	CreateDescriptorPool();
 	CreateDescriptorSetLayout();
+	CreateDescriptorPool();
 	CreateDescriptorSet();
 	CreateGraphicsPipeline();
 }
 
 void StatusOverlay::Submit(VkQueue queue, uint32_t bufferindex)
 {
-	if (!console->visible) {
+	if (!guiOverlayVisible) {
 		return;
 	}
 	
@@ -145,14 +145,15 @@ void StatusOverlay::InitResources()
 
 	ErrorCheck(vkBindImageMemory(logical_device->device, image, image_memory, 0));
 
-	logical_device->CreateBuffer(allocInfo.allocationSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_buffer, staging_buffer_memory);
+	enginetool::Buffer staging_buffer;
+
+	logical_device->CreateStagedBuffer(allocInfo.allocationSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, staging_buffer.memory);
 
 	//vkGetBufferMemoryRequirements(logical_device->device, textoverlay_staging_buffer, &memory_requirements);
 
-	uint8_t *data;
-	vkMapMemory(logical_device->device, staging_buffer_memory, 0, allocInfo.allocationSize, 0, (void **)&data);
-	memcpy(data, &font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
-	vkUnmapMemory(logical_device->device, staging_buffer_memory);
+	staging_buffer.Map(allocInfo.allocationSize, 0);
+	staging_buffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
+	staging_buffer.Unmap();
 
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
@@ -186,7 +187,7 @@ void StatusOverlay::InitResources()
 
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-	vkCmdCopyBufferToImage(command_buffer, staging_buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+	vkCmdCopyBufferToImage(command_buffer, staging_buffer.buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
 
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -207,8 +208,7 @@ void StatusOverlay::InitResources()
 
 	EndSingleTimeCommands(command_buffer);
 	
-	vkDestroyBuffer(logical_device->device, staging_buffer, nullptr);
-	vkFreeMemory(logical_device->device, staging_buffer_memory, nullptr);
+	staging_buffer.Destroy();
 }
 
 void StatusOverlay::CreateViewAndSampler()
@@ -695,7 +695,7 @@ void StatusOverlay::UpdateCommandBuffers() {
 		scissor.extent = logical_device->swapchain_extent;	
 		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
 
-		if (console->ui_settings.display_stats_overlay) {
+		if (ui_settings.display_stats_overlay) {
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, text_overlay_pipeline);
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
 
@@ -709,7 +709,7 @@ void StatusOverlay::UpdateCommandBuffers() {
 			}
 		}
 
-		if (console->ui_settings.display_imgui) {
+		if (ui_settings.display_imgui) {
 			console->CreateUniformBuffer(command_buffers[i]);
 		};
 
@@ -719,18 +719,19 @@ void StatusOverlay::UpdateCommandBuffers() {
 }
 
 void StatusOverlay::DeInitStatusOverlay() {
-	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
+	vkDestroyBuffer(logical_device->device, buffer, nullptr);
 	vkDestroyImage(logical_device->device, image, nullptr);
 	vkDestroyImageView(logical_device->device, image_view, nullptr);
-    vkDestroyBuffer(logical_device->device, buffer, nullptr);
 	vkFreeMemory(logical_device->device, memory, nullptr);
 	vkFreeMemory(logical_device->device, image_memory, nullptr);
-    vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
+	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
 	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
 	vkDestroyPipeline(logical_device->device, text_overlay_pipeline, nullptr);
-	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
 	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
+	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
+    vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
+	
+	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
 	mapped = nullptr;
 }

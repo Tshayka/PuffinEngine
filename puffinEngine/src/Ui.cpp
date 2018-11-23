@@ -7,41 +7,24 @@
 
 //---------- Constructors and dectructors ---------- //
 
-ImGuiMenu::ImGuiMenu() {
+GuiElement::GuiElement() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "ImGui object created\n";
+	std::cout << "Gui element created\n";
 #endif 
 }
 
-ImGuiMenu::~ImGuiMenu() {	
+GuiElement::~GuiElement() {	
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "ImGui object destroyed\n";
+	std::cout << "Gui element destroyed\n";
 #endif
 }
 
-void ImGuiMenu::InitMenu(Device* device) {
+void GuiElement::InitMenu(Device* device) {
 	logical_device = device;
 
-	//ImGui::StyleColorsDark();
-	//ImGui::StyleColorsClassic();
-
-	// Color scheme
-	ImGuiStyle& style = ImGui::GetStyle();
-	style.Colors[ImGuiCol_TitleBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.6f);
-	style.Colors[ImGuiCol_TitleBgActive] = ImVec4(1.0f, 0.0f, 0.0f, 0.8f);
-	style.Colors[ImGuiCol_MenuBarBg] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_Header] = ImVec4(1.0f, 0.0f, 0.0f, 0.4f);
-	style.Colors[ImGuiCol_CheckMark] = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);
-
-	// Dimensions
-	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)logical_device->swapchain_extent.width, (float)logical_device->swapchain_extent.height);
-	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
-
-	// Init resources
 	CreateCommandPool();
 	InitResources();
-	CreateSampler();
+	CreateViewAndSampler();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
@@ -49,7 +32,63 @@ void ImGuiMenu::InitMenu(Device* device) {
 	
 }
 
-void ImGuiMenu::CreateCommandPool() {
+void GuiElement::SetUp() {
+	ImGuiIO& io = ImGui::GetIO();
+	io.DisplaySize = ImVec2((float)logical_device->swapchain_extent.width, (float)logical_device->swapchain_extent.height);
+	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+	
+	ImGuiStyle& style = ImGui::GetStyle();
+	style.WindowRounding = 5.3f;
+	style.GrabRounding = style.FrameRounding = 2.3f;
+	style.ScrollbarRounding = 5.0f;
+	style.FrameBorderSize = 1.0f;
+	style.ItemSpacing.y = 6.5f;
+
+	style.Colors[ImGuiCol_Text]                   = ImVec4(1.00f, 1.00f, 1.00f, 1.00f);
+	style.Colors[ImGuiCol_TextDisabled]           = ImVec4(0.50f, 0.50f, 0.50f, 1.00f);
+	style.Colors[ImGuiCol_WindowBg]               = ImVec4(0.06f, 0.06f, 0.06f, 0.94f);
+	style.Colors[ImGuiCol_ChildBg]                = ImVec4(1.00f, 1.00f, 1.00f, 0.00f);
+	style.Colors[ImGuiCol_PopupBg]                = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+	style.Colors[ImGuiCol_Border]                 = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+	style.Colors[ImGuiCol_BorderShadow]           = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+	style.Colors[ImGuiCol_FrameBg]                = ImVec4(0.20f, 0.21f, 0.22f, 0.54f);
+	style.Colors[ImGuiCol_FrameBgHovered]         = ImVec4(0.40f, 0.40f, 0.40f, 0.40f);
+	style.Colors[ImGuiCol_FrameBgActive]          = ImVec4(0.18f, 0.18f, 0.18f, 0.67f);
+	style.Colors[ImGuiCol_TitleBg]                = ImVec4(0.04f, 0.04f, 0.04f, 1.00f);
+	style.Colors[ImGuiCol_TitleBgActive]          = ImVec4(0.29f, 0.29f, 0.29f, 1.00f);
+	style.Colors[ImGuiCol_TitleBgCollapsed]       = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+	style.Colors[ImGuiCol_MenuBarBg]              = ImVec4(0.14f, 0.14f, 0.14f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarBg]            = ImVec4(0.02f, 0.02f, 0.02f, 0.53f);
+	style.Colors[ImGuiCol_ScrollbarGrab]          = ImVec4(0.31f, 0.31f, 0.31f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrabHovered]   = ImVec4(0.41f, 0.41f, 0.41f, 1.00f);
+	style.Colors[ImGuiCol_ScrollbarGrabActive]    = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+	style.Colors[ImGuiCol_CheckMark]              = ImVec4(0.94f, 0.94f, 0.94f, 1.00f);
+	style.Colors[ImGuiCol_SliderGrab]             = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+	style.Colors[ImGuiCol_SliderGrabActive]       = ImVec4(0.86f, 0.86f, 0.86f, 1.00f);
+	style.Colors[ImGuiCol_Button]                 = ImVec4(0.44f, 0.44f, 0.44f, 0.40f);
+	style.Colors[ImGuiCol_ButtonHovered]          = ImVec4(0.46f, 0.47f, 0.48f, 1.00f);
+	style.Colors[ImGuiCol_ButtonActive]           = ImVec4(0.42f, 0.42f, 0.42f, 1.00f);
+	style.Colors[ImGuiCol_Header]                 = ImVec4(0.70f, 0.70f, 0.70f, 0.31f);
+	style.Colors[ImGuiCol_HeaderHovered]          = ImVec4(0.70f, 0.70f, 0.70f, 0.80f);
+	style.Colors[ImGuiCol_HeaderActive]           = ImVec4(0.48f, 0.50f, 0.52f, 1.00f);
+	style.Colors[ImGuiCol_Separator]              = ImVec4(0.43f, 0.43f, 0.50f, 0.50f);
+	style.Colors[ImGuiCol_SeparatorHovered]       = ImVec4(0.72f, 0.72f, 0.72f, 0.78f);
+	style.Colors[ImGuiCol_SeparatorActive]        = ImVec4(0.51f, 0.51f, 0.51f, 1.00f);
+	style.Colors[ImGuiCol_ResizeGrip]             = ImVec4(0.91f, 0.91f, 0.91f, 0.25f);
+	style.Colors[ImGuiCol_ResizeGripHovered]      = ImVec4(0.81f, 0.81f, 0.81f, 0.67f);
+	style.Colors[ImGuiCol_ResizeGripActive]       = ImVec4(0.46f, 0.46f, 0.46f, 0.95f);
+	style.Colors[ImGuiCol_PlotLines]              = ImVec4(0.61f, 0.61f, 0.61f, 1.00f);
+	style.Colors[ImGuiCol_PlotLinesHovered]       = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
+	style.Colors[ImGuiCol_PlotHistogram]          = ImVec4(0.73f, 0.60f, 0.15f, 1.00f);
+	style.Colors[ImGuiCol_PlotHistogramHovered]   = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
+	style.Colors[ImGuiCol_TextSelectedBg]         = ImVec4(0.87f, 0.87f, 0.87f, 0.35f);
+	style.Colors[ImGuiCol_ModalWindowDarkening]   = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+	style.Colors[ImGuiCol_DragDropTarget]         = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
+	style.Colors[ImGuiCol_NavHighlight]           = ImVec4(0.60f, 0.60f, 0.60f, 1.00f);
+	style.Colors[ImGuiCol_NavWindowingHighlight]  = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
+}
+
+void GuiElement::CreateCommandPool() {
 	
 	QueueFamilyIndices queueFamilyIndices = logical_device->FindQueueFamilies(logical_device->gpu);
 
@@ -61,7 +100,7 @@ void ImGuiMenu::CreateCommandPool() {
 	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
 }
 
-VkCommandBuffer ImGuiMenu::BeginSingleTimeCommands() {
+VkCommandBuffer GuiElement::BeginSingleTimeCommands() {
 	
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -81,8 +120,7 @@ VkCommandBuffer ImGuiMenu::BeginSingleTimeCommands() {
 	return command_buffer;
 }
 
-void ImGuiMenu::EndSingleTimeCommands(VkCommandBuffer command_buffer)
-{
+void GuiElement::EndSingleTimeCommands(VkCommandBuffer command_buffer) {
 	vkEndCommandBuffer(command_buffer);
 
 	VkSubmitInfo SubmitInfo = {};
@@ -96,8 +134,7 @@ void ImGuiMenu::EndSingleTimeCommands(VkCommandBuffer command_buffer)
 	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &command_buffer);
 }
 
-void ImGuiMenu::InitResources()
-{
+void GuiElement::InitResources() {
 	ImGuiIO& io = ImGui::GetIO();
 
 	// Create font texture
@@ -138,19 +175,6 @@ void ImGuiMenu::InitResources()
 
 	ErrorCheck(vkBindImageMemory(logical_device->device, font_image, font_memory, 0));
 
-	VkImageViewCreateInfo ViewInfo = {};
-	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.image = font_image;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	ViewInfo.format = VK_FORMAT_R8G8B8A8_UNORM; //TODO
-	ViewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
-	ViewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-
-	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &ui_image_view) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create menu texture image view!");
-		std::exit(-1);
-	}
-
 	enginetool::Buffer staging_buffer;
 	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, fontData);
 	
@@ -166,7 +190,7 @@ void ImGuiMenu::InitResources()
 	Region.imageExtent.depth = 1;
 	//Region.bufferOffset = 0;
 
-	//TransitionImageLayout(image, VK_FORMAT_R8_UNORM, , );
+	//TransitionImageLayout(image, VK_FORMAT_R8_UNORM, , );fontData
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -213,7 +237,19 @@ void ImGuiMenu::InitResources()
 	io.Fonts->TexID = (void *)(intptr_t)font_image;
 }
 
-void ImGuiMenu::CreateSampler() {
+void GuiElement::CreateViewAndSampler() {
+	VkImageViewCreateInfo ViewInfo = {};
+	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	ViewInfo.image = font_image;
+	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	ViewInfo.format = VK_FORMAT_R8G8B8A8_UNORM; //TODO
+	ViewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
+	ViewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &ui_image_view) != VK_SUCCESS) {
+		assert(0 && "Vulkan ERROR: failed to create menu texture image view!");
+		std::exit(-1);
+	}
 
 	VkSamplerCreateInfo SamplerInfo = {};
 	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -233,7 +269,7 @@ void ImGuiMenu::CreateSampler() {
 	}
 }
 
-void ImGuiMenu::CreateDescriptorSetLayout()	{
+void GuiElement::CreateDescriptorSetLayout() {
 	VkDescriptorSetLayoutBinding ConsoleLayoutBinding = {};
 	ConsoleLayoutBinding.binding = 0;
 	ConsoleLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -252,8 +288,7 @@ void ImGuiMenu::CreateDescriptorSetLayout()	{
 }
 
 
-void ImGuiMenu::CreateDescriptorPool() {
-
+void GuiElement::CreateDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
 	std::array<VkDescriptorPoolSize, 1> PoolSizes = {};
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -268,8 +303,7 @@ void ImGuiMenu::CreateDescriptorPool() {
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
 
-void ImGuiMenu::CreateDescriptorSet() {
-
+void GuiElement::CreateDescriptorSet() {
 	VkDescriptorSetAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	AllocInfo.descriptorPool = descriptor_pool;
@@ -296,12 +330,10 @@ void ImGuiMenu::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
 }
 
-static std::vector<char> readFile(const std::string& filename)
-{
+static std::vector<char> readFile(const std::string& filename) {
 	std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-	if (!file.is_open())
-	{
+	if (!file.is_open()) {
 		throw std::runtime_error("failed to open file!");
 	}
 
@@ -388,7 +420,7 @@ static uint32_t __glsl_shader_frag_spv[] =
 	0x00010038
 };
 
-VkShaderModule ImGuiMenu::CreateVertShaderModule()
+VkShaderModule GuiElement::CreateVertShaderModule()
 {
 	VkShaderModuleCreateInfo vert_info = {};
 	vert_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -401,7 +433,7 @@ VkShaderModule ImGuiMenu::CreateVertShaderModule()
 	return shaderModule;
 }
 
-VkShaderModule ImGuiMenu::CreateFragShaderModule()
+VkShaderModule GuiElement::CreateFragShaderModule()
 {
 	VkShaderModuleCreateInfo frag_info = {};
 	frag_info.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
@@ -414,7 +446,7 @@ VkShaderModule ImGuiMenu::CreateFragShaderModule()
 	return shaderModule;
 }
 
-void ImGuiMenu::CreateGraphicsPipeline() {
+void GuiElement::CreateGraphicsPipeline() {
 
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
@@ -565,14 +597,13 @@ void ImGuiMenu::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr); 
 }
 
-void ImGuiMenu::NewFrame()
-{
+void GuiElement::NewFrame() {
 	ImGui::NewFrame();
 	ImGui::ShowDemoWindow();
 	ImGui::Render();
 }
 
-void ImGuiMenu::RenderDrawData() {
+void GuiElement::RenderDrawData() {
 	ImDrawData* draw_data = ImGui::GetDrawData();
 
 	if (draw_data->TotalVtxCount == 0)
@@ -625,8 +656,7 @@ void ImGuiMenu::RenderDrawData() {
 	index_buffer.Flush();
 }
 
-void ImGuiMenu::CreateUniformBuffer(VkCommandBuffer command_buffer) {
-
+void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	ImDrawData* draw_data = ImGui::GetDrawData();
 
 	if (draw_data->TotalVtxCount == 0)
@@ -658,14 +688,11 @@ void ImGuiMenu::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 
 	ImVec2 display_pos = draw_data->DisplayPos;
 
-	for (int32_t i = 0; i < draw_data->CmdListsCount; i++)
-	{
+	for (int32_t i = 0; i < draw_data->CmdListsCount; i++) {
 		const ImDrawList* cmd_list = draw_data->CmdLists[i];
-		for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++)
-		{
+		for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++) {
 			const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[j];
-			if (pcmd->UserCallback)
-			{
+			if (pcmd->UserCallback)	{
 				pcmd->UserCallback(cmd_list, pcmd);
 			}
 			else {
@@ -684,7 +711,7 @@ void ImGuiMenu::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	}
 }
 
-void ImGuiMenu::DeInitMenu() {
+void GuiElement::DeInitMenu() {
 	index_buffer.Destroy();
 	vertex_buffer.Destroy();
 	vkDestroyImage(logical_device->device, font_image, nullptr);
@@ -694,9 +721,7 @@ void ImGuiMenu::DeInitMenu() {
 	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
 	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
 	vkDestroyPipelineLayout(logical_device->device, gui_pipeline_layout, nullptr);
-
 	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
-	
 	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
 }

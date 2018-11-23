@@ -6,12 +6,11 @@
 #include "Device.hpp"
 #include "ErrorCheck.hpp"
 
-class ImGuiMenu 
-{
+class GuiElement {
 public:
 
-	ImGuiMenu();
-	~ImGuiMenu();
+	GuiElement();
+	~GuiElement();
 
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInitMenu();
@@ -19,6 +18,7 @@ public:
 	void InitResources();
 	void NewFrame();
 	void RenderDrawData();
+	void SetUp();
 
 	// UI params are set via push constants
 	struct PushConstBlock {
@@ -26,14 +26,7 @@ public:
 		glm::vec2 translate;
 	} pushConstBlock;
 
-	struct GUISettings {
-		bool display_dynamic_ub = true;
-		bool display_scene_models = true;
-		bool display_stats_overlay = true;
-		bool display_imgui = true;
-	} ui_settings;
-
-	bool visible = true;
+	//bool visible = true;
 
 private:
 	VkCommandBuffer BeginSingleTimeCommands();
@@ -44,7 +37,7 @@ private:
 	void CreateGraphicsPipeline();
 	VkShaderModule CreateVertShaderModule();
 	VkShaderModule CreateFragShaderModule();
-	void CreateSampler();
+	void CreateViewAndSampler();
 	void EndSingleTimeCommands(VkCommandBuffer);
 	
 	// Vulkan resources for rendering the UI

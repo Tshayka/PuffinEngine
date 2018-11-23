@@ -24,10 +24,19 @@ public:
 	StatusOverlay();
 	~StatusOverlay();
 
+	struct GUISettings {
+		bool display_dynamic_ub = true;
+		bool display_scene_models = true;
+		bool display_stats_overlay = true;
+		bool display_imgui = true;
+	} ui_settings;
+
+	bool guiOverlayVisible = true;
+	
 	void BeginTextUpdate();
     void DeInitStatusOverlay();
 	void EndTextUpdate();
-	void InitStatusOverlay(Device*, ImGuiMenu*);
+	void InitGuiOverlay(Device*, GuiElement*);
 	void RenderText(std::string, float, float, enum TextAlignment);
 	void Submit(VkQueue, uint32_t);
 
@@ -52,29 +61,27 @@ private:
 	stb_fontchar stbFontData[STB_NUM_CHARS];
 
 
-	VkBuffer buffer, staging_buffer; // mapping the vertex data
-	VkDeviceMemory staging_buffer_memory; // copying the vertex data
+	VkBuffer buffer; // mapping the vertex data
+	VkDeviceMemory memory;
 
 	uint32_t buffer_index;
 	VkCommandPool command_pool;
 	VkDescriptorPool descriptor_pool;
 	VkDescriptorSet descriptor_set;
-	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout descriptor_set_layout;
 	VkImage image;
 	VkDeviceMemory image_memory;
-	//VkDeviceMemory memory;
-	VkPipelineCache pipeline_cache;
 	VkQueue queue;
 	VkRenderPass render_pass;
 	VkImageView image_view;
-	VkDeviceMemory memory;
-	VkPipeline text_overlay_pipeline;
-	VkPipelineLayout pipeline_layout;
 	VkSampler texture_sampler;
+	VkPipelineLayout pipeline_layout;
+	VkPipeline text_overlay_pipeline;
+	VkPipelineCache pipeline_cache;
 	
 	VkRect2D scissor = {};
 	VkViewport viewport = {}; 
 
-	ImGuiMenu* console = nullptr;
+	GuiElement* console = nullptr;
 	Device* logical_device = nullptr;
 };
