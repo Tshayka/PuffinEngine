@@ -57,7 +57,7 @@ You must add them inside working directory, because they won't be global:
 - $ ./bin/PuffinEngineTest
 
 ## Compiling shaders
-- $ ./bin/puffinEngine/shaders/compile.sh
+- $ ./puffinEngine/shaders/compile.sh
 
 ## Third party libraries
 
