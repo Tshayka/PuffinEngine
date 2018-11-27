@@ -65,10 +65,21 @@ void Device::CreateSurface()
 	}
 }
 
+VkShaderModule Device::CreateShaderModule(const std::vector<char>& code) {
+        VkShaderModuleCreateInfo createInfo = {};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+        VkShaderModule shaderModule;
+        ErrorCheck(vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule));
+
+        return shaderModule;
+}
+
 // ------- Swapchain and neccesary functions -------- //
 
-void Device::InitSwapChain()
-{
+void Device::InitSwapChain() {
 	SwapChainSupportDetails SwapChainSupport = QuerySwapChainSupport(gpu);
 
 	VkSurfaceFormatKHR surface_format = ChooseSwapSurfaceFormat(SwapChainSupport.formats);
@@ -477,15 +488,12 @@ QueueFamilyIndices Device::FindQueueFamilies(VkPhysicalDevice device)
 
 // ---------------- Buffers ------------------------- //
 	
-uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties)
-{
+uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
 	VkPhysicalDeviceMemoryProperties memProperties;
 	vkGetPhysicalDeviceMemoryProperties(gpu, &memProperties);
 
-	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) 
-	{
-		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) 
-		{
+	for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+		if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
 			return i;
 		}
 	}

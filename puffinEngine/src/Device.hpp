@@ -16,8 +16,7 @@ struct QueueFamilyIndices
 	int graphicsFamily = -1;
 	int presentFamily = -1;
 
-	bool isComplete()
-	{ 
+	bool isComplete() { 
 		return graphicsFamily >= 0 && presentFamily >= 0; 
 	}
 };
@@ -29,13 +28,13 @@ struct SwapChainSupportDetails // struct to pass details around once they've bee
 	std::vector<VkPresentModeKHR> presentModes; // available presentation modes
 };
 
-class Device
-{
+class Device {
 public:
 	Device();
 	~Device();
 
 	void DeInitDevice();
+	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateStagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*, void*);
 	void CreateUnstagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*);
 	void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&);
