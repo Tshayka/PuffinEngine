@@ -3,6 +3,7 @@
 #include <fstream>
 #include <iostream>
 
+#include "LoadFile.cpp"
 #include "Ui.hpp"
 
 //---------- Constructors and dectructors ---------- //
@@ -143,11 +144,12 @@ void GuiElement::InitResources() {
 	int texWidth, texHeight;
 	io.Fonts->GetTexDataAsRGBA32(&fontData, &texWidth, &texHeight);
 	VkDeviceSize uploadSize = texWidth * texHeight * 4 * sizeof(char);
+	VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 
 	VkImageCreateInfo ImageInfo = {};
 	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	ImageInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	ImageInfo.format = format;
 	ImageInfo.extent.width = texWidth;
 	ImageInfo.extent.height = texHeight;
 	ImageInfo.extent.depth = 1;
@@ -179,6 +181,8 @@ void GuiElement::InitResources() {
 	enginetool::Buffer staging_buffer;
 	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, fontData);
 	
+	vkGetBufferMemoryRequirements(logical_device->device, staging_buffer.buffer, &memory_requirements);
+
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
 	VkBufferImageCopy Region = {};
@@ -191,7 +195,6 @@ void GuiElement::InitResources() {
 	Region.imageExtent.depth = 1;
 	//Region.bufferOffset = 0;
 
-	//TransitionImageLayout(image, VK_FORMAT_R8_UNORM, , );fontData
 	VkImageMemoryBarrier barrier = {};
 	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -331,22 +334,6 @@ void GuiElement::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
 }
 
-static std::vector<char> readFile(const std::string& filename) {
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open()) {
-		throw std::runtime_error("failed to open file!");
-	}
-
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> buffer(fileSize);
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
-	file.close();
-
-	return buffer;
-}
-
 static uint32_t __glsl_shader_vert_spv[] =
 {
 	0x07230203,0x00010000,0x00080001,0x0000002e,0x00000000,0x00020011,0x00000001,0x0006000b,
@@ -448,7 +435,6 @@ VkShaderModule GuiElement::CreateFragShaderModule()
 }
 
 void GuiElement::CreateGraphicsPipeline() {
-
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	ErrorCheck(vkCreatePipelineCache(logical_device->device, &PipelineCacheCreateInfo, nullptr, &pipeline_cache));
@@ -458,10 +444,10 @@ void GuiElement::CreateGraphicsPipeline() {
 	PushConstantRange.offset = 0;
 	PushConstantRange.size = sizeof(PushConstBlock);
 	
-	VkPipelineInputAssemblyStateCreateInfo InputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
-	InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // triangle from every 3 vertices without reuse
-	InputAssembly.primitiveRestartEnable = VK_FALSE;
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST; // triangle from every 3 vertices without reuse
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
 	VkPipelineRasterizationStateCreateInfo Rasterization = {}; // takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader
 	Rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -561,7 +547,7 @@ void GuiElement::CreateGraphicsPipeline() {
 	PipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	PipelineInfo.pStages = shaderStages.data();
 	PipelineInfo.pVertexInputState = &VertexInputInfo;
-	PipelineInfo.pInputAssemblyState = &InputAssembly;
+	PipelineInfo.pInputAssemblyState = &inputAssembly;
 	PipelineInfo.pViewportState = &ViewportState;
 	PipelineInfo.pRasterizationState = &Rasterization;
 	PipelineInfo.pMultisampleState = &Multisample;
@@ -570,9 +556,11 @@ void GuiElement::CreateGraphicsPipeline() {
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = gui_pipeline_layout;
 	PipelineInfo.renderPass = logical_device->renderPass;
+	PipelineInfo.subpass = 0;
+	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	auto vertModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); // DRY
-	auto fragModelsShaderCode = readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); // DRY 
+	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); // DRY
+	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); // DRY 
 
 	VkShaderModule vertModelsShaderModule = CreateVertShaderModule();
 	VkShaderModule fragModelsShaderModule = CreateFragShaderModule();
