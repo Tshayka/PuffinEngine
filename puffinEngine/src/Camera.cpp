@@ -42,12 +42,12 @@ void Camera::Init(float move_x, float move_y, float move_z,
 }
 
 void Camera::UpdatePosition(float dt) {
-	direction = glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
-
 	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
 	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
+
+	direction = glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
 
 	foward = direction;
 	foward.y = 0.0f;

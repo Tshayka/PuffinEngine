@@ -33,11 +33,13 @@ void Character::StartJump() {
 }
 
 void Character::EndJump() {
-    if(movementGoal.y > 15.0f)
+    if(movementGoal.y > 15.0f) {
 		movementGoal.y = -10.0f;
+	}
 }
 
 void Character::UpdatePosition(float dt) {
+	UpdateAABB();
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);

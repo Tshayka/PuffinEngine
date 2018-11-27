@@ -78,6 +78,8 @@ void Actor::Truck(float actorVelocityGoal) {// change to function pointer
 }
 
 void Actor::UpdatePosition(float dt) {
+	UpdateAABB();
+
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
@@ -104,3 +106,8 @@ void Actor::UpdatePosition(float dt) {
 // 	position += velocity * dt;
 // 	view = position + direction; 
 // }
+
+void Actor::UpdateAABB(){
+	currentBoundingBox.max = mesh.boundingBox.max + position;
+	currentBoundingBox.min = mesh.boundingBox.min + position;
+}

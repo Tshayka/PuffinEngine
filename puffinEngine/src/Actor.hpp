@@ -28,6 +28,7 @@ public:
 	void Strafe(float);
 	void ResetPosition();
 	void Truck(float);
+	void UpdateAABB();
 	virtual void UpdatePosition(float);
 	
 	enginetool::ScenePart mesh;
@@ -42,6 +43,8 @@ public:
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity;
+
+	enginetool::ScenePart::AABB currentBoundingBox;
 	
 private:
 	std::string description;
