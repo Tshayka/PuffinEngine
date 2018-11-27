@@ -1,16 +1,13 @@
 #include <string>
-#include <vulkan/vulkan.h>
+#include "Texture.hpp"
 
 namespace enginetool {
-	struct TextureLayout {
-		VkImage texture;
-		VkImageView texture_image_view;
-		VkDeviceMemory texture_image_memory;
-		VkSampler texture_sampler;
-		int texture_width, texture_height, texture_channels;
-	};
+	class SceneMaterial {
+	public:
+		SceneMaterial(Device* device) {
+			logicalDevice = device;
+		};
 
-	struct SceneMaterial {
 		std::string name;
 		TextureLayout skybox_texture;
 		TextureLayout irradiance_map;
@@ -21,5 +18,8 @@ namespace enginetool {
 		TextureLayout ambient_occlucion_map;
 		VkDescriptorSet descriptor_set;
 		VkPipeline *assigned_pipeline;
+
+	private:
+		Device* logicalDevice;
 	};
 }
