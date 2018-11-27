@@ -1,19 +1,17 @@
 #include <algorithm> // "max" and "min" in VkExtent2D
 #include <fstream>
 #include <gli/gli.hpp>
-#include <iomanip>
 #include <iostream>
 #include <random>
-#include <sstream>
 #include <stb_image.h>
 #include <unordered_map>
 
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h> // loading obj files
 
+#include "LoadFile.cpp"
 #include "ErrorCheck.hpp"
 #include "Scene.hpp"
-
 
 void* alignedAlloc(size_t size, size_t alignment)
 {
@@ -57,7 +55,7 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* dvc, GLFWwindow* wdw, ImGuiMenu* cnsl, StatusOverlay* sts_ovrly)
+void Scene::InitScene(Device* dvc, GLFWwindow* wdw, GuiElement* cnsl, StatusOverlay* sts_ovrly)
 {
 	console = cnsl;
 	logical_device = dvc;
@@ -96,8 +94,7 @@ void Scene::InitSwapchainImageViews()
 	}
 }
 
-void Scene::RecreateForSwapchain()
-{
+void Scene::RecreateForSwapchain() {
 	InitSwapchainImageViews();
 	CreateGraphicsPipeline();
 	CreateDepthResources();
@@ -111,7 +108,7 @@ void Scene::CreateFramebuffers()
 
 	for (size_t i = 0; i < logical_device->swapchain_image_views.size(); i++)
 	{
-		std::array<VkImageView, 2> attachments = { logical_device->swapchain_image_views[i], depth_image_view };
+		std::array<VkImageView, 2> attachments = { logical_device->swapchain_image_views[i], depthImage.texture_image_view };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -127,7 +124,6 @@ void Scene::CreateFramebuffers()
 }
 
 void Scene::CreateCommandPool() {
-
 	QueueFamilyIndices queueFamilyIndices = logical_device->FindQueueFamilies(logical_device->gpu);
 
 	VkCommandPoolCreateInfo poolInfo = {};
@@ -138,8 +134,7 @@ void Scene::CreateCommandPool() {
 	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
 }
 
-VkCommandBuffer Scene::BeginSingleTimeCommands()
-{
+VkCommandBuffer Scene::BeginSingleTimeCommands() {
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -278,41 +273,9 @@ void Scene::CreateCommandBuffers()
 	}
 }
 
-VkShaderModule Scene::CreateShaderModule(const std::vector<char>& code)
-{
-	VkShaderModuleCreateInfo createInfo = {};
-	createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-	createInfo.codeSize = code.size();
-	createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
-
-	VkShaderModule shaderModule;
-	ErrorCheck(vkCreateShaderModule(logical_device->device, &createInfo, nullptr, &shaderModule));
-
-	return shaderModule;
-}
-
 // ---------- Graphics pipeline --------------------- //
 
-static std::vector<char> readFile(const std::string& filename)
-{
-	std::ifstream file(filename, std::ios::ate | std::ios::binary);
-
-	if (!file.is_open())
-	{
-		throw std::runtime_error("failed to open file!");
-	}
-
-	size_t fileSize = (size_t)file.tellg();
-	std::vector<char> buffer(fileSize);
-	file.seekg(0);
-	file.read(buffer.data(), fileSize);
-	file.close();
-
-	return buffer;
-}
-
-void Scene::CreateGraphicsPipeline()
-{
+void Scene::CreateGraphicsPipeline() {
 	VkPushConstantRange PushConstantRange = {};
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 	PushConstantRange.offset = 0;
@@ -410,11 +373,11 @@ void Scene::CreateGraphicsPipeline()
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	// Skybox reflect pipeline
-	auto vertCubeMapShaderCode = readFile("puffinEngine/shaders/skymap_shader.vert.spv"); //DRY
-	auto fragCubeMapShaderCode = readFile("puffinEngine/shaders/skymap_shader.frag.spv"); //DRY
+	auto vertCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.vert.spv"); 
+	auto fragCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.frag.spv"); 
 
-	VkShaderModule vertCubeMapShaderModule = CreateShaderModule(vertCubeMapShaderCode);
-	VkShaderModule fragCubeMapShaderModule = CreateShaderModule(fragCubeMapShaderCode);
+	VkShaderModule vertCubeMapShaderModule = logical_device->CreateShaderModule(vertCubeMapShaderCode);
+	VkShaderModule fragCubeMapShaderModule = logical_device->CreateShaderModule(fragCubeMapShaderCode);
 
 	VkPipelineShaderStageCreateInfo vertCubeMapShaderStageInfo = {};
 	vertCubeMapShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -437,11 +400,11 @@ void Scene::CreateGraphicsPipeline()
 	vkDestroyShaderModule(logical_device->device, vertCubeMapShaderModule, nullptr);
 	
 	// Models pipeline
-	auto vertModelsShaderCode = readFile("puffinEngine/shaders/pbr_shader.vert.spv");
-	auto fragModelsShaderCode = readFile("puffinEngine/shaders/pbr_shader.frag.spv");
+	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.vert.spv");
+	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.frag.spv");
 
-	VkShaderModule vertModelsShaderModule = CreateShaderModule(vertModelsShaderCode);
-	VkShaderModule fragModelsShaderModule = CreateShaderModule(fragModelsShaderCode);
+	VkShaderModule vertModelsShaderModule = logical_device->CreateShaderModule(vertModelsShaderCode);
+	VkShaderModule fragModelsShaderModule = logical_device->CreateShaderModule(fragModelsShaderCode);
 
 	VkPipelineShaderStageCreateInfo vertModelsShaderStageInfo = {};
 	vertModelsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -467,11 +430,11 @@ void Scene::CreateGraphicsPipeline()
 	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr);
 
 	// Clouds pipeline
-	auto vertCloudsShaderCode = readFile("puffinEngine/shaders/clouds_shader.vert.spv");
-	auto fragCloudsShaderCode = readFile("puffinEngine/shaders/clouds_shader.frag.spv");
+	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
+	auto fragCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.frag.spv");
 
-	VkShaderModule vertCloudsShaderModule = CreateShaderModule(vertCloudsShaderCode);
-	VkShaderModule fragCloudsShaderModule = CreateShaderModule(fragCloudsShaderCode);
+	VkShaderModule vertCloudsShaderModule = logical_device->CreateShaderModule(vertCloudsShaderCode);
+	VkShaderModule fragCloudsShaderModule = logical_device->CreateShaderModule(fragCloudsShaderCode);
 
 	VkPipelineShaderStageCreateInfo vertCloudsShaderStageInfo = {};
 	vertCloudsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -560,12 +523,9 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	UpdateUniformBuffer(time);
 
 	std::dynamic_pointer_cast<Camera>(actors[0])->UpdatePosition(dt); // TODO not update when camera not moving?
-	actors[1]->UpdatePosition(dt); 
+	std::dynamic_pointer_cast<Character>(actors[1])->UpdatePosition(dt); 
 	std::dynamic_pointer_cast<SphereLight>(actors[2])->UpdatePosition(dt);
 	actors[3]->UpdatePosition(dt);  
-
-	//for(auto const a : actors) a->UpdatePosition(dt);
-
 	CreateCommandBuffers();
 }
 
@@ -575,6 +535,7 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBO.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
 	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	//UBO.model = glm::mat4(1.0f);
 	UBO.camera_pos = glm::vec3(actors[0]->position);
 
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
@@ -665,14 +626,7 @@ void Scene::UpdateSkyboxUniformBuffer() {
 // ------ Text overlay - performance statistics ----- //
 
 void Scene::UpdateGUI(float frameTimer, uint32_t elapsedTime) {
-	status_overlay->BeginTextUpdate();
-	status_overlay->RenderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
-	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
-	status_overlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
-	status_overlay->RenderText("Press \"1\" to toggle GUI", 5.0f, 65.0f, TextAlignment::alignLeft);
-	status_overlay->RenderText("Press WSAD to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
-	status_overlay->EndTextUpdate();
+	status_overlay->UpdateCommandBuffers(frameTimer, elapsedTime);
 }
 
 // ------------------ Descriptors ------------------- //
@@ -736,13 +690,6 @@ void Scene::CreateDescriptorSetLayout() {
 	aoLayoutBinding.pImmutableSamplers = nullptr;
 	aoLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	/*VkDescriptorSetLayoutBinding SceneModelConstants = {};
-	SceneModelConstants.binding = 7;
-	SceneModelConstants.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	SceneModelConstants.descriptorCount = 1;
-	SceneModelConstants.pImmutableSamplers = nullptr;
-	SceneModelConstants.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;*/
-
 	std::array<VkDescriptorSetLayoutBinding, 8> scene_objects_bindings = { SceneModelUBOLayoutBinding, UBOParamLayoutBinding, samplerLayoutBinding,
 		albedoLayoutBinding, metallicLayoutBinding, roughnessLayoutBinding, normalLayoutBinding, aoLayoutBinding };
 
@@ -802,8 +749,7 @@ void Scene::CreateDescriptorSetLayout() {
 	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &CloudsLayoutInfo, nullptr, &clouds_descriptor_set_layout));
 }
 
-void Scene::CreateDescriptorPool()
-{
+void Scene::CreateDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
 	std::array<VkDescriptorPoolSize, 3> PoolSizes = {};
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -944,8 +890,7 @@ void Scene::CreateDescriptorSet() {
 	}
 
 	// SkyBox descriptor set
-	if (display_skybox)
-	{
+	if (display_skybox) {
 		VkDescriptorSetAllocateInfo allocInfo = {};
 		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 		allocInfo.descriptorPool = descriptor_pool;
@@ -1052,7 +997,6 @@ void Scene::LoadAssets() {
 	CreateSphereLight();
 	CreateStillObject();
 	
-
 	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
 
@@ -1070,20 +1014,20 @@ void Scene::LoadAssets() {
 }
 
 void Scene::CreateCamera() {
-	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 3.0f, 3.0f));
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 4.0f, 3.0f));
 	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	actors.emplace_back(std::move(camera));
 }
 
 void Scene::CreateCharacter() {
-	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 4.0f, 4.0f));
+	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 2.0f, 4.0f));
 	character->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	actors.emplace_back(std::move(character));
 }
 
 void Scene::CreateSphereLight() {
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f));
-	light->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
+	light->mesh.meshFilename = "puffinEngine/assets/models/sphere.obj";
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	actors.emplace_back(std::move(light));
 }
@@ -1154,6 +1098,7 @@ void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mes
 		}	
 		mesh.indexCount = index_offset;
 	}
+	mesh.boundingBox = mesh.GetAABB(vertices);
 }
 
 void Scene::CreateBuffers(std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer) {
@@ -1189,16 +1134,6 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/rustRoughness.jpg", rust->roughness);
 	LoadTexture("puffinEngine/assets/textures/rustNormal.jpg", rust->normal_map);
 	LoadTexture("puffinEngine/assets/textures/rustAo.jpg", rust->ambient_occlucion_map);
-	CreateTextureImageView(rust->albedo);
-	CreateTextureSampler(rust->albedo);
-	CreateTextureImageView(rust->metallic);
-	CreateTextureSampler(rust->metallic);
-	CreateTextureImageView(rust->roughness);
-	CreateTextureSampler(rust->roughness);
-	CreateTextureImageView(rust->normal_map);
-	CreateTextureSampler(rust->normal_map);
-	CreateTextureImageView(rust->ambient_occlucion_map);
-	CreateTextureSampler(rust->ambient_occlucion_map);
 	rust->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*rust);
 
@@ -1208,16 +1143,6 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/chromeRoughness.jpg", chrome->roughness);
 	LoadTexture("puffinEngine/assets/textures/chromeNormal.jpg", chrome->normal_map);
 	LoadTexture("puffinEngine/assets/textures/chromeAo.jpg", chrome->ambient_occlucion_map);
-	CreateTextureImageView(chrome->albedo);
-	CreateTextureSampler(chrome->albedo);
-	CreateTextureImageView(chrome->metallic);
-	CreateTextureSampler(chrome->metallic);
-	CreateTextureImageView(chrome->roughness);
-	CreateTextureSampler(chrome->roughness);
-	CreateTextureImageView(chrome->normal_map);
-	CreateTextureSampler(chrome->normal_map);
-	CreateTextureImageView(chrome->ambient_occlucion_map);
-	CreateTextureSampler(chrome->ambient_occlucion_map);
 	chrome->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*chrome);
 
@@ -1227,16 +1152,6 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/plasticRoughness.jpg", plastic->roughness);
 	LoadTexture("puffinEngine/assets/textures/plasticNormal.jpg", plastic->normal_map);
 	LoadTexture("puffinEngine/assets/textures/plasticAo.jpg", plastic->ambient_occlucion_map);
-	CreateTextureImageView(plastic->albedo);
-	CreateTextureSampler(plastic->albedo);
-	CreateTextureImageView(plastic->metallic);
-	CreateTextureSampler(plastic->metallic);
-	CreateTextureImageView(plastic->roughness);
-	CreateTextureSampler(plastic->roughness);
-	CreateTextureImageView(plastic->normal_map);
-	CreateTextureSampler(plastic->normal_map);
-	CreateTextureImageView(plastic->ambient_occlucion_map);
-	CreateTextureSampler(plastic->ambient_occlucion_map);
 	plastic->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*plastic);
 
@@ -1246,16 +1161,6 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", lightbulbMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", lightbulbMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", lightbulbMat->ambient_occlucion_map);
-	CreateTextureImageView(lightbulbMat->albedo);
-	CreateTextureSampler(lightbulbMat->albedo);
-	CreateTextureImageView(lightbulbMat->metallic);
-	CreateTextureSampler(lightbulbMat->metallic);
-	CreateTextureImageView(lightbulbMat->roughness);
-	CreateTextureSampler(lightbulbMat->roughness);
-	CreateTextureImageView(lightbulbMat->normal_map);
-	CreateTextureSampler(lightbulbMat->normal_map);
-	CreateTextureImageView(lightbulbMat->ambient_occlucion_map);
-	CreateTextureSampler(lightbulbMat->ambient_occlucion_map);
 	lightbulbMat->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*lightbulbMat);
 
@@ -1265,16 +1170,6 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", cameraMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", cameraMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", cameraMat->ambient_occlucion_map);
-	CreateTextureImageView(cameraMat->albedo);
-	CreateTextureSampler(cameraMat->albedo);
-	CreateTextureImageView(cameraMat->metallic);
-	CreateTextureSampler(cameraMat->metallic);
-	CreateTextureImageView(cameraMat->roughness);
-	CreateTextureSampler(cameraMat->roughness);
-	CreateTextureImageView(cameraMat->normal_map);
-	CreateTextureSampler(cameraMat->normal_map);
-	CreateTextureImageView(cameraMat->ambient_occlucion_map);
-	CreateTextureSampler(cameraMat->ambient_occlucion_map);
 	cameraMat->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*cameraMat);
 
@@ -1284,60 +1179,40 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", characterMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", characterMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", characterMat->ambient_occlucion_map);
-	CreateTextureImageView(characterMat->albedo);
-	CreateTextureSampler(characterMat->albedo);
-	CreateTextureImageView(characterMat->metallic);
-	CreateTextureSampler(characterMat->metallic);
-	CreateTextureImageView(characterMat->roughness);
-	CreateTextureSampler(characterMat->roughness);
-	CreateTextureImageView(characterMat->normal_map);
-	CreateTextureSampler(characterMat->normal_map);
-	CreateTextureImageView(characterMat->ambient_occlucion_map);
-	CreateTextureSampler(characterMat->ambient_occlucion_map);
 	characterMat->assigned_pipeline = &pbr_pipeline;
 	scene_material.emplace_back(*characterMat);
 }
 
 // ------------------ Textures ---------------------- //
 
-void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
-{
-	
+void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
-	auto format = VK_FORMAT_R8G8B8A8_UNORM;
+	VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
 	
 	gli::texture_cube texCube(gli::load(texture));
-	layer.texture_width = texCube.extent().x;
-	layer.texture_height = texCube.extent().y;
+	layer.texWidth = texCube.extent().x;
+	layer.texHeight = texCube.extent().y;
 	size_t mipLevels = texCube.levels();
-	VkMemoryRequirements memory_requirements;
-	enginetool::Buffer texture_staging_buffer;
-
-	logical_device->CreateStagedBuffer(texCube.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &texture_staging_buffer, texCube.data());
 	
-	vkGetBufferMemoryRequirements(logical_device->device, texture_staging_buffer.buffer, &memory_requirements);
-
 	VkImageCreateInfo ImageInfo = {};
 	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
 	ImageInfo.format = format;
+	ImageInfo.extent.width = layer.texWidth;
+	ImageInfo.extent.height = layer.texHeight;
+	ImageInfo.extent.depth = 1;
 	ImageInfo.mipLevels = static_cast<uint32_t>(mipLevels);
+	ImageInfo.arrayLayers = 6;
 	ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	ImageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
+	ImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
 	ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	ImageInfo.extent.width = layer.texture_width;
-	ImageInfo.extent.height = layer.texture_height;
-	ImageInfo.extent.depth = 1;
-	ImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	// Cube faces count as array layers in Vulkan
-	ImageInfo.arrayLayers = 6;
-	// This flag is required for cube map images
 	ImageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
 
 	ErrorCheck(vkCreateImage(logical_device->device, &ImageInfo, nullptr, &layer.texture));
 
+	VkMemoryRequirements memory_requirements;
 	vkGetImageMemoryRequirements(logical_device->device, layer.texture, &memory_requirements); // TODO
 
 	VkMemoryAllocateInfo allocInfo = {};
@@ -1345,15 +1220,17 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 	allocInfo.allocationSize = memory_requirements.size;
 	allocInfo.memoryTypeIndex = logical_device->FindMemoryType(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-
-	if (vkAllocateMemory(logical_device->device, &allocInfo, nullptr, &layer.texture_image_memory) != VK_SUCCESS)
-	{
+	if (vkAllocateMemory(logical_device->device, &allocInfo, nullptr, &layer.texture_image_memory) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
 		std::exit(-1);
 	}
 
-	vkBindImageMemory(logical_device->device, layer.texture, layer.texture_image_memory, 0);
-	// END CREATE IMAGE
+	ErrorCheck(vkBindImageMemory(logical_device->device, layer.texture, layer.texture_image_memory, 0));
+
+	enginetool::Buffer texture_staging_buffer;
+	logical_device->CreateStagedBuffer(texCube.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &texture_staging_buffer, texCube.data());
+	
+	vkGetBufferMemoryRequirements(logical_device->device, texture_staging_buffer.buffer, &memory_requirements);
 
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
@@ -1396,6 +1273,7 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 
 	VkPipelineStageFlags source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
 	VkPipelineStageFlags destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+	
 	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	vkCmdCopyBufferToImage(command_buffer, texture_staging_buffer.buffer, layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
@@ -1419,6 +1297,8 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 
 	EndSingleTimeCommands(command_buffer);
 
+	texture_staging_buffer.Destroy();
+
 	// Create sampler
 	VkSamplerCreateInfo SamplerInfo = {};
 	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -1437,7 +1317,6 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 	SamplerInfo.maxAnisotropy = 2.0f;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 	SamplerInfo.compareEnable = VK_FALSE;
-
 
 	if (vkCreateSampler(logical_device->device, &SamplerInfo, nullptr, &layer.texture_sampler) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture sampler!");
@@ -1458,77 +1337,40 @@ void Scene::LoadSkyboxTexture(enginetool::TextureLayout& layer)
 	ViewInfo.subresourceRange.levelCount = static_cast<uint32_t>(mipLevels);
 	ViewInfo.image = layer.texture;
 
-	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &layer.texture_image_view) != VK_SUCCESS)
-	{
+	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &layer.texture_image_view) != VK_SUCCESS)	{
 		assert(0 && "Vulkan ERROR: failed to create texture image view!");
 		std::exit(-1);
 	}
-
-	texture_staging_buffer.Destroy();
 }
 
-void Scene::LoadTexture(std::string texture, enginetool::TextureLayout& layer) {
-	stbi_uc* pixels = stbi_load(texture.c_str(), &layer.texture_width, &layer.texture_height, &layer.texture_channels, STBI_rgb_alpha);
+void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
+	stbi_uc* pixels = stbi_load(texture.c_str(), (int*)&layer.texWidth, (int*)&layer.texHeight, &layer.texChannels, STBI_rgb_alpha);
 
 	if (!pixels) {
 		assert(0 && "Vulkan ERROR: failed to load texture image!");
 		std::exit(-1);
 	}
 
-	VkDeviceSize image_size = layer.texture_width * layer.texture_height * 4; //  pixels are laid out row by row with 4 bytes per pixel
+	VkDeviceSize image_size = layer.texWidth * layer.texHeight * 4; //  pixels are laid out row by row with 4 bytes per pixel
 	enginetool::Buffer image_staging_buffer;
 	logical_device->CreateStagedBuffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &image_staging_buffer, pixels);
 
 	stbi_image_free(pixels);
-
-	CreateImage(layer.texture_width, layer.texture_height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, layer.texture, layer.texture_image_memory);
-
-	TransitionImageLayout(layer.texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	CopyBufferToImage(image_staging_buffer.buffer, layer.texture, static_cast<uint32_t>(layer.texture_width), static_cast<uint32_t>(layer.texture_height));
-	TransitionImageLayout(layer.texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	
+	layer.Init(logical_device, VK_FORMAT_R8G8B8A8_UNORM);
+	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	
+	TransitionImageLayout(layer.texture, layer.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	CopyBufferToImage(image_staging_buffer.buffer, layer.texture, layer.texWidth, layer.texHeight);
+	TransitionImageLayout(layer.texture, layer.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	image_staging_buffer.Destroy();
+
+	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 }
 
-void Scene::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& image_memory)
-{
-	VkImageCreateInfo ImageInfo = {};
-	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	ImageInfo.extent.width = width;
-	ImageInfo.extent.height = height;
-	ImageInfo.extent.depth = 1;
-	ImageInfo.mipLevels = 1;
-	ImageInfo.arrayLayers = 1;
-	ImageInfo.format = format;
-	ImageInfo.tiling = tiling;
-	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	ImageInfo.usage = usage;
-	ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-	ErrorCheck(vkCreateImage(logical_device->device, &ImageInfo, nullptr, &image));
-
-	VkMemoryRequirements memory_requirements;
-	vkGetImageMemoryRequirements(logical_device->device, image, &memory_requirements); // TODO
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memory_requirements.size;
-	allocInfo.memoryTypeIndex = logical_device->FindMemoryType(memory_requirements.memoryTypeBits, properties);
-
-
-	if (vkAllocateMemory(logical_device->device, &allocInfo, nullptr, &image_memory) != VK_SUCCESS)
-	{
-		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
-		std::exit(-1);
-	}
-
-	vkBindImageMemory(logical_device->device, image, image_memory, 0);
-}
-
-void Scene::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout)
-{
+void Scene::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
 	VkImageMemoryBarrier barrier = {};
@@ -1539,17 +1381,14 @@ void Scene::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout 
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.image = image;
 
-	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL)
-	{
+	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
 
-		if (HasStencilComponent(format))
-		{
+		if (HasStencilComponent(format)) {
 			barrier.subresourceRange.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
 		}
 	}
-	else
-	{
+	else {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
@@ -1558,45 +1397,41 @@ void Scene::TransitionImageLayout(VkImage image, VkFormat format, VkImageLayout 
 	barrier.subresourceRange.baseArrayLayer = 0;
 	barrier.subresourceRange.layerCount = 1;
 
-	VkPipelineStageFlags source_stage;
-	VkPipelineStageFlags destination_stage;
+	VkPipelineStageFlags sourceStage;
+	VkPipelineStageFlags destinationStage;
 
-	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL)
-	{
+	if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 
-		source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destination_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
 	}
-	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL)
-	{
+	else if (oldLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL && newLayout == VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL) {
 		barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
 		barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
-		source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-		destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TRANSFER_BIT;
+		destinationStage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
 	}
 	else if (oldLayout == VK_IMAGE_LAYOUT_UNDEFINED && newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.srcAccessMask = 0;
 		barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
 
-		source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-		destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+		sourceStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		destinationStage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
 	}
-	else
-	{
+	else {
 		assert(0 && "Vulkan ERROR: unsupported layout transition!");
 		std::exit(-1);
 	}
 
-	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
+	vkCmdPipelineBarrier(command_buffer, sourceStage, destinationStage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
 
 	EndSingleTimeCommands(command_buffer);
 }
 
-void Scene::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height)
-{
+void Scene::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
 	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
 
 	VkBufferImageCopy Region = {};
@@ -1615,11 +1450,6 @@ void Scene::CopyBufferToImage(VkBuffer buffer, VkImage image, uint32_t width, ui
 	EndSingleTimeCommands(command_buffer);
 }
 
-void Scene::CreateTextureImageView(enginetool::TextureLayout& tex)
-{
-	tex.texture_image_view = CreateImageView(tex.texture, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_ASPECT_COLOR_BIT);
-}
-
 VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags)//TODO
 {
 	VkImageViewCreateInfo ViewInfo = {};
@@ -1634,8 +1464,7 @@ VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspect
 	ViewInfo.subresourceRange.layerCount = 1;
 
 	VkImageView image_view;
-	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &image_view) != VK_SUCCESS)
-	{
+	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &image_view) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture image view!");
 		std::exit(-1);
 	}
@@ -1643,39 +1472,18 @@ VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspect
 	return image_view;
 }
 
-void Scene::CreateTextureSampler(enginetool::TextureLayout& tex)
-{
-	VkSamplerCreateInfo SamplerInfo = {};
-	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	SamplerInfo.magFilter = VK_FILTER_LINEAR;
-	SamplerInfo.minFilter = VK_FILTER_LINEAR;
-	SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.anisotropyEnable = VK_TRUE;
-	SamplerInfo.maxAnisotropy = 16;
-	SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-	SamplerInfo.compareEnable = VK_FALSE;
-	SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
-	SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-
-	if (vkCreateSampler(logical_device->device, &SamplerInfo, nullptr, &tex.texture_sampler) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture sampler!");
-		std::exit(-1);
-	}
-}
-
 // --------------- Depth buffering ------------------ //
 
-void Scene::CreateDepthResources()
-{
-	VkFormat depth_format = logical_device->FindDepthFormat();
+void Scene::CreateDepthResources() {
+	depthImage.Init(logical_device, logical_device->FindDepthFormat());
 
-	CreateImage(logical_device->swapchain_extent.width, logical_device->swapchain_extent.height, depth_format, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
-	depth_image_view = CreateImageView(depth_image, depth_format, VK_IMAGE_ASPECT_DEPTH_BIT);
+	depthImage.texWidth = logical_device->swapchain_extent.width; 
+	depthImage.texHeight = logical_device->swapchain_extent.height; 
 
-	TransitionImageLayout(depth_image, depth_format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	depthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	depthImage.texture_image_view = CreateImageView(depthImage.texture, depthImage.format, VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	TransitionImageLayout(depthImage.texture, depthImage.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 bool Scene::HasStencilComponent(VkFormat format)
@@ -1831,25 +1639,25 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_SPACE:
 			std::cout << "Character makes a jump! " << key << std::endl;
-			//
+			std::dynamic_pointer_cast<Character>(actors[1])->StartJump();
 			break;
 		case GLFW_KEY_Z:
 			std::cout << "Saving to file " << key << std::endl;
 			actors[1]->SaveToFile();
 			break;
 		case GLFW_KEY_1:
-			console->visible = !console->visible;
+			status_overlay->guiOverlayVisible = !status_overlay->guiOverlayVisible;
 			break;
 		case GLFW_KEY_2:
-			console->ui_settings.display_stats_overlay = !console->ui_settings.display_stats_overlay;
+			status_overlay->ui_settings.display_stats_overlay = !status_overlay->ui_settings.display_stats_overlay;
 			break;
 		case GLFW_KEY_3:
-			if (console->ui_settings.display_imgui)	{
-				console->ui_settings.display_imgui = false;
+			if (status_overlay->ui_settings.display_imgui)	{
+				status_overlay->ui_settings.display_imgui = false;
 				std::cout << "Console turned off! " << key << std::endl;
 			}
 			else {
-				console->ui_settings.display_imgui = true;
+				status_overlay->ui_settings.display_imgui = true;
 				std::cout << "Console turned on! " << key << std::endl;
 			}
 			break;
@@ -1930,7 +1738,8 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_SPACE:
 			std::cout << "Key released: " << key << std::endl;
-			//
+			std::cout << "Going back ground level" << std::endl;
+			std::dynamic_pointer_cast<Character>(actors[1])->EndJump();			
 			break;
 		//case GLFW_KEY_1:
 		//	std::cout << "Key released: " << key << std::endl;
@@ -1938,13 +1747,13 @@ void Scene::PressKey(int key)
 		//	break;
 		}
 	}
+
 }
 
 
 // ---------------- Deinitialisation ---------------- //
 
-void Scene::CleanUpForSwapchain()
-{
+void Scene::CleanUpForSwapchain() {
 	DeInitImageView();
 	DeInitFramebuffer();
 	FreeCommandBuffers();
@@ -1961,9 +1770,7 @@ void Scene::DeInitFramebuffer()
 }
 
 void Scene::DeInitImageView() {
-	vkDestroyImageView(logical_device->device, depth_image_view, nullptr);
-	vkDestroyImage(logical_device->device, depth_image, nullptr);
-	vkFreeMemory(logical_device->device, depth_image_memory, nullptr);
+	depthImage.DeInit();
 }
 
 void Scene::DeInitIndexAndVertexBuffer()
@@ -2020,30 +1827,11 @@ void Scene::DeInitTextureImage() {
 	vkFreeMemory(logical_device->device, sky->skybox_texture.texture_image_memory, nullptr);
 
 	for (size_t i = 0; i < scene_material.size(); i++) {
-		vkDestroySampler(logical_device->device, scene_material[i].albedo.texture_sampler, nullptr);
-		vkDestroyImageView(logical_device->device, scene_material[i].albedo.texture_image_view, nullptr);
-		vkDestroyImage(logical_device->device, scene_material[i].albedo.texture, nullptr);
-		vkFreeMemory(logical_device->device, scene_material[i].albedo.texture_image_memory, nullptr);
-
-		vkDestroySampler(logical_device->device, scene_material[i].metallic.texture_sampler, nullptr);
-		vkDestroyImageView(logical_device->device, scene_material[i].metallic.texture_image_view, nullptr);
-		vkDestroyImage(logical_device->device, scene_material[i].metallic.texture, nullptr);
-		vkFreeMemory(logical_device->device, scene_material[i].metallic.texture_image_memory, nullptr);
-
-		vkDestroySampler(logical_device->device, scene_material[i].roughness.texture_sampler, nullptr);
-		vkDestroyImageView(logical_device->device, scene_material[i].roughness.texture_image_view, nullptr);
-		vkDestroyImage(logical_device->device, scene_material[i].roughness.texture, nullptr);
-		vkFreeMemory(logical_device->device, scene_material[i].roughness.texture_image_memory, nullptr);
-
-		vkDestroySampler(logical_device->device, scene_material[i].normal_map.texture_sampler, nullptr);
-		vkDestroyImageView(logical_device->device, scene_material[i].normal_map.texture_image_view, nullptr);
-		vkDestroyImage(logical_device->device, scene_material[i].normal_map.texture, nullptr);
-		vkFreeMemory(logical_device->device, scene_material[i].normal_map.texture_image_memory, nullptr);
-
-		vkDestroySampler(logical_device->device, scene_material[i].ambient_occlucion_map.texture_sampler, nullptr);
-		vkDestroyImageView(logical_device->device, scene_material[i].ambient_occlucion_map.texture_image_view, nullptr);
-		vkDestroyImage(logical_device->device, scene_material[i].ambient_occlucion_map.texture, nullptr);
-		vkFreeMemory(logical_device->device, scene_material[i].ambient_occlucion_map.texture_image_memory, nullptr);
+		scene_material[i].albedo.DeInit();
+		scene_material[i].metallic.DeInit();
+		scene_material[i].roughness.DeInit();
+		scene_material[i].normal_map.DeInit();
+		scene_material[i].ambient_occlucion_map.DeInit();
 	}
 }
 

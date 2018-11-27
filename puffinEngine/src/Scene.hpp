@@ -10,7 +10,8 @@
 #include "Camera.hpp"
 #include "Device.hpp"
 #include "Light.hpp"
-#include "StatusOverlay.hpp"
+#include "GuiOverlay.hpp"
+#include "Texture.hpp"
 #include "Ui.hpp"
 
 const int WIDTH = 800;
@@ -24,7 +25,7 @@ public:
 
 	void ConnectGamepad();
 	void DeInitScene();
-	void InitScene(Device*, GLFWwindow*, ImGuiMenu*, StatusOverlay*);
+	void InitScene(Device*, GLFWwindow*, GuiElement*, StatusOverlay*);
 	void PressKey(int);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
@@ -32,7 +33,7 @@ public:
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
-	ImGuiMenu* console = nullptr;
+	GuiElement* console = nullptr;
 	
 	std::vector<std::shared_ptr<Actor>> actors;
 		
@@ -58,8 +59,8 @@ private:
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void CreateTextureImageView(enginetool::TextureLayout&);
-	void CreateTextureSampler(enginetool::TextureLayout&);
+	void CreateTextureImageView(TextureLayout&);
+	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();
 	void EndSingleTimeCommands(VkCommandBuffer);
 	bool HasStencilComponent(VkFormat);
@@ -72,8 +73,8 @@ private:
 	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
 	void CreateBuffers(std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&); //TODO
 	void LoadAssets();
-	void LoadSkyboxTexture(enginetool::TextureLayout&);
-	void LoadTexture(std::string, enginetool::TextureLayout&);
+	void LoadSkyboxTexture(TextureLayout&);
+	void LoadTexture(std::string, TextureLayout&);
 	void TransitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSkyboxUniformBuffer();
@@ -158,21 +159,19 @@ private:
 
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 
-	VkImage depth_image;
-	VkDeviceMemory depth_image_memory;
-	VkImageView depth_image_view;
+	TextureLayout depthImage;
 
 	VkPipeline pbr_pipeline;
 	VkPipeline clouds_pipeline;
 	VkPipeline skybox_pipeline;
 
-	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial();
-	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial();
+	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial(logical_device);
 
 	std::vector<enginetool::SceneMaterial> scene_material;
 
