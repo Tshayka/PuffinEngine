@@ -47,7 +47,6 @@ private:
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);
-	void CopyBufferToImage(VkBuffer, VkImage, uint32_t, uint32_t);
 	void CreateCommandPool(); // neccsesary to create command buffer
 	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
@@ -75,7 +74,6 @@ private:
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
-	void TransitionImageLayout(VkImage, VkFormat, VkImageLayout, VkImageLayout);
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSkyboxUniformBuffer();
 	void UpdateUBOParameters();
@@ -131,8 +129,7 @@ private:
 	} uboDataDynamic;
 
 	// Struct that holds the models positions
-	struct Constants
-	{
+	struct Constants {
 		glm::vec3 pos;
 	} pushConstants;
 

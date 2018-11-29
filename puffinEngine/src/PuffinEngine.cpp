@@ -33,8 +33,7 @@ return std::min(b, std::max(what, a));
 
 // ---------------- Main functions ------------------ //
 
-void PuffinEngine::Run()
-{
+void PuffinEngine::Run() {
 	InitWindow();
     InitVulkan();
     MainLoop();
@@ -125,7 +124,7 @@ void PuffinEngine::CreateSemaphores() {
 	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &RenderFinishedSemaphore));
 }
 
-void PuffinEngine::DrawFrame(){
+void PuffinEngine::DrawFrame() {
 	uint32_t image_index;
 	VkResult result = vkAcquireNextImageKHR(world_device->device, world_device->swap_chain, std::numeric_limits<uint64_t>::max(), ImageAvailableSemaphore, VK_NULL_HANDLE, &image_index);
 
@@ -188,8 +187,7 @@ void PuffinEngine::DrawFrame(){
 	vkQueueWaitIdle(world_device->present_queue);
 }
 
-void PuffinEngine::RecreateSwapChain()
-{
+void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
 	if (width == 0 || height == 0) return;
 
@@ -237,6 +235,8 @@ void PuffinEngine::InitWindow() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
+
+	io.Fonts->AddFontFromFileTTF("puffinEngine/fonts/exo-2/Exo2-SemiBold.otf", 16.0f);
 
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;   // We can honor GetMouseCursor() values (optional)

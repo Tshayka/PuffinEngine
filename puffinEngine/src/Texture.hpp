@@ -19,6 +19,16 @@ class TextureLayout {
         void DeInit();
         void Init(Device* device, VkFormat format);
 
+        void CopyBufferToImage(VkBuffer buffer);
+        void TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout); 
+
         private:
+        VkCommandBuffer BeginSingleTimeCommands();
+        void CreateCommandPool();
+        void EndSingleTimeCommands(VkCommandBuffer commandBuffer);
+        bool HasStencilComponent();
+        
+
+        VkCommandPool commandPool;
         Device* logicalDevice;
     };

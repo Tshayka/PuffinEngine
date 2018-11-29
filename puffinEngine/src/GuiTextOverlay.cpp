@@ -9,13 +9,13 @@
 
 GuiTextOverlay::GuiTextOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Text overlay created\n";
+	std::cout << "Gui - text overlay - created\n";
 #endif 
 }
 
 GuiTextOverlay::~GuiTextOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Text overlay destroyed\n";
+	std::cout << "Gui - text overlay - destroyed\n";
 #endif
 }
 
@@ -29,9 +29,7 @@ void GuiTextOverlay::Init(Device* device) {
 	logical_device = device; 
 	
 	SetUp();
-	CreateCommandPool();
-	InitResources();
-	CreateViewAndSampler();
+	LoadImage();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
@@ -39,189 +37,37 @@ void GuiTextOverlay::Init(Device* device) {
 }
 
 void GuiTextOverlay::SetUp(){
+}
+
+void GuiTextOverlay::LoadImage() {
+	font.texWidth = STB_FONT_WIDTH;
+	font.texHeight = STB_FONT_HEIGHT;
+	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
-}
 
-void GuiTextOverlay::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = logical_device->FindQueueFamilies(logical_device->gpu);
-
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
-
-	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
-}
-
-VkCommandBuffer GuiTextOverlay::BeginSingleTimeCommands() {
-	VkCommandBufferAllocateInfo AllocInfo = {};
-	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	AllocInfo.commandPool = command_pool;
-	AllocInfo.commandBufferCount = 1;
-
-	VkCommandBuffer command_buffer;
-	vkAllocateCommandBuffers(logical_device->device, &AllocInfo, &command_buffer);
-
-	VkCommandBufferBeginInfo BeginInfo = {};
-	BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-	BeginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-
-	vkBeginCommandBuffer(command_buffer, &BeginInfo);
-
-	return command_buffer;
-}
-
-void GuiTextOverlay::EndSingleTimeCommands(VkCommandBuffer command_buffer) {
-	vkEndCommandBuffer(command_buffer);
-
-	VkSubmitInfo SubmitInfo = {};
-	SubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	SubmitInfo.commandBufferCount = 1;
-	SubmitInfo.pCommandBuffers = &command_buffer;
-
-	vkQueueSubmit(logical_device->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(logical_device->queue);
-
-	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &command_buffer);
-}
-
-void GuiTextOverlay::InitResources() {
-	VkDeviceSize textoverlay_buffer_size = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	
-	logical_device->CreateBuffer(textoverlay_buffer_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, buffer, memory);
-	
-	VkImageCreateInfo ImageInfo = {};
-	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	ImageInfo.format = VK_FORMAT_R8_UNORM;
-	ImageInfo.extent.width = STB_FONT_WIDTH;
-	ImageInfo.extent.height = STB_FONT_HEIGHT;
-	ImageInfo.extent.depth = 1;
-	ImageInfo.mipLevels = 1;
-	ImageInfo.arrayLayers = 1;
-	ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	ImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-
-	ErrorCheck(vkCreateImage(logical_device->device, &ImageInfo, nullptr, &image));
-
-	VkMemoryRequirements memory_requirements;
-	vkGetImageMemoryRequirements(logical_device->device, image, &memory_requirements);
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memory_requirements.size;
-	allocInfo.memoryTypeIndex = logical_device->FindMemoryType(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-
-	if (vkAllocateMemory(logical_device->device, &allocInfo, nullptr, &image_memory) != VK_SUCCESS)	{
-		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
-		std::exit(-1);
-	}
-
-	ErrorCheck(vkBindImageMemory(logical_device->device, image, image_memory, 0));
+	VkDeviceSize indexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
+	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
 
 	enginetool::Buffer staging_buffer;
+	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &stbFontData);
 
-	logical_device->CreateStagedBuffer(allocInfo.allocationSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, staging_buffer.memory);
-
-	//vkGetBufferMemoryRequirements(logical_device->device, textoverlay_staging_buffer, &memory_requirements);
-
-	staging_buffer.Map(allocInfo.allocationSize, 0);
+	font.Init(logical_device, VK_FORMAT_R8_UNORM);
+	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	
+	staging_buffer.Map(indexBufferSize, 0);
 	staging_buffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
 	staging_buffer.Unmap();
 
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
-
-	VkBufferImageCopy Region = {};
-	Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	Region.imageSubresource.mipLevel = 0;
-	Region.imageSubresource.baseArrayLayer = 0;
-	Region.imageSubresource.layerCount = 1;
-	Region.imageExtent.width = STB_FONT_WIDTH;
-	Region.imageExtent.height = STB_FONT_HEIGHT;
-	Region.imageExtent.depth = 1;
-	Region.bufferOffset = 0;
-
-	//TransitionImageLayout(image, VK_FORMAT_R8_UNORM, , );
-	VkImageMemoryBarrier barrier = {};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkPipelineStageFlags source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-
-	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	vkCmdCopyBufferToImage(command_buffer, staging_buffer.buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
-
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = image;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
-	barrier.subresourceRange.layerCount = 1;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	EndSingleTimeCommands(command_buffer);
+	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	font.CopyBufferToImage(staging_buffer.buffer);
+	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	
 	staging_buffer.Destroy();
-}
 
-void GuiTextOverlay::CreateViewAndSampler() {
-	VkImageViewCreateInfo ViewInfo = {};
-	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.image = image;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	ViewInfo.format = VK_FORMAT_R8_UNORM;
-	ViewInfo.components = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B,	VK_COMPONENT_SWIZZLE_A };
-	ViewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
-	if (vkCreateImageView(logical_device->device, &ViewInfo, nullptr, &image_view) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture image view for status overlay!");
-		std::exit(-1);
-	}
-
-	VkSamplerCreateInfo SamplerInfo = {};
-	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	SamplerInfo.magFilter = VK_FILTER_LINEAR;
-	SamplerInfo.minFilter = VK_FILTER_LINEAR;
-	SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-	SamplerInfo.mipLodBias = 0.0f;
-	SamplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-	SamplerInfo.minLod = 0.0f;
-	SamplerInfo.maxLod = 1.0f;
-	SamplerInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE;
-
-	if (vkCreateSampler(logical_device->device, &SamplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture sampler for status overlay!");
-		std::exit(-1);
-	}
+	logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, memory);
 }
 
 void GuiTextOverlay::CreateDescriptorSetLayout()
@@ -240,7 +86,7 @@ void GuiTextOverlay::CreateDescriptorSetLayout()
 	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
 	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &SceneObjectsLayoutInfo, nullptr, &descriptor_set_layout));
+	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
 }
 
 void GuiTextOverlay::CreateDescriptorPool() {
@@ -255,27 +101,27 @@ void GuiTextOverlay::CreateDescriptorPool() {
 	PoolInfo.pPoolSizes = PoolSizes.data();
 	PoolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
+	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptorPool));
 }
 
 void GuiTextOverlay::CreateDescriptorSet() {
 		VkDescriptorSetAllocateInfo AllocInfo = {};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		AllocInfo.descriptorPool = descriptor_pool;
+		AllocInfo.descriptorPool = descriptorPool;
 		AllocInfo.descriptorSetCount = 1;
-		AllocInfo.pSetLayouts = &descriptor_set_layout;
+		AllocInfo.pSetLayouts = &descriptorSetLayout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &descriptor_set));
+		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &descriptorSet));
 
 		VkDescriptorImageInfo ImageInfo = {};
 		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		ImageInfo.imageView = image_view;
-		ImageInfo.sampler = texture_sampler;
+		ImageInfo.imageView = font.texture_image_view;
+		ImageInfo.sampler = font.texture_sampler;
 
 		std::array<VkWriteDescriptorSet, 1> descriptorWrites = {};
 
 		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptor_set;
+		descriptorWrites[0].dstSet = descriptorSet;
 		descriptorWrites[0].dstBinding = 0;
 		descriptorWrites[0].dstArrayElement = 0;
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -288,7 +134,7 @@ void GuiTextOverlay::CreateDescriptorSet() {
 void GuiTextOverlay::CreateGraphicsPipeline() {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	ErrorCheck(vkCreatePipelineCache(logical_device->device, &pipelineCacheCreateInfo, nullptr, &pipeline_cache));
+	ErrorCheck(vkCreatePipelineCache(logical_device->device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -378,14 +224,14 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes.size());
 	VertexInputInfo.pVertexAttributeDescriptions = vertex_attributes.data();
 
-	std::array<VkDescriptorSetLayout, 1> layouts = {descriptor_set_layout};
+	std::array<VkDescriptorSetLayout, 1> layouts = {descriptorSetLayout};
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 	PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	PipelineLayoutInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(logical_device->device, &PipelineLayoutInfo, nullptr, &pipeline_layout));
+	ErrorCheck(vkCreatePipelineLayout(logical_device->device, &PipelineLayoutInfo, nullptr, &pipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -401,7 +247,7 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	PipelineInfo.pDepthStencilState = &DepthStencil;
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;	
-	PipelineInfo.layout = pipeline_layout;
+	PipelineInfo.layout = pipelineLayout;
 	PipelineInfo.renderPass = logical_device->renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -427,7 +273,7 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, pipeline_cache, 1, &PipelineInfo, nullptr, &text_overlay_pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
 
 	vkDestroyShaderModule(logical_device->device, fragModelsShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr);
@@ -519,12 +365,12 @@ void GuiTextOverlay::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	scissor.extent = logical_device->swapchain_extent;	
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 	
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, text_overlay_pipeline);
-	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, 1, &descriptor_set, 0, nullptr);
+	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &buffer, offsets);
-	vkCmdBindVertexBuffers(command_buffer, 1, 1, &buffer, offsets);
+	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer, offsets);
+	vkCmdBindVertexBuffers(command_buffer, 1, 1, &vertexBuffer, offsets);
 
 	for (uint32_t j = 0; j < num_letters; j++) {
 		vkCmdDraw(command_buffer, 4, 1, j * 4, 0);
@@ -532,18 +378,14 @@ void GuiTextOverlay::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 }
 
 void GuiTextOverlay::DeInit() {
-	vkDestroyBuffer(logical_device->device, buffer, nullptr);
-	vkDestroyImage(logical_device->device, image, nullptr);
-	vkDestroyImageView(logical_device->device, image_view, nullptr);
+	vkDestroyBuffer(logical_device->device, vertexBuffer, nullptr);
 	vkFreeMemory(logical_device->device, memory, nullptr);
-	vkFreeMemory(logical_device->device, image_memory, nullptr);
-	vkDestroySampler(logical_device->device, texture_sampler, nullptr);
-	vkDestroyPipelineCache(logical_device->device, pipeline_cache, nullptr);
-	vkDestroyPipeline(logical_device->device, text_overlay_pipeline, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
-	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
-    vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
+	font.DeInit();
+	vkDestroyPipelineCache(logical_device->device, pipelineCache, nullptr);
+	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, pipelineLayout, nullptr);
+	vkDestroyDescriptorPool(logical_device->device, descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(logical_device->device, descriptorSetLayout, nullptr);
 
 	mapped = nullptr;
 }

@@ -13,13 +13,13 @@
 
 StatusOverlay::StatusOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Gui overlay\n";
+	std::cout << "Gui - main hub - created\n";
 #endif 
 }
 
 StatusOverlay::~StatusOverlay() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Gui overlay\n";
+	std::cout << "Gui - main hub - destroyed\n";
 #endif
 }
 
