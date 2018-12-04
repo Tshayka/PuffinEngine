@@ -71,6 +71,7 @@ The following third party packages are included, and carry, their own copyright 
 - [stb](https://github.com/nothings/stb)
 - [tinyobjloader](https://github.com/syoyo/tinyobjloader)
 - [Icons](https://www.flaticon.com)
+- [Fonts](https://fonts.google.com/specimen/Exo+2)
 
 ## License
 The source code and the documentation are licensed under the [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html).
