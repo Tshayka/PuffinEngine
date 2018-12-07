@@ -55,12 +55,11 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* dvc, GLFWwindow* wdw, GuiElement* cnsl, StatusOverlay* sts_ovrly)
-{
-	console = cnsl;
-	logical_device = dvc;
-	status_overlay = sts_ovrly;
-	window = wdw;
+void Scene::InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay) {
+	this->console = console;
+	logical_device = device;
+	status_overlay = statusOverlay;
+	this->window = window;
 
 	InitSwapchainImageViews();
 	CreateCommandPool();
@@ -84,12 +83,10 @@ These command buffers are allocated from a VkCommandPool that is associated with
 Because the image in the framebuffer depends on which specific image the swap chain will give us,
 we need to record a command buffer for each possible image and select the right one at draw time. */
 
-void Scene::InitSwapchainImageViews()
-{
+void Scene::InitSwapchainImageViews() {
 	logical_device->swapchain_image_views.resize(logical_device->swapchain_images.size());
 
-	for (size_t i = 0; i < logical_device->swapchain_images.size(); i++)
-	{
+	for (size_t i = 0; i < logical_device->swapchain_images.size(); i++) {
 		logical_device->swapchain_image_views[i] = CreateImageView(logical_device->swapchain_images[i], logical_device->swapchain_image_format, VK_IMAGE_ASPECT_COLOR_BIT);
 	}
 }
@@ -573,12 +570,9 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
 	glm::vec3 offset(5.0f, 25.0f, 5.0f);
 
-		for (uint32_t x = 0; x < dim; x++)
-		{
-			for (uint32_t y = 0; y < dim; y++)
-			{
-				for (uint32_t z = 0; z < dim; z++)
-				{
+		for (uint32_t x = 0; x < dim; x++) {
+			for (uint32_t y = 0; y < dim; y++) {
+				for (uint32_t z = 0; z < dim; z++) {
 					uint32_t index = x * dim * dim + y * dim + z;
 
 					// Aligned offset
@@ -770,8 +764,7 @@ void Scene::CreateDescriptorPool() {
 
 void Scene::CreateDescriptorSet() {
 	// 3D object descriptor set
-	for (size_t i = 0; i < scene_material.size(); i++)
-	{
+	for (size_t i = 0; i < scene_material.size(); i++) {
 		VkDescriptorImageInfo IrradianceMapImageInfo = {};
 		IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 		IrradianceMapImageInfo.imageView = sky->skybox_texture.texture_image_view;
@@ -978,18 +971,71 @@ void Scene::LoadAssets() {
 	InitMaterials();
 
 	// Skybox
-	if (display_skybox)	{
-		std::string skybox_filename = "puffinEngine/assets/models/skybox.obj";
-		LoadFromFile(skybox_filename, skybox_mesh, skybox_indices, skybox_vertices);
-		CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
-	}
+	float horizon = 125.0f;
+	skybox_vertices = {
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, -0.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, -0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, -0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, -0.0f}},
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 1.0f}, {0.0f, 1.0f, -0.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.66f}, {0.0f, 1.0f, -0.0f}},
+		
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, -0.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.0f}, {0.0f, -1.0f, -0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, -0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, -0.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, -1.0f, -0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, -0.0f}},
+		
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, 0.0f, -1.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, 0.0f, -1.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, 0.0f, -1.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 0.0f, -1.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
+		
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.667f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.66f}, {-1.0f, 0.0f, -0.0f}},
+		
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.66f}, {0.0f, 0.0f, 1.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.33f}, {0.0f, 0.0f, 1.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {0.0f, 0.0f, 1.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {0.0f, 0.0f, 1.0f}},
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {0.0f, 0.0f, 1.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.667f}, {0.0f, 0.0f, 1.0f}},
+		
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.66f}, {1.0f, 0.0f, -0.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {1.0f, 0.0f, -0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, -0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, -0.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {1.0f, 0.0f, -0.0f}},
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {1.0f, 0.0f, -0.0f}}
+	};
+
+	skybox_indices = {
+		0,1,2,3,4,5,
+		6,7,8,9,10,11,
+		12,13,14,15,16,17,
+		18,19,20,21,22,23,
+		24,25,26,27,28,29,
+		30,31,32,33,34,35
+	};
+
+	CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
+	
+
+	// Ocean
+	//load ocean as plane, bounded by skybox, add new shader like in dynamically created boxes
 
 	// Clouds
-	if (display_clouds)	{
-		std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
-		LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
-		CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
-	}
+	std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
+	LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
+	CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
+	
 
 	// Scene objects/actors
 	CreateCamera();
@@ -1406,11 +1452,6 @@ void Scene::CreateDepthResources() {
 	depthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
-bool Scene::HasStencilComponent(VkFormat format)
-{
-	return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
-}
-
 // ------------------- NAVIGATION ------------------- //
 
 void Scene::ConnectGamepad()
@@ -1580,6 +1621,9 @@ void Scene::PressKey(int key)
 				status_overlay->ui_settings.display_imgui = true;
 				std::cout << "Console turned on! " << key << std::endl;
 			}
+			break;
+		case GLFW_KEY_4:
+			status_overlay->ui_settings.display_main_ui = !status_overlay->ui_settings.display_main_ui;
 			break;
 		}
 	}

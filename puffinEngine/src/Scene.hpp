@@ -25,7 +25,7 @@ public:
 
 	void ConnectGamepad();
 	void DeInitScene();
-	void InitScene(Device*, GLFWwindow*, GuiElement*, StatusOverlay*);
+	void InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay);
 	void PressKey(int);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
@@ -114,17 +114,23 @@ private:
 		float gamma;
 	};
 
-	// UBO Dynamic for clouds
+	struct UboSea {
+		glm::mat4 proj;
+		glm::mat4 view;
+		float time;
+		float exposure;
+		float gamma;
+	};
+
 	struct UboClouds {
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 camera_pos;
+		glm::vec3 camera_pos;//?
 		float time;
 	};
 
 	// UBO Dynamic that contains all clouds matrices
-	struct UboCloudsMatrices
-	{
+	struct UboCloudsMatrices {
 		glm::mat4 *model = nullptr;
 	} uboDataDynamic;
 
@@ -144,12 +150,14 @@ private:
 
 	struct {
 		enginetool::Buffer skybox;
+		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
 	} vertex_buffers;
 
 	struct {
 		enginetool::Buffer skybox;
+		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
 	} index_buffers;
@@ -172,7 +180,6 @@ private:
 
 	std::vector<enginetool::SceneMaterial> scene_material;
 
-	enginetool::ScenePart skybox_mesh;
 	enginetool::ScenePart element;
 	enginetool::ScenePart cloud_mesh;
 
@@ -182,6 +189,8 @@ private:
 	std::vector<enginetool::VertexLayout> objects_vertices;
 	std::vector<uint32_t> skybox_indices;
 	std::vector<enginetool::VertexLayout> skybox_vertices;
+	std::vector<uint32_t> oceanIndices;
+	std::vector<enginetool::VertexLayout> oceanVertices;
 	std::vector<uint32_t> clouds_indices;
 	std::vector<enginetool::VertexLayout> clouds_vertices;
 
