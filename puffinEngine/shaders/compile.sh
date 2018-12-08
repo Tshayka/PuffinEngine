@@ -13,3 +13,5 @@
 /home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.vert -o puffinEngine/shaders/perform_stats.vert.spv
 /home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/perform_stats.frag -o puffinEngine/shaders/perform_stats.frag.spv
 
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/ocean_shader.vert -o puffinEngine/shaders/ocean_shader.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/ocean_shader.frag -o puffinEngine/shaders/ocean_shader.frag.spv
