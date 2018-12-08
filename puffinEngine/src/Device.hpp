@@ -10,6 +10,7 @@
 
 static bool display_clouds = true;
 static bool display_skybox = true;
+static bool displayOcean = true;
 
 struct QueueFamilyIndices
 {
@@ -21,8 +22,7 @@ struct QueueFamilyIndices
 	}
 };
 
-struct SwapChainSupportDetails // struct to pass details around once they've been queried
-{
+struct SwapChainSupportDetails {// struct to pass details around once they've been queried
 	VkSurfaceCapabilitiesKHR capabilities; // basic surface capabilities
 	std::vector<VkSurfaceFormatKHR> formats; // surface formats - pixel format, color space
 	std::vector<VkPresentModeKHR> presentModes; // available presentation modes

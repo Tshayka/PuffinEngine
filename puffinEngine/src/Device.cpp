@@ -90,8 +90,7 @@ void Device::InitSwapChain() {
 
 	uint32_t image_count = SwapChainSupport.capabilities.minImageCount + 1;
 
-	if (SwapChainSupport.capabilities.maxImageCount > 0 && image_count > SwapChainSupport.capabilities.maxImageCount)
-	{
+	if (SwapChainSupport.capabilities.maxImageCount > 0 && image_count > SwapChainSupport.capabilities.maxImageCount) {
 		image_count = SwapChainSupport.capabilities.maxImageCount;
 	}
 
@@ -109,14 +108,12 @@ void Device::InitSwapChain() {
 	QueueFamilyIndices indices = FindQueueFamilies(gpu);
 	uint32_t queueFamilyIndices[] = { (uint32_t)indices.graphicsFamily, (uint32_t)indices.presentFamily };
 
-	if (indices.graphicsFamily != indices.presentFamily)
-	{
+	if (indices.graphicsFamily != indices.presentFamily) {
 		sc_create_info.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		sc_create_info.queueFamilyIndexCount = 2;
 		sc_create_info.pQueueFamilyIndices = queueFamilyIndices;
 	}
-	else
-	{
+	else {
 		sc_create_info.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	}
 
