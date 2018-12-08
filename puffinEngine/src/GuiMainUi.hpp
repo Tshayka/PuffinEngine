@@ -21,6 +21,17 @@ public:
 	void SetUp();
 	void UpdateDrawData();
 
+	// AngelCode .fnt format structs and classes
+	struct bmchar {
+		uint32_t x, y;
+		uint32_t width;
+		uint32_t height;
+		int32_t xoffset;
+		int32_t yoffset;
+		int32_t xadvance;
+		uint32_t page;
+	};
+
 	// UI params are set via push constants
 	struct PushConstBlock {
 		glm::vec2 scale;

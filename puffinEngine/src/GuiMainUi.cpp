@@ -394,9 +394,9 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 		vertexOffset += static_cast<uint32_t>(drawData.componentsToDraw[i].vertices.size());
 	}
 
-	std::cout << drawData.componentsToDraw[0].indices.size() << " " <<  drawData.componentsToDraw[0].vertices.size() <<  std::endl;
-	std::cout << scissor.offset.x << " " << scissor.offset.y << std::endl;
-	std::cout << scissor.extent.width << " " << scissor.extent.height << std::endl;
+	//std::cout << drawData.componentsToDraw[0].indices.size() << " " <<  drawData.componentsToDraw[0].vertices.size() <<  std::endl;
+	//std::cout << scissor.offset.x << " " << scissor.offset.y << std::endl;
+	//std::cout << scissor.extent.width << " " << scissor.extent.height << std::endl;
 }
 
 void GuiMainUi::DeInit() {
