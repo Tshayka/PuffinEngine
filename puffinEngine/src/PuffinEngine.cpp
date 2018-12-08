@@ -55,9 +55,14 @@ void PuffinEngine::CreateGuiTextOverlay() {
 	guiStatistics->Init(world_device);
 }
 
+void PuffinEngine::CreateMainUi() {
+	mainUi = new GuiMainUi();
+	mainUi->Init(world_device);
+}
+
 void PuffinEngine::CreateStatusOverlay() {
 	statusOverlay = new StatusOverlay();
-	statusOverlay->Init(world_device, console, guiStatistics);
+	statusOverlay->Init(world_device, console, guiStatistics, mainUi);
 }
 
 void PuffinEngine::CreateScene() {
@@ -69,6 +74,7 @@ void PuffinEngine::InitVulkan() {
 	CreateDevice();
 	CreateImGuiMenu();
 	CreateGuiTextOverlay();
+	CreateMainUi();
 	CreateStatusOverlay();
 	CreateScene();
 	CreateSemaphores();
@@ -391,6 +397,9 @@ void PuffinEngine::DestroyScene() {// can't see destructor working
 }
 
 void PuffinEngine::DestroyGUI() {
+	mainUi->DeInit();
+	delete mainUi;
+	mainUi = nullptr;
 	guiStatistics->DeInit();
 	delete guiStatistics;
 	guiStatistics = nullptr;

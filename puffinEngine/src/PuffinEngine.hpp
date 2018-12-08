@@ -37,6 +37,7 @@ class PuffinEngine {
     void CreateDevice();
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
+    void CreateMainUi();
     void CreateScene();
     void CreateStatusOverlay();
     void CreateSemaphores();
@@ -52,6 +53,7 @@ class PuffinEngine {
     Scene* scene_1 = nullptr;
     GuiElement* console = nullptr;
     StatusOverlay* statusOverlay = nullptr;
+    GuiMainUi* mainUi = nullptr;
     GuiTextOverlay* guiStatistics = nullptr;
 
 	VkSemaphore ImageAvailableSemaphore;
