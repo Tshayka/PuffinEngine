@@ -237,6 +237,15 @@ void Scene::CreateCommandBuffers()
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
 		}
 
+		// Ocean
+		if (displayOcean)	{
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 3, 1, &oceanDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, oceanPipeline);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(oceanIndices.size()), 1, 0, 0, 0);
+		}
+
 		// 3d object
 		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
 		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -339,7 +348,7 @@ void Scene::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	VertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	std::array<VkDescriptorSetLayout, 3> layouts = { descriptor_set_layout, skybox_descriptor_set_layout, clouds_descriptor_set_layout };
+	std::array<VkDescriptorSetLayout, 4> layouts = { descriptor_set_layout, skybox_descriptor_set_layout, clouds_descriptor_set_layout, oceanDescriptorSetLayout };
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -454,6 +463,33 @@ void Scene::CreateGraphicsPipeline() {
 
 	vkDestroyShaderModule(logical_device->device, fragCloudsShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertCloudsShaderModule, nullptr);
+
+	// Ocean pipeline
+	auto vertOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.vert.spv");
+	auto fragOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.frag.spv");
+
+	VkShaderModule vertOceanShaderModule = logical_device->CreateShaderModule(vertOceanShaderCode);
+	VkShaderModule fragOceanShaderModule = logical_device->CreateShaderModule(fragOceanShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertOceanShaderStageInfo = {};
+	vertOceanShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertOceanShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertOceanShaderStageInfo.module = vertOceanShaderModule;
+	vertOceanShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragOceanShaderStageInfo = {};
+	fragOceanShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragOceanShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragOceanShaderStageInfo.module = fragOceanShaderModule;
+	fragOceanShaderStageInfo.pName = "main";
+
+	shaderStages[0] = vertOceanShaderStageInfo;
+	shaderStages[1] = fragOceanShaderStageInfo;
+
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &oceanPipeline));
+
+	vkDestroyShaderModule(logical_device->device, fragOceanShaderModule, nullptr);
+	vkDestroyShaderModule(logical_device->device, vertOceanShaderModule, nullptr);
 	
 }
 
@@ -462,8 +498,11 @@ void Scene::CreateUniformBuffer()
 	// Skybox Uniform buffers memory -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
 	uniform_buffers.skybox.Map();
-	
 
+	// Ocean Uniform buffers memory -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
+	uniform_buffers.ocean.Map();
+	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
 	size_t minUboAlignment = logical_device->gpu_properties.limits.minUniformBufferOffsetAlignment;
@@ -493,7 +532,6 @@ void Scene::CreateUniformBuffer()
 	logical_device->CreateUnstagedBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &uniform_buffers.clouds_dynamic);
 	uniform_buffers.clouds_dynamic.Map();
 	
-
 	// Objects Uniform buffers memory -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.objects);
 	uniform_buffers.objects.Map();
@@ -516,6 +554,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 	UpdateDynamicUniformBuffer(time);
 	UpdateSkyboxUniformBuffer();
+	UpdateOceanUniformBuffer(time);
 	UpdateUBOParameters();
 	UpdateUniformBuffer(time);
 
@@ -617,6 +656,16 @@ void Scene::UpdateSkyboxUniformBuffer() {
 	memcpy(uniform_buffers.skybox.mapped, &UBO_Sky, sizeof(UBO_Sky));
 }
 
+void Scene::UpdateOceanUniformBuffer(const float& time) {
+	UboSea uboOcean = {};
+	uboOcean.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
+	uboOcean.proj[1][1] *= -1;
+	uboOcean.view = glm::lookAt(std::dynamic_pointer_cast<Camera>(actors[0])->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	uboOcean.time = time;
+	
+	memcpy(uniform_buffers.ocean.mapped, &uboOcean, sizeof(uboOcean));
+}
+
 // ------ Text overlay - performance statistics ----- //
 
 void Scene::UpdateGUI(float frameTimer, uint32_t elapsedTime) {
@@ -626,7 +675,6 @@ void Scene::UpdateGUI(float frameTimer, uint32_t elapsedTime) {
 // ------------------ Descriptors ------------------- //
 
 void Scene::CreateDescriptorSetLayout() {
-
 	//Secene models 
 	VkDescriptorSetLayoutBinding SceneModelUBOLayoutBinding = {};
 	SceneModelUBOLayoutBinding.binding = 0;
@@ -694,7 +742,7 @@ void Scene::CreateDescriptorSetLayout() {
 
 	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &SceneObjectsLayoutInfo, nullptr, &descriptor_set_layout));
 
-	//Skybox
+	// Skybox
 	VkDescriptorSetLayoutBinding SkyboxUBOLayoutBinding = {};
 	SkyboxUBOLayoutBinding.binding = 0;
 	SkyboxUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -741,6 +789,23 @@ void Scene::CreateDescriptorSetLayout() {
 	CloudsLayoutInfo.pBindings = clouds_bindings.data();
 
 	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &CloudsLayoutInfo, nullptr, &clouds_descriptor_set_layout));
+
+	// Ocean
+	VkDescriptorSetLayoutBinding oceanUBOLayoutBinding = {};
+	oceanUBOLayoutBinding.binding = 0;
+	oceanUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	oceanUBOLayoutBinding.descriptorCount = 1;
+	oceanUBOLayoutBinding.pImmutableSamplers = nullptr;
+	oceanUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 1> oceanBindings = { oceanUBOLayoutBinding};
+
+	VkDescriptorSetLayoutCreateInfo OceanLayoutInfo = {};
+	OceanLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	OceanLayoutInfo.bindingCount = static_cast<uint32_t>(oceanBindings.size());
+	OceanLayoutInfo.pBindings = oceanBindings.data();
+
+	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &OceanLayoutInfo, nullptr, &oceanDescriptorSetLayout));
 }
 
 void Scene::CreateDescriptorPool() {
@@ -751,13 +816,13 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 5);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 2 + 4);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 2 + 5);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size() + 2); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size() + 3); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
@@ -813,156 +878,179 @@ void Scene::CreateDescriptorSet() {
 		ObjectBufferParametersInfo.offset = 0;
 		ObjectBufferParametersInfo.range = sizeof(UniformBufferObjectParam);
 
-		std::array<VkWriteDescriptorSet, 8> descriptorWrites = {};
+		std::array<VkWriteDescriptorSet, 8> objectDescriptorWrites = {};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &BufferInfo;
+		objectDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[0].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[0].dstBinding = 0;
+		objectDescriptorWrites[0].dstArrayElement = 0;
+		objectDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		objectDescriptorWrites[0].descriptorCount = 1;
+		objectDescriptorWrites[0].pBufferInfo = &BufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &ObjectBufferParametersInfo;
+		objectDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[1].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[1].dstBinding = 1;
+		objectDescriptorWrites[1].dstArrayElement = 0;
+		objectDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		objectDescriptorWrites[1].descriptorCount = 1;
+		objectDescriptorWrites[1].pBufferInfo = &ObjectBufferParametersInfo;
 
-		descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[2].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[2].dstBinding = 2;
-		descriptorWrites[2].dstArrayElement = 0;
-		descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[2].descriptorCount = 1;
-		descriptorWrites[2].pImageInfo = &IrradianceMapImageInfo;
+		objectDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[2].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[2].dstBinding = 2;
+		objectDescriptorWrites[2].dstArrayElement = 0;
+		objectDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[2].descriptorCount = 1;
+		objectDescriptorWrites[2].pImageInfo = &IrradianceMapImageInfo;
 
-		descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[3].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[3].dstBinding = 3;
-		descriptorWrites[3].dstArrayElement = 0;
-		descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[3].descriptorCount = 1;
-		descriptorWrites[3].pImageInfo = &AlbedoImageInfo;
+		objectDescriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[3].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[3].dstBinding = 3;
+		objectDescriptorWrites[3].dstArrayElement = 0;
+		objectDescriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[3].descriptorCount = 1;
+		objectDescriptorWrites[3].pImageInfo = &AlbedoImageInfo;
 
-		descriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[4].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[4].dstBinding = 4;
-		descriptorWrites[4].dstArrayElement = 0;
-		descriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[4].descriptorCount = 1;
-		descriptorWrites[4].pImageInfo = &MettalicImageInfo;
+		objectDescriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[4].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[4].dstBinding = 4;
+		objectDescriptorWrites[4].dstArrayElement = 0;
+		objectDescriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[4].descriptorCount = 1;
+		objectDescriptorWrites[4].pImageInfo = &MettalicImageInfo;
 
-		descriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[5].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[5].dstBinding = 5;
-		descriptorWrites[5].dstArrayElement = 0;
-		descriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[5].descriptorCount = 1;
-		descriptorWrites[5].pImageInfo = &RoughnessImageInfo;
+		objectDescriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[5].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[5].dstBinding = 5;
+		objectDescriptorWrites[5].dstArrayElement = 0;
+		objectDescriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[5].descriptorCount = 1;
+		objectDescriptorWrites[5].pImageInfo = &RoughnessImageInfo;
 
-		descriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[6].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[6].dstBinding = 6;
-		descriptorWrites[6].dstArrayElement = 0;
-		descriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[6].descriptorCount = 1;
-		descriptorWrites[6].pImageInfo = &NormalImageInfo;
+		objectDescriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[6].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[6].dstBinding = 6;
+		objectDescriptorWrites[6].dstArrayElement = 0;
+		objectDescriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[6].descriptorCount = 1;
+		objectDescriptorWrites[6].pImageInfo = &NormalImageInfo;
 
-		descriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[7].dstSet = scene_material[i].descriptor_set;
-		descriptorWrites[7].dstBinding = 7;
-		descriptorWrites[7].dstArrayElement = 0;
-		descriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[7].descriptorCount = 1;
-		descriptorWrites[7].pImageInfo = &AmbientOcclusionImageInfo;
+		objectDescriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		objectDescriptorWrites[7].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[7].dstBinding = 7;
+		objectDescriptorWrites[7].dstArrayElement = 0;
+		objectDescriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		objectDescriptorWrites[7].descriptorCount = 1;
+		objectDescriptorWrites[7].pImageInfo = &AmbientOcclusionImageInfo;
 
-		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(objectDescriptorWrites.size()), objectDescriptorWrites.data(), 0, nullptr);
 	}
 
 	// SkyBox descriptor set
-	if (display_skybox) {
-		VkDescriptorSetAllocateInfo allocInfo = {};
-		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		allocInfo.descriptorPool = descriptor_pool;
-		allocInfo.descriptorSetCount = 1;
-		allocInfo.pSetLayouts = &skybox_descriptor_set_layout;
+	VkDescriptorSetAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.descriptorPool = descriptor_pool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &skybox_descriptor_set_layout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &allocInfo, &skybox_descriptor_set));
+	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &allocInfo, &skybox_descriptor_set));
 
-		VkDescriptorBufferInfo SkyboxBufferInfo = {};
-		SkyboxBufferInfo.buffer = uniform_buffers.skybox.buffer;
-		SkyboxBufferInfo.offset = 0;
-		SkyboxBufferInfo.range = sizeof(UniformBufferObjectSky);
+	VkDescriptorBufferInfo SkyboxBufferInfo = {};
+	SkyboxBufferInfo.buffer = uniform_buffers.skybox.buffer;
+	SkyboxBufferInfo.offset = 0;
+	SkyboxBufferInfo.range = sizeof(UniformBufferObjectSky);
 
-		VkDescriptorImageInfo ImageInfo = {};
-		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		ImageInfo.imageView = sky->skybox_texture.texture_image_view;
-		ImageInfo.sampler = sky->skybox_texture.texture_sampler;
+	VkDescriptorImageInfo ImageInfo = {};
+	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	ImageInfo.imageView = sky->skybox_texture.texture_image_view;
+	ImageInfo.sampler = sky->skybox_texture.texture_sampler;
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> skyboxDescriptorWrites = {};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = skybox_descriptor_set;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &SkyboxBufferInfo;
+	skyboxDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	skyboxDescriptorWrites[0].dstSet = skybox_descriptor_set;
+	skyboxDescriptorWrites[0].dstBinding = 0;
+	skyboxDescriptorWrites[0].dstArrayElement = 0;
+	skyboxDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	skyboxDescriptorWrites[0].descriptorCount = 1;
+	skyboxDescriptorWrites[0].pBufferInfo = &SkyboxBufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = skybox_descriptor_set;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pImageInfo = &ImageInfo;
+	skyboxDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	skyboxDescriptorWrites[1].dstSet = skybox_descriptor_set;
+	skyboxDescriptorWrites[1].dstBinding = 1;
+	skyboxDescriptorWrites[1].dstArrayElement = 0;
+	skyboxDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	skyboxDescriptorWrites[1].descriptorCount = 1;
+	skyboxDescriptorWrites[1].pImageInfo = &ImageInfo;
 
-		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	}
-
+	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(skyboxDescriptorWrites.size()), skyboxDescriptorWrites.data(), 0, nullptr);
+	
 	// Clouds descriptor set
-	if (display_clouds) {
-		VkDescriptorSetAllocateInfo CloudsAllocInfo = {};
-		CloudsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		CloudsAllocInfo.descriptorPool = descriptor_pool;
-		CloudsAllocInfo.descriptorSetCount = 1;
-		CloudsAllocInfo.pSetLayouts = &clouds_descriptor_set_layout;
+	VkDescriptorSetAllocateInfo CloudsAllocInfo = {};
+	CloudsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	CloudsAllocInfo.descriptorPool = descriptor_pool;
+	CloudsAllocInfo.descriptorSetCount = 1;
+	CloudsAllocInfo.pSetLayouts = &clouds_descriptor_set_layout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &CloudsAllocInfo, &clouds_descriptor_set));
+	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &CloudsAllocInfo, &clouds_descriptor_set));
 
-		VkDescriptorBufferInfo CloudsBufferInfo = {};
-		CloudsBufferInfo.buffer = uniform_buffers.clouds.buffer;
-		CloudsBufferInfo.offset = 0;
-		CloudsBufferInfo.range = sizeof(UboClouds);
+	VkDescriptorBufferInfo CloudsBufferInfo = {};
+	CloudsBufferInfo.buffer = uniform_buffers.clouds.buffer;
+	CloudsBufferInfo.offset = 0;
+	CloudsBufferInfo.range = sizeof(UboClouds);
 
-		VkDescriptorBufferInfo CloudsDynamicBufferInfo = {};
-		CloudsDynamicBufferInfo.buffer = uniform_buffers.clouds_dynamic.buffer;
-		CloudsDynamicBufferInfo.offset = 0;
-		CloudsDynamicBufferInfo.range = sizeof(UboCloudsMatrices);
+	VkDescriptorBufferInfo CloudsDynamicBufferInfo = {};
+	CloudsDynamicBufferInfo.buffer = uniform_buffers.clouds_dynamic.buffer;
+	CloudsDynamicBufferInfo.offset = 0;
+	CloudsDynamicBufferInfo.range = sizeof(UboCloudsMatrices);
 
-		std::array<VkWriteDescriptorSet, 2> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> cloudsDescriptorWrites = {};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = clouds_descriptor_set;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pBufferInfo = &CloudsBufferInfo;
+	cloudsDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	cloudsDescriptorWrites[0].dstSet = clouds_descriptor_set;
+	cloudsDescriptorWrites[0].dstBinding = 0;
+	cloudsDescriptorWrites[0].dstArrayElement = 0;
+	cloudsDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	cloudsDescriptorWrites[0].descriptorCount = 1;
+	cloudsDescriptorWrites[0].pBufferInfo = &CloudsBufferInfo;
 
-		descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[1].dstSet = clouds_descriptor_set;
-		descriptorWrites[1].dstBinding = 1;
-		descriptorWrites[1].dstArrayElement = 0;
-		descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
-		descriptorWrites[1].descriptorCount = 1;
-		descriptorWrites[1].pBufferInfo = &CloudsDynamicBufferInfo;
+	cloudsDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	cloudsDescriptorWrites[1].dstSet = clouds_descriptor_set;
+	cloudsDescriptorWrites[1].dstBinding = 1;
+	cloudsDescriptorWrites[1].dstArrayElement = 0;
+	cloudsDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
+	cloudsDescriptorWrites[1].descriptorCount = 1;
+	cloudsDescriptorWrites[1].pBufferInfo = &CloudsDynamicBufferInfo;
 
-		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
-	}
+	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(cloudsDescriptorWrites.size()), cloudsDescriptorWrites.data(), 0, nullptr);
+
+	// Ocean descriptor set
+	VkDescriptorSetAllocateInfo oceanAllocInfo = {};
+	oceanAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	oceanAllocInfo.descriptorPool = descriptor_pool;
+	oceanAllocInfo.descriptorSetCount = 1;
+	oceanAllocInfo.pSetLayouts = &oceanDescriptorSetLayout;
+
+	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &oceanAllocInfo, &oceanDescriptorSet));
+
+	VkDescriptorBufferInfo oceanBufferInfo = {};
+	oceanBufferInfo.buffer = uniform_buffers.ocean.buffer;
+	oceanBufferInfo.offset = 0;
+	oceanBufferInfo.range = sizeof(UboSea);
+
+	std::array<VkWriteDescriptorSet, 1> oceanDescriptorWrites = {};
+
+	oceanDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	oceanDescriptorWrites[0].dstSet = oceanDescriptorSet;
+	oceanDescriptorWrites[0].dstBinding = 0;
+	oceanDescriptorWrites[0].dstArrayElement = 0;
+	oceanDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	oceanDescriptorWrites[0].descriptorCount = 1;
+	oceanDescriptorWrites[0].pBufferInfo = &oceanBufferInfo;
+
+	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(oceanDescriptorWrites.size()), oceanDescriptorWrites.data(), 0, nullptr);
+	
 }
 
 // ------------- Populate scene --------------------- //
@@ -973,19 +1061,19 @@ void Scene::LoadAssets() {
 	// Skybox
 	float horizon = 125.0f;
 	skybox_vertices = {
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, -0.0f}},
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, -0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, -0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, -0.0f}},
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 1.0f}, {0.0f, 1.0f, -0.0f}},
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.66f}, {0.0f, 1.0f, -0.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, 0.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, 0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.66f}, {0.0f, 1.0f, 0.0f}},
 		
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, -0.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.0f}, {0.0f, -1.0f, -0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, -0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, -0.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, -1.0f, -0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, -0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, 0.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.0f}, {0.0f, -1.0f, 0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, 0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, 0.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, -1.0f, 0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, 0.0f}},
 		
 		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
 		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, 0.0f, -1.0f}},
@@ -994,12 +1082,12 @@ void Scene::LoadAssets() {
 		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 0.0f, -1.0f}},
 		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
 		
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {-1.0f, 0.0f, -0.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, -0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.667f}, {-1.0f, 0.0f, -0.0f}},
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.66f}, {-1.0f, 0.0f, -0.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {-1.0f, 0.0f, 0.0f}},
+		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
+		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
+		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.667f}, {-1.0f, 0.0f, 0.0f}},
+		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.66f}, {-1.0f, 0.0f, 0.0f}},
 		
 		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.66f}, {0.0f, 0.0f, 1.0f}},
 		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.33f}, {0.0f, 0.0f, 1.0f}},
@@ -1008,12 +1096,12 @@ void Scene::LoadAssets() {
 		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {0.0f, 0.0f, 1.0f}},
 		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.667f}, {0.0f, 0.0f, 1.0f}},
 		
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.66f}, {1.0f, 0.0f, -0.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {1.0f, 0.0f, -0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, -0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, -0.0f}},
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {1.0f, 0.0f, -0.0f}},
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {1.0f, 0.0f, -0.0f}}
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.66f}, {1.0f, 0.0f, 0.0f}},
+		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {1.0f, 0.0f, 0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, 0.0f}},
+		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, 0.0f}},
+		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {1.0f, 0.0f, 0.0f}},
+		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {1.0f, 0.0f, 0.0f}}
 	};
 
 	skybox_indices = {
@@ -1029,7 +1117,53 @@ void Scene::LoadAssets() {
 	
 
 	// Ocean
-	//load ocean as plane, bounded by skybox, add new shader like in dynamically created boxes
+	int vSize = 32;
+	float offset = horizon / 2.0f; 
+	float scale = horizon / (float)vSize;
+
+	oceanVertices.resize(6*(vSize-1)*(vSize-1));
+
+        // create local vertices
+
+        for (uint z = 0; z < vSize; ++z) {
+            for (uint x = 0; x < vSize; ++x) {
+                uint index = z * vSize + x;
+
+				oceanVertices[index].pos.x = scale*(float)x - offset;
+				oceanVertices[index].pos.y =  0.0f;
+				oceanVertices[index].pos.z = scale*(float)z - offset;
+
+                oceanVertices[index].color.x = 1.0f;
+				oceanVertices[index].color.y = 1.0f;
+				oceanVertices[index].color.z = 1.0f;
+
+				oceanVertices[index].text_coord.x = (float)x - offset;
+				oceanVertices[index].text_coord.y = (float)z - offset;
+
+				oceanVertices[index].normals.x = 0.0f;
+				oceanVertices[index].normals.y = 1.0f;
+				oceanVertices[index].normals.z = 0.0f;
+            }
+        }
+     
+		std::cout << "START" << " " << oceanVertices.size() << std::endl;
+
+		for(int z = 0; z < vSize-1; ++z) {
+			for(int x = 0; x < vSize-1; ++x) {
+				int topLeft = (z*vSize)+x;
+				int topRight = topLeft + 1;
+				int bottomLeft = ((z+1)*vSize)+x;
+				int bottomRight = bottomLeft + 1;
+				oceanIndices.emplace_back(topLeft);
+				oceanIndices.emplace_back(bottomLeft);
+				oceanIndices.emplace_back(topRight);
+				oceanIndices.emplace_back(topRight);
+				oceanIndices.emplace_back(bottomLeft);
+				oceanIndices.emplace_back(bottomRight);
+			}
+		}
+
+	CreateBuffers(oceanIndices, oceanVertices, vertex_buffers.ocean, index_buffers.ocean);
 
 	// Clouds
 	std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
@@ -1737,8 +1871,10 @@ void Scene::DeInitImageView() {
 	depthImage.DeInit();
 }
 
-void Scene::DeInitIndexAndVertexBuffer()
-{
+void Scene::DeInitIndexAndVertexBuffer() {
+	index_buffers.ocean.Destroy();
+	vertex_buffers.ocean.Destroy();
+
 	index_buffers.skybox.Destroy();
 	vertex_buffers.skybox.Destroy();
 
@@ -1758,6 +1894,7 @@ void Scene::DeInitScene()
 	DeInitTextureImage();
 	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
+	vkDestroyDescriptorSetLayout(logical_device->device, oceanDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, skybox_descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, clouds_descriptor_set_layout, nullptr);
 
@@ -1805,6 +1942,7 @@ void Scene::DeInitUniformBuffer() {
 	}
 
 	uniform_buffers.skybox.Destroy();
+	uniform_buffers.ocean.Destroy();
 	uniform_buffers.objects.Destroy();
 	uniform_buffers.parameters.Destroy();
 	uniform_buffers.clouds.Destroy();
@@ -1813,6 +1951,7 @@ void Scene::DeInitUniformBuffer() {
 
 void Scene::DestroyPipeline() {
 	vkDestroyPipeline(logical_device->device, skybox_pipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, oceanPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbr_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
 }

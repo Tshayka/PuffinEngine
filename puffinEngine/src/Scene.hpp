@@ -75,6 +75,7 @@ private:
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
 	void UpdateDynamicUniformBuffer(const float& time);
+	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSkyboxUniformBuffer();
 	void UpdateUBOParameters();
 	void UpdateUniformBuffer(const float& time);
@@ -118,8 +119,6 @@ private:
 		glm::mat4 proj;
 		glm::mat4 view;
 		float time;
-		float exposure;
-		float gamma;
 	};
 
 	struct UboClouds {
@@ -144,6 +143,7 @@ private:
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
 		enginetool::Buffer objects;
+		enginetool::Buffer ocean;
 		enginetool::Buffer still_objects; //TODO
 		enginetool::Buffer parameters;
 	} uniform_buffers;
@@ -167,6 +167,7 @@ private:
 	TextureLayout depthImage;
 
 	VkPipeline pbr_pipeline;
+	VkPipeline oceanPipeline;
 	VkPipeline clouds_pipeline;
 	VkPipeline skybox_pipeline;
 
@@ -194,10 +195,12 @@ private:
 	std::vector<uint32_t> clouds_indices;
 	std::vector<enginetool::VertexLayout> clouds_vertices;
 
+	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet clouds_descriptor_set = VK_NULL_HANDLE;
 	
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout skybox_descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout clouds_descriptor_set_layout = VK_NULL_HANDLE;
 
