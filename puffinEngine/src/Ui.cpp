@@ -464,7 +464,7 @@ void GuiElement::RenderDrawData() {
 	}
 
 	// Index buffer
-	VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
+	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < draw_data->TotalIdxCount)) {
 		indexBuffer.Unmap();
 		indexBuffer.Destroy();
@@ -522,8 +522,6 @@ void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	int32_t vertex_offset = 0;
 	int32_t index_offset = 0;
 
-	ImVec2 display_pos = draw_data->DisplayPos;
-
 	for (int32_t i = 0; i < draw_data->CmdListsCount; i++) {
 		const ImDrawList* cmd_list = draw_data->CmdLists[i];
 		for (int32_t j = 0; j < cmd_list->CmdBuffer.Size; j++) {
@@ -532,8 +530,8 @@ void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 				pcmd->UserCallback(cmd_list, pcmd);
 			}
 			else {
-				scissor.offset.x = (int32_t)(pcmd->ClipRect.x - display_pos.x) > 0 ? (int32_t)(pcmd->ClipRect.x - display_pos.x) : 0;
-				scissor.offset.y = (int32_t)(pcmd->ClipRect.y - display_pos.y) > 0 ? (int32_t)(pcmd->ClipRect.y - display_pos.y) : 0;
+				scissor.offset.x = std::max((int32_t)(pcmd->ClipRect.x - draw_data->DisplayPos.x), 0);
+				scissor.offset.y = std::max((int32_t)(pcmd->ClipRect.y - draw_data->DisplayPos.y), 0);
 				scissor.extent.width = (uint32_t)(pcmd->ClipRect.z - pcmd->ClipRect.x);
 				scissor.extent.height = (uint32_t)(pcmd->ClipRect.w - pcmd->ClipRect.y);
 				vkCmdSetScissor(command_buffer, 0, 1, &scissor);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "GuiMainUi.hpp"
 #include "GuiTextOverlay.hpp"
 #include "Ui.hpp"
 #include "Device.hpp"
@@ -13,6 +14,7 @@ public:
 	struct GUISettings {
 		bool display_dynamic_ub = true;
 		bool display_scene_models = true;
+		bool display_main_ui = true;
 		bool display_stats_overlay = true;
 		bool display_imgui = true;
 	} ui_settings;
@@ -20,7 +22,7 @@ public:
 	bool guiOverlayVisible = true;
 
 	void DeInit();
-	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay);
+	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi);
 	void Submit(VkQueue, uint32_t);
 	void UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime);
 
@@ -38,6 +40,7 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {}; 
 
+	GuiMainUi* mainUi = nullptr;
 	GuiElement* console = nullptr;
 	GuiTextOverlay* textOverlay = nullptr;
 	Device* logical_device = nullptr;

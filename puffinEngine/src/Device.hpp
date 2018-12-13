@@ -34,6 +34,7 @@ public:
 	~Device();
 
 	void DeInitDevice();
+	void CreateOffscreenRenderPass(VkFormat format);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateStagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*, void*);
 	void CreateUnstagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*);
@@ -43,6 +44,7 @@ public:
 	void InitDevice(GLFWwindow*);
 	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
 	void DeInitSwapchainImageViews();
+	void DestroyOffscreenRenderPass();
 	void DestroyRenderPass();
 	void DestroySwapchainKHR();
 	VkFormat FindDepthFormat();
@@ -52,6 +54,7 @@ public:
 	VkPhysicalDeviceProperties gpu_properties = {};
 	VkQueue present_queue = VK_NULL_HANDLE;
 	VkQueue queue = VK_NULL_HANDLE;
+	VkRenderPass offscreenRenderPass;
 	VkRenderPass renderPass;
 	VkFormat depthFormat;
 	int* width; 
@@ -70,6 +73,7 @@ public:
 	std::vector<VkImage> swapchain_images;
 	std::vector<VkImageView> swapchain_image_views;
 	std::vector<VkFramebuffer> swap_chain_framebuffers;
+	VkFramebuffer offscreenFramebuffer;
 
 private:
 	GLFWwindow* window;	

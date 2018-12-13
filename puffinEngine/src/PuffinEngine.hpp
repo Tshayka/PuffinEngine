@@ -58,6 +58,7 @@ class PuffinEngine {
 
 	VkSemaphore ImageAvailableSemaphore;
     VkSemaphore RenderFinishedSemaphore;
+    VkSemaphore OffscreenRenderSemaphore;
 
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.

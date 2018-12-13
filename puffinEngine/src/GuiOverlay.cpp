@@ -29,7 +29,8 @@ StatusOverlay::~StatusOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void StatusOverlay::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay) {
+void StatusOverlay::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi) {
+	this->mainUi = mainUi;
 	this->console = console;
 	this->textOverlay = textOverlay;
 	logical_device = device; 
@@ -146,8 +147,11 @@ void StatusOverlay::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime)
 	textOverlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"1\" to toggle GUI", 5.0f, 65.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press WSAD to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press 2-4 to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
 	textOverlay->EndTextUpdate();
 
+	mainUi->NewFrame();
+	mainUi->UpdateDrawData();
 	console->NewFrame();
 	console->RenderDrawData();
 
@@ -183,6 +187,10 @@ void StatusOverlay::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime)
 		renderPassInfo.framebuffer = logical_device->swap_chain_framebuffers[i];
 		vkBeginCommandBuffer(command_buffers[i], &beginInfo);
 		vkCmdBeginRenderPass(command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+		if (ui_settings.display_main_ui) {
+			mainUi->CreateUniformBuffer(command_buffers[i]);
+		}
 
 		if (ui_settings.display_stats_overlay) {
 			textOverlay->CreateUniformBuffer(command_buffers[i]);

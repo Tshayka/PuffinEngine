@@ -128,6 +128,7 @@ void PuffinEngine::CreateSemaphores() {
 
 	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &ImageAvailableSemaphore));
 	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &RenderFinishedSemaphore));
+	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &OffscreenRenderSemaphore));
 }
 
 void PuffinEngine::DrawFrame() {
@@ -147,31 +148,29 @@ void PuffinEngine::DrawFrame() {
 	// Submitting the command buffer
 	VkSubmitInfo submit_info = {}; // queue submission and synchronization is configured through parameters
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	VkSemaphore waitSemaphores[] = { ImageAvailableSemaphore };
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.pWaitSemaphores = waitSemaphores;
 	submit_info.pWaitDstStageMask = wait_stages;
+	submit_info.waitSemaphoreCount = 1;
+	submit_info.signalSemaphoreCount = 1;
+	
+	submit_info.commandBufferCount = 1;
+	submit_info.pCommandBuffers = &scene_1->commandBuffer;
+	submit_info.pWaitSemaphores = &ImageAvailableSemaphore;
+	submit_info.pSignalSemaphores = &OffscreenRenderSemaphore;
+	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
 	
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1->command_buffers[image_index];
-
-	VkSemaphore signal_semaphores[] = { RenderFinishedSemaphore };
-	submit_info.signalSemaphoreCount = 1;
-	submit_info.pSignalSemaphores = signal_semaphores;
-
+	submit_info.pWaitSemaphores = &OffscreenRenderSemaphore;
+	submit_info.pSignalSemaphores = &RenderFinishedSemaphore;
 	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
 
 	statusOverlay->Submit(world_device->queue, image_index);
 	
-	/*std::array<VkCommandBuffer, 2>command_buffers;
-	command_buffers[0] = scene_1->command_buffers[image_index];
-	command_buffers[1] = stats_overlay->command_buffers[image_index];*/
-
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = signal_semaphores;
+	present_info.pWaitSemaphores = &RenderFinishedSemaphore;
 
 	VkSwapchainKHR swap_chains[] = { world_device->swap_chain };
 	present_info.swapchainCount = 1;
@@ -382,6 +381,7 @@ void PuffinEngine::CleanUpSwapChain() {
 void PuffinEngine::DeInitSemaphores() {
 	vkDestroySemaphore(world_device->device, RenderFinishedSemaphore, nullptr);
 	vkDestroySemaphore(world_device->device, ImageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(world_device->device, OffscreenRenderSemaphore, nullptr);
 }
 
 void PuffinEngine::DestroyDevice() {

@@ -30,6 +30,7 @@ public:
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
+	void CreateOffscreenCommandBuffer();
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
@@ -40,6 +41,7 @@ public:
 	StatusOverlay *status_overlay = nullptr;
 	
 	std::vector<VkCommandBuffer> command_buffers;
+	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
 
 private:
 
@@ -74,6 +76,7 @@ private:
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
+	void PrepareOffscreen();
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSkyboxUniformBuffer();
@@ -116,6 +119,7 @@ private:
 	};
 
 	struct UboSea {
+		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
 		float time;
@@ -139,6 +143,7 @@ private:
 	} pushConstants;
 
 	struct {
+		enginetool::Buffer offscreen;
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
@@ -162,6 +167,13 @@ private:
 		enginetool::Buffer objects;
 	} index_buffers;
 
+	struct OffscreenPass {
+		int32_t width, height;
+		TextureLayout offscreenImage;
+		TextureLayout offscreenDepthImage;
+	} offscreenPass;
+
+
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 
 	TextureLayout depthImage;
@@ -170,6 +182,7 @@ private:
 	VkPipeline oceanPipeline;
 	VkPipeline clouds_pipeline;
 	VkPipeline skybox_pipeline;
+	VkPipeline offscreenPipeline;
 
 	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logical_device);
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logical_device);
@@ -208,7 +221,7 @@ private:
 	size_t dynamicAlignment;
 	VkDescriptorPool descriptor_pool;
 	VkPipelineLayout pipeline_layout;
-
+	
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
 
