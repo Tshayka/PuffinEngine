@@ -110,8 +110,7 @@ private:
 	};
 
 	// UBO for skybox
-	struct UniformBufferObjectSky
-	{
+	struct UniformBufferObjectSky {
 		glm::mat4 view;
 		glm::mat4 proj;
 		float exposure;
@@ -122,6 +121,7 @@ private:
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
+		glm::vec3 cameraPos;
 		float time;
 	};
 
@@ -143,7 +143,7 @@ private:
 	} pushConstants;
 
 	struct {
-		enginetool::Buffer offscreen;
+		enginetool::Buffer mirrored;
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
@@ -151,6 +151,7 @@ private:
 		enginetool::Buffer ocean;
 		enginetool::Buffer still_objects; //TODO
 		enginetool::Buffer parameters;
+		enginetool::Buffer mirroredParameters;
 	} uniform_buffers;
 
 	struct {

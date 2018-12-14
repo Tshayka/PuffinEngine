@@ -406,6 +406,8 @@ void Scene::CreateGraphicsPipeline() {
 	shaderStages[0] = vertOceanShaderStageInfo;
 	shaderStages[1] = fragOceanShaderStageInfo;
 
+	Rasterization.cullMode = VK_CULL_MODE_NONE;
+
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &oceanPipeline));
 
 	vkDestroyShaderModule(logical_device->device, fragOceanShaderModule, nullptr);
@@ -550,7 +552,8 @@ void Scene::CreateOffscreenCommandBuffer() { // Mirrored scene for offscreen ren
 	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	scissor.extent = logical_device->swapchain_extent;
+	scissor.extent.height = logical_device->swapchain_extent.height;
+	scissor.extent.width = logical_device->swapchain_extent.width;
 	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
@@ -581,10 +584,6 @@ void Scene::CreateUniformBuffer() {
 	// Ocean Uniform buffers memory -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
 	uniform_buffers.ocean.Map();
-
-	// Objects Uniform buffers for offscreen rendering -> static
-	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.offscreen);
-	uniform_buffers.offscreen.Map();
 	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
@@ -619,9 +618,17 @@ void Scene::CreateUniformBuffer() {
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.objects);
 	uniform_buffers.objects.Map();
 
+	// Objects Uniform buffers for offscreen rendering -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.mirrored);
+	uniform_buffers.mirrored.Map();
+
 	// Additional uniform bufer for parameters -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.parameters);
 	uniform_buffers.parameters.Map();
+
+	// Additional uniform bufer parameters for mirrored scene -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.mirroredParameters);
+	uniform_buffers.mirroredParameters.Map();
 
 	// Create random positions for dynamic uniform buffer
 	std::random_device rd;
@@ -660,16 +667,16 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 
 	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
+	UBO.view[1][0] *= -1;
 	UBO.view[1][1] *= -1;
-	memcpy(uniform_buffers.offscreen.mapped, &UBO, sizeof(UBO));
+	UBO.view[1][2] *= -1;
+	UBO.camera_pos *= glm::vec3(1.0f, -1.0f, 1.0f);
+	memcpy(uniform_buffers.mirrored.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
 	UBOC.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBOC.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	/*UBOC.view[3][0] *= 0;
-	UBOC.view[3][1] *= 0;
-	UBOC.view[3][2] *= 0;*/
 	UBOC.time = time;
 	UBOC.camera_pos = actors[0]->position;
 
@@ -683,6 +690,10 @@ void Scene::UpdateUBOParameters() {
 	UBO_Param.light_pos[0] = actors[2]->position;
 		
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
+
+	UBO_Param.light_pos[0]*= glm::vec3(1.0f, -1.0f, 1.0f);
+
+	memcpy(uniform_buffers.mirroredParameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
 
 void Scene::UpdateDynamicUniformBuffer(const float& time) {
@@ -742,6 +753,7 @@ void Scene::UpdateOceanUniformBuffer(const float& time) {
 	uboOcean.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	uboOcean.proj[1][1] *= -1;
 	uboOcean.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	uboOcean.cameraPos = actors[0]->position;
 	uboOcean.time = time;
 	
 	memcpy(uniform_buffers.ocean.mapped, &uboOcean, sizeof(uboOcean));
@@ -1044,16 +1056,23 @@ void Scene::CreateDescriptorSet() {
 		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(objectDescriptorWrites.size()), objectDescriptorWrites.data(), 0, nullptr);
 
 		VkDescriptorBufferInfo OffscreenBufferInfo = {};
-		OffscreenBufferInfo.buffer = uniform_buffers.offscreen.buffer;
+		OffscreenBufferInfo.buffer = uniform_buffers.mirrored.buffer;
 		OffscreenBufferInfo.offset = 0;
 		OffscreenBufferInfo.range = sizeof(UniformBufferObject);
+
+		VkDescriptorBufferInfo MirroredParametersInfo = {};
+		MirroredParametersInfo.buffer = uniform_buffers.mirroredParameters.buffer;
+		MirroredParametersInfo.offset = 0;
+		MirroredParametersInfo.range = sizeof(UniformBufferObjectParam);
 
 		std::array<VkWriteDescriptorSet, 8> offscreenDescriptorWrites = objectDescriptorWrites;
 
 		offscreenDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		offscreenDescriptorWrites[0].dstSet = scene_material[i].offscreenDescriptorSet;
 		offscreenDescriptorWrites[0].pBufferInfo = &OffscreenBufferInfo;
+		offscreenDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 		offscreenDescriptorWrites[1].dstSet = scene_material[i].offscreenDescriptorSet;
+		offscreenDescriptorWrites[1].pBufferInfo = &MirroredParametersInfo;
 		offscreenDescriptorWrites[2].dstSet = scene_material[i].offscreenDescriptorSet;
 		offscreenDescriptorWrites[3].dstSet = scene_material[i].offscreenDescriptorSet;
 		offscreenDescriptorWrites[4].dstSet = scene_material[i].offscreenDescriptorSet;
@@ -1355,7 +1374,7 @@ void Scene::CreateSphereLight() {
 }
 
 void Scene::CreateStillObject() {
-	std::shared_ptr<Actor> stillObject = std::make_shared<Actor>("Test object", "I am simple plane", glm::vec3(10.0f, 15.0f, 2.0f));
+	std::shared_ptr<Actor> stillObject = std::make_shared<Actor>("Test object", "I am simple plane", glm::vec3(10.0f, -16.0f, 2.0f));
 	stillObject->mesh.meshFilename = "puffinEngine/assets/models/plane.obj";
 	actors.emplace_back(std::move(stillObject));
 }
@@ -2109,7 +2128,8 @@ void Scene::DeInitUniformBuffer() {
 	uniform_buffers.parameters.Destroy();
 	uniform_buffers.clouds.Destroy();
 	uniform_buffers.clouds_dynamic.Destroy();
-	uniform_buffers.offscreen.Destroy();
+	uniform_buffers.mirrored.Destroy();
+	uniform_buffers.mirroredParameters.Destroy();
 }
 
 void Scene::DestroyPipeline() {
