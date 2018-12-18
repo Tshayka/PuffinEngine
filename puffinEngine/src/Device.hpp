@@ -73,7 +73,8 @@ public:
 	std::vector<VkImage> swapchain_images;
 	std::vector<VkImageView> swapchain_image_views;
 	std::vector<VkFramebuffer> swap_chain_framebuffers;
-	VkFramebuffer offscreenFramebuffer;
+	VkFramebuffer reflectionFramebuffer;
+	VkFramebuffer refractionFramebuffer;
 
 private:
 	GLFWwindow* window;	

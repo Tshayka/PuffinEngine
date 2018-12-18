@@ -74,7 +74,8 @@ void Scene::InitScene(Device* device, GLFWwindow* window, GuiElement* console, S
 	CreateGraphicsPipeline();
 	UpdateGUI(0.0f, 0);
 	CreateCommandBuffers();
-	CreateOffscreenCommandBuffer();
+	CreateReflectionCommandBuffer();
+	CreateRefractionCommandBuffer();
 }
 
 // --------------- Command buffers ------------------ //
@@ -99,23 +100,38 @@ void Scene::RecreateForSwapchain() {
 	CreateDepthResources();
 	CreateFramebuffers();
 	CreateCommandBuffers();
-	CreateOffscreenCommandBuffer();
+	CreateReflectionCommandBuffer();
+	CreateRefractionCommandBuffer();
 }
 
 void Scene::CreateFramebuffers() {
-	// Offscreen frambuffer
-	std::array<VkImageView, 2> ofscreenAttachments = {offscreenPass.offscreenImage.texture_image_view, offscreenPass.offscreenDepthImage.texture_image_view};
+	// Reflection frambuffer
+	std::array<VkImageView, 2> reflectionAttachments = {offscreenPass.reflectionImage.texture_image_view, offscreenPass.reflectionDepthImage.texture_image_view};
 	
-	VkFramebufferCreateInfo offscreenFramebufferInfo = {};
-	offscreenFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	offscreenFramebufferInfo.renderPass = logical_device->offscreenRenderPass;
-	offscreenFramebufferInfo.attachmentCount = static_cast<uint32_t>(ofscreenAttachments.size());
-	offscreenFramebufferInfo.pAttachments = ofscreenAttachments.data();
-	offscreenFramebufferInfo.width = logical_device->swapchain_extent.width;
-	offscreenFramebufferInfo.height = logical_device->swapchain_extent.height;
-	offscreenFramebufferInfo.layers = 1;
+	VkFramebufferCreateInfo reflectionFramebufferInfo = {};
+	reflectionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	reflectionFramebufferInfo.renderPass = logical_device->offscreenRenderPass;
+	reflectionFramebufferInfo.attachmentCount = static_cast<uint32_t>(reflectionAttachments.size());
+	reflectionFramebufferInfo.pAttachments = reflectionAttachments.data();
+	reflectionFramebufferInfo.width = logical_device->swapchain_extent.width;
+	reflectionFramebufferInfo.height = logical_device->swapchain_extent.height;
+	reflectionFramebufferInfo.layers = 1;
 
-	ErrorCheck(vkCreateFramebuffer(logical_device->device, &offscreenFramebufferInfo, nullptr, &logical_device->offscreenFramebuffer));
+	ErrorCheck(vkCreateFramebuffer(logical_device->device, &reflectionFramebufferInfo, nullptr, &logical_device->reflectionFramebuffer));
+
+	// Refraction frambuffer
+	std::array<VkImageView, 2> refractionAttachments = {offscreenPass.refractionImage.texture_image_view, offscreenPass.refractionDepthImage.texture_image_view};
+	
+	VkFramebufferCreateInfo refractionFramebufferInfo = {};
+	refractionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	refractionFramebufferInfo.renderPass = logical_device->offscreenRenderPass;
+	refractionFramebufferInfo.attachmentCount = static_cast<uint32_t>(refractionAttachments.size());
+	refractionFramebufferInfo.pAttachments = refractionAttachments.data();
+	refractionFramebufferInfo.width = logical_device->swapchain_extent.width;
+	refractionFramebufferInfo.height = logical_device->swapchain_extent.height;
+	refractionFramebufferInfo.layers = 1;
+
+	ErrorCheck(vkCreateFramebuffer(logical_device->device, &refractionFramebufferInfo, nullptr, &logical_device->refractionFramebuffer));
 
 	// Screen frambuffer
 	logical_device->swap_chain_framebuffers.resize(logical_device->swapchain_image_views.size());
@@ -346,10 +362,14 @@ void Scene::CreateGraphicsPipeline() {
 
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbr_pipeline));
 
-	// Offscreen pipeline
+	// Refraction pipeline
+	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrRefractionPipeline));
+
+	// Reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
 	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &offscreenPipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrReflectionPipeline));
 
 	vkDestroyShaderModule(logical_device->device, fragModelsShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr);
@@ -491,6 +511,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *actors[j]->mesh.assigned_material->assigned_pipeline);
 			pushConstants.pos = actors[j]->position;
+			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 			vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 			vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 		}
@@ -513,7 +534,7 @@ void Scene::CreateCommandBuffers() {
 	}
 }
 
-void Scene::CreateOffscreenCommandBuffer() { // Mirrored scene for offscreen render
+void Scene::CreateReflectionCommandBuffer() {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -525,7 +546,7 @@ void Scene::CreateOffscreenCommandBuffer() { // Mirrored scene for offscreen ren
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = logical_device->offscreenRenderPass;
-	renderPassInfo.framebuffer = logical_device->offscreenFramebuffer;
+	renderPassInfo.framebuffer = logical_device->reflectionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = logical_device->swapchain_extent.width;
 	renderPassInfo.renderArea.extent.height = logical_device->swapchain_extent.height;
@@ -538,10 +559,10 @@ void Scene::CreateOffscreenCommandBuffer() { // Mirrored scene for offscreen ren
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = 1;
 
-	ErrorCheck(vkAllocateCommandBuffers(logical_device->device, &allocInfo, &commandBuffer));
+	ErrorCheck(vkAllocateCommandBuffers(logical_device->device, &allocInfo, &reflectionCmdBuff));
 	
-	ErrorCheck(vkBeginCommandBuffer(commandBuffer, &beginInfo));
-	vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+	ErrorCheck(vkBeginCommandBuffer(reflectionCmdBuff, &beginInfo));
+	vkCmdBeginRenderPass(reflectionCmdBuff, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
@@ -549,31 +570,97 @@ void Scene::CreateOffscreenCommandBuffer() { // Mirrored scene for offscreen ren
 	viewport.height = (float)logical_device->swapchain_extent.height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
+	vkCmdSetViewport(reflectionCmdBuff, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
 	scissor.extent.height = logical_device->swapchain_extent.height;
 	scissor.extent.width = logical_device->swapchain_extent.width;
-	vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
+	vkCmdSetScissor(reflectionCmdBuff, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
 
 	// 3d object
-	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &vertex_buffers.objects.buffer, offsets);
-	vkCmdBindIndexBuffer(commandBuffer, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
+	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+
+	for (size_t j = 1; j < actors.size(); j++) {
+		// reflection
+		std::array<VkDescriptorSet, 1> descriptorSets;
+		descriptorSets[0] = actors[j]->mesh.assigned_material->reflectDescriptorSet;
+		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
+		pushConstants.pos = actors[j]->position;
+		pushConstants.renderLimitPlane = glm::vec4(0.0f, 1.0f, 0.0f, -0.0f );
+		vkCmdPushConstants(reflectionCmdBuff, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+	}
+
+	vkCmdEndRenderPass(reflectionCmdBuff);
+	ErrorCheck(vkEndCommandBuffer(reflectionCmdBuff));
+}
+
+void Scene::CreateRefractionCommandBuffer() { 
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.2f, 0.2f, 0.2f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = logical_device->offscreenRenderPass;
+	renderPassInfo.framebuffer = logical_device->refractionFramebuffer;
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent.width = logical_device->swapchain_extent.width;
+	renderPassInfo.renderArea.extent.height = logical_device->swapchain_extent.height;
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = command_pool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
+	allocInfo.commandBufferCount = 1;
+
+	ErrorCheck(vkAllocateCommandBuffers(logical_device->device, &allocInfo, &refractionCmdBuff));
+	
+	ErrorCheck(vkBeginCommandBuffer(refractionCmdBuff, &beginInfo));
+	vkCmdBeginRenderPass(refractionCmdBuff, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		
+	viewport.x = 0.0f;
+	viewport.y = 0.0f;
+	viewport.width = (float)logical_device->swapchain_extent.width;
+	viewport.height = (float)logical_device->swapchain_extent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+	vkCmdSetViewport(refractionCmdBuff, 0, 1, &viewport);
+
+	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
+	scissor.extent.height = logical_device->swapchain_extent.height;
+	scissor.extent.width = logical_device->swapchain_extent.width;
+	vkCmdSetScissor(refractionCmdBuff, 0, 1, &scissor);
+
+	VkDeviceSize offsets[1] = { 0 };
+
+	// 3d object
+	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
+	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 	for (size_t j = 1; j < actors.size(); j++) {
 		std::array<VkDescriptorSet, 1> descriptorSets;
-		descriptorSets[0] = actors[j]->mesh.assigned_material->offscreenDescriptorSet;
-		vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-		vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, offscreenPipeline);
+		descriptorSets[0] = actors[j]->mesh.assigned_material->refractDescriptorSet;
+		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrRefractionPipeline);
 		pushConstants.pos = actors[j]->position;
-		vkCmdPushConstants(commandBuffer, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-		vkCmdDrawIndexed(commandBuffer, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+		pushConstants.renderLimitPlane = glm::vec4(0.0f, -1.0f, 0.0f, 0.0f );
+		vkCmdPushConstants(refractionCmdBuff, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		vkCmdDrawIndexed(refractionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 	}
 
-	vkCmdEndRenderPass(commandBuffer);
-	ErrorCheck(vkEndCommandBuffer(commandBuffer));
+	vkCmdEndRenderPass(refractionCmdBuff);
+	ErrorCheck(vkEndCommandBuffer(refractionCmdBuff));
 }
 
 void Scene::CreateUniformBuffer() {
@@ -618,17 +705,25 @@ void Scene::CreateUniformBuffer() {
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.objects);
 	uniform_buffers.objects.Map();
 
-	// Objects Uniform buffers for offscreen rendering -> static
-	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.mirrored);
-	uniform_buffers.mirrored.Map();
+	// Objects Uniform buffers for reflection rendering -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
+	uniform_buffers.reflection.Map();
+
+	// Objects Uniform buffers for refraction rendering -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
+	uniform_buffers.refraction.Map();
 
 	// Additional uniform bufer for parameters -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.parameters);
 	uniform_buffers.parameters.Map();
 
-	// Additional uniform bufer parameters for mirrored scene -> static
-	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.mirroredParameters);
-	uniform_buffers.mirroredParameters.Map();
+	// Additional uniform bufer parameters for reflection scene -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflectionParameters);
+	uniform_buffers.reflectionParameters.Map();
+
+	// Additional uniform bufer parameters for refraction scene -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refractionParameters);
+	uniform_buffers.refractionParameters.Map();
 
 	// Create random positions for dynamic uniform buffer
 	std::random_device rd;
@@ -651,9 +746,11 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	std::dynamic_pointer_cast<Camera>(actors[0])->UpdatePosition(dt); // TODO not update when camera not moving?
 	std::dynamic_pointer_cast<Character>(actors[1])->UpdatePosition(dt); 
 	std::dynamic_pointer_cast<SphereLight>(actors[2])->UpdatePosition(dt);
-	actors[3]->UpdatePosition(dt);  
-	CreateCommandBuffers();
-	CreateOffscreenCommandBuffer();
+	actors[3]->UpdatePosition(dt); 
+
+	CreateCommandBuffers(); 
+	CreateReflectionCommandBuffer();
+	CreateRefractionCommandBuffer();
 }
 
 void Scene::UpdateUniformBuffer(const float& time) {
@@ -666,12 +763,14 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	UBO.camera_pos = glm::vec3(actors[0]->position);
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 
+	memcpy(uniform_buffers.refraction.mapped, &UBO, sizeof(UBO));
+
 	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
 	UBO.view[1][0] *= -1;
 	UBO.view[1][1] *= -1;
 	UBO.view[1][2] *= -1;
 	UBO.camera_pos *= glm::vec3(1.0f, -1.0f, 1.0f);
-	memcpy(uniform_buffers.mirrored.mapped, &UBO, sizeof(UBO));
+	memcpy(uniform_buffers.reflection.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
 	UBOC.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
@@ -691,9 +790,11 @@ void Scene::UpdateUBOParameters() {
 		
 	memcpy(uniform_buffers.parameters.mapped, &UBO_Param, sizeof(UBO_Param));
 
+	memcpy(uniform_buffers.refractionParameters.mapped, &UBO_Param, sizeof(UBO_Param));
+
 	UBO_Param.light_pos[0]*= glm::vec3(1.0f, -1.0f, 1.0f);
 
-	memcpy(uniform_buffers.mirroredParameters.mapped, &UBO_Param, sizeof(UBO_Param));
+	memcpy(uniform_buffers.reflectionParameters.mapped, &UBO_Param, sizeof(UBO_Param));
 }
 
 void Scene::UpdateDynamicUniformBuffer(const float& time) {
@@ -898,14 +999,21 @@ void Scene::CreateDescriptorSetLayout() {
 	skyboxReflectionLayoutBinding.pImmutableSamplers = nullptr;
 	skyboxReflectionLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutBinding offscreenLayoutBinding = {};
-	offscreenLayoutBinding.binding = 2;
-	offscreenLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	offscreenLayoutBinding.descriptorCount = 1;
-	offscreenLayoutBinding.pImmutableSamplers = nullptr;
-	offscreenLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding reflectionLayoutBinding = {};
+	reflectionLayoutBinding.binding = 2;
+	reflectionLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	reflectionLayoutBinding.descriptorCount = 1;
+	reflectionLayoutBinding.pImmutableSamplers = nullptr;
+	reflectionLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 3> oceanBindings = { oceanUBOLayoutBinding, skyboxReflectionLayoutBinding, offscreenLayoutBinding };
+	VkDescriptorSetLayoutBinding refractionLayoutBinding = {};
+	refractionLayoutBinding.binding = 3;
+	refractionLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	refractionLayoutBinding.descriptorCount = 1;
+	refractionLayoutBinding.pImmutableSamplers = nullptr;
+	refractionLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 4> oceanBindings = { oceanUBOLayoutBinding, skyboxReflectionLayoutBinding, reflectionLayoutBinding, refractionLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo OceanLayoutInfo = {};
 	OceanLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -921,15 +1029,15 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 12 + 7);
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 8);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 4 + 5);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 5);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*2 + 4); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 4); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
@@ -974,8 +1082,8 @@ void Scene::CreateDescriptorSet() {
 		AllocInfo.pSetLayouts = &descriptor_set_layout;
 
 		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &scene_material[i].descriptor_set));
-
-		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &scene_material[i].offscreenDescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &scene_material[i].reflectDescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &scene_material[i].refractDescriptorSet));
 
 		VkDescriptorBufferInfo BufferInfo = {};
 		BufferInfo.buffer = uniform_buffers.objects.buffer;
@@ -1055,32 +1163,63 @@ void Scene::CreateDescriptorSet() {
 
 		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(objectDescriptorWrites.size()), objectDescriptorWrites.data(), 0, nullptr);
 
-		VkDescriptorBufferInfo OffscreenBufferInfo = {};
-		OffscreenBufferInfo.buffer = uniform_buffers.mirrored.buffer;
-		OffscreenBufferInfo.offset = 0;
-		OffscreenBufferInfo.range = sizeof(UniformBufferObject);
+		// Copy above descriptor set values to reflection ad refracion
 
-		VkDescriptorBufferInfo MirroredParametersInfo = {};
-		MirroredParametersInfo.buffer = uniform_buffers.mirroredParameters.buffer;
-		MirroredParametersInfo.offset = 0;
-		MirroredParametersInfo.range = sizeof(UniformBufferObjectParam);
+		VkDescriptorBufferInfo reflectBufferInfo = {};
+		reflectBufferInfo.buffer = uniform_buffers.reflection.buffer;
+		reflectBufferInfo.offset = 0;
+		reflectBufferInfo.range = sizeof(UniformBufferObject);
 
-		std::array<VkWriteDescriptorSet, 8> offscreenDescriptorWrites = objectDescriptorWrites;
+		VkDescriptorBufferInfo reflectParametersInfo = {};
+		reflectParametersInfo.buffer = uniform_buffers.reflectionParameters.buffer;
+		reflectParametersInfo.offset = 0;
+		reflectParametersInfo.range = sizeof(UniformBufferObjectParam);
 
-		offscreenDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		offscreenDescriptorWrites[0].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[0].pBufferInfo = &OffscreenBufferInfo;
-		offscreenDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		offscreenDescriptorWrites[1].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[1].pBufferInfo = &MirroredParametersInfo;
-		offscreenDescriptorWrites[2].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[3].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[4].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[5].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[6].dstSet = scene_material[i].offscreenDescriptorSet;
-		offscreenDescriptorWrites[7].dstSet = scene_material[i].offscreenDescriptorSet;
+		std::array<VkWriteDescriptorSet, 8> reflectDescriptorWrites = objectDescriptorWrites;
 
-		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(offscreenDescriptorWrites.size()), offscreenDescriptorWrites.data(), 0, nullptr);
+		reflectDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		reflectDescriptorWrites[0].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[0].pBufferInfo = &reflectBufferInfo;
+		reflectDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		reflectDescriptorWrites[1].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[1].pBufferInfo = &reflectParametersInfo;
+		reflectDescriptorWrites[2].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[3].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[4].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[5].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[6].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[7].dstSet = scene_material[i].reflectDescriptorSet;
+
+		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(reflectDescriptorWrites.size()), reflectDescriptorWrites.data(), 0, nullptr);
+
+		VkDescriptorBufferInfo refractBufferInfo = {};
+		refractBufferInfo.buffer = uniform_buffers.refraction.buffer;
+		refractBufferInfo.offset = 0;
+		refractBufferInfo.range = sizeof(UniformBufferObject);
+
+		VkDescriptorBufferInfo refractParametersInfo = {};
+		refractParametersInfo.buffer = uniform_buffers.refractionParameters.buffer;
+		refractParametersInfo.offset = 0;
+		refractParametersInfo.range = sizeof(UniformBufferObjectParam);
+
+		std::array<VkWriteDescriptorSet, 8> refractDescriptorWrites = objectDescriptorWrites;
+
+		refractDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		refractDescriptorWrites[0].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[0].pBufferInfo = &refractBufferInfo;
+		refractDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		refractDescriptorWrites[1].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[1].pBufferInfo = &refractParametersInfo;
+		refractDescriptorWrites[2].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[3].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[4].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[5].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[6].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[7].dstSet = scene_material[i].refractDescriptorSet;
+
+		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(refractDescriptorWrites.size()), refractDescriptorWrites.data(), 0, nullptr);
+
+
 	}
 
 	// SkyBox descriptor set
@@ -1180,12 +1319,17 @@ void Scene::CreateDescriptorSet() {
 	IrradianceMapImageInfo.imageView = sky->skybox_texture.texture_image_view;
 	IrradianceMapImageInfo.sampler = sky->skybox_texture.texture_sampler;
 
-	VkDescriptorImageInfo OffscreenImageInfo = {};
-	OffscreenImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	OffscreenImageInfo.imageView = offscreenPass.offscreenImage.texture_image_view;
-	OffscreenImageInfo.sampler = offscreenPass.offscreenImage.texture_sampler;
+	VkDescriptorImageInfo ReflectionImageInfo = {};
+	ReflectionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	ReflectionImageInfo.imageView = offscreenPass.reflectionImage.texture_image_view;
+	ReflectionImageInfo.sampler = offscreenPass.reflectionImage.texture_sampler;
 
-	std::array<VkWriteDescriptorSet, 3> oceanDescriptorWrites = {};
+	VkDescriptorImageInfo RefractionImageInfo = {};
+	RefractionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	RefractionImageInfo.imageView = offscreenPass.refractionImage.texture_image_view;
+	RefractionImageInfo.sampler = offscreenPass.refractionImage.texture_sampler;
+
+	std::array<VkWriteDescriptorSet, 4> oceanDescriptorWrites = {};
 
 	oceanDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	oceanDescriptorWrites[0].dstSet = oceanDescriptorSet;
@@ -1209,7 +1353,15 @@ void Scene::CreateDescriptorSet() {
 	oceanDescriptorWrites[2].dstArrayElement = 0;
 	oceanDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	oceanDescriptorWrites[2].descriptorCount = 1;
-	oceanDescriptorWrites[2].pImageInfo = &OffscreenImageInfo;
+	oceanDescriptorWrites[2].pImageInfo = &ReflectionImageInfo;
+
+	oceanDescriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	oceanDescriptorWrites[3].dstSet = oceanDescriptorSet;
+	oceanDescriptorWrites[3].dstBinding = 3;
+	oceanDescriptorWrites[3].dstArrayElement = 0;
+	oceanDescriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	oceanDescriptorWrites[3].descriptorCount = 1;
+	oceanDescriptorWrites[3].pImageInfo = &RefractionImageInfo;
 
 	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(oceanDescriptorWrites.size()), oceanDescriptorWrites.data(), 0, nullptr);
 }
@@ -1220,7 +1372,6 @@ void Scene::LoadAssets() {
 	InitMaterials();
 
 	// Skybox
-	float horizon = 125.0f;
 	skybox_vertices = {
 		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, 0.0f}},
 		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, 0.0f}},
@@ -1525,19 +1676,31 @@ void Scene::InitMaterials() {
 }
 
 void Scene::PrepareOffscreen() {
-	offscreenPass.offscreenImage.texWidth = (int32_t)logical_device->swapchain_extent.width;
-	offscreenPass.offscreenImage.texHeight = (int32_t)logical_device->swapchain_extent.height;
-	offscreenPass.offscreenImage.Init(logical_device, VK_FORMAT_R8G8B8A8_UNORM);
-	offscreenPass.offscreenImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.offscreenImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
-	offscreenPass.offscreenImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	offscreenPass.reflectionImage.texWidth = (int32_t)logical_device->swapchain_extent.width;
+	offscreenPass.reflectionImage.texHeight = (int32_t)logical_device->swapchain_extent.height;
+	offscreenPass.reflectionImage.Init(logical_device, VK_FORMAT_R8G8B8A8_UNORM);
+	offscreenPass.reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	offscreenPass.reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	offscreenPass.reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	offscreenPass.offscreenDepthImage.texWidth = (int32_t)logical_device->swapchain_extent.width; 
-	offscreenPass.offscreenDepthImage.texHeight = (int32_t)logical_device->swapchain_extent.height; 
-	offscreenPass.offscreenDepthImage.Init(logical_device, logical_device->FindDepthFormat());
-	offscreenPass.offscreenDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.offscreenDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
-	//offscreenPass.offscreenDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	offscreenPass.reflectionDepthImage.texWidth = (int32_t)logical_device->swapchain_extent.width; 
+	offscreenPass.reflectionDepthImage.texHeight = (int32_t)logical_device->swapchain_extent.height; 
+	offscreenPass.reflectionDepthImage.Init(logical_device, logical_device->FindDepthFormat());
+	offscreenPass.reflectionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	offscreenPass.reflectionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
+
+	offscreenPass.refractionImage.texWidth = (int32_t)logical_device->swapchain_extent.width;
+	offscreenPass.refractionImage.texHeight = (int32_t)logical_device->swapchain_extent.height;
+	offscreenPass.refractionImage.Init(logical_device, VK_FORMAT_R8G8B8A8_UNORM);
+	offscreenPass.refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	offscreenPass.refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	offscreenPass.refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	offscreenPass.refractionDepthImage.texWidth = (int32_t)logical_device->swapchain_extent.width; 
+	offscreenPass.refractionDepthImage.texHeight = (int32_t)logical_device->swapchain_extent.height; 
+	offscreenPass.refractionDepthImage.Init(logical_device, logical_device->FindDepthFormat());
+	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
 }
 
 // ------------------ Textures ---------------------- //
@@ -2042,12 +2205,14 @@ void Scene::DeInitFramebuffer() {
 		vkDestroyFramebuffer(logical_device->device, logical_device->swap_chain_framebuffers[i], nullptr);
 	}
 
-	vkDestroyFramebuffer(logical_device->device, logical_device->offscreenFramebuffer, nullptr);
+	vkDestroyFramebuffer(logical_device->device, logical_device->reflectionFramebuffer, nullptr);
+	vkDestroyFramebuffer(logical_device->device, logical_device->refractionFramebuffer, nullptr);
 }
 
 void Scene::DeInitImageView() {
 	depthImage.DeInit();
-	offscreenPass.offscreenDepthImage.DeInit();
+	offscreenPass.reflectionDepthImage.DeInit();
+	offscreenPass.refractionDepthImage.DeInit();
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
@@ -2114,7 +2279,8 @@ void Scene::DeInitTextureImage() {
 		scene_material[i].ambient_occlucion_map.DeInit();
 	}
 
-	offscreenPass.offscreenImage.DeInit();
+	offscreenPass.reflectionImage.DeInit();
+	offscreenPass.refractionImage.DeInit();
 }
 
 void Scene::DeInitUniformBuffer() {
@@ -2128,8 +2294,10 @@ void Scene::DeInitUniformBuffer() {
 	uniform_buffers.parameters.Destroy();
 	uniform_buffers.clouds.Destroy();
 	uniform_buffers.clouds_dynamic.Destroy();
-	uniform_buffers.mirrored.Destroy();
-	uniform_buffers.mirroredParameters.Destroy();
+	uniform_buffers.reflection.Destroy();
+	uniform_buffers.reflectionParameters.Destroy();
+	uniform_buffers.refraction.Destroy();
+	uniform_buffers.refractionParameters.Destroy();
 }
 
 void Scene::DestroyPipeline() {
@@ -2137,10 +2305,12 @@ void Scene::DestroyPipeline() {
 	vkDestroyPipeline(logical_device->device, oceanPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbr_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
-	vkDestroyPipeline(logical_device->device, offscreenPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, pbrReflectionPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, pbrRefractionPipeline, nullptr);
 }
 
 void Scene::FreeCommandBuffers() {
 	vkFreeCommandBuffers(logical_device->device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
-	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &commandBuffer);
+	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &reflectionCmdBuff);
+	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &refractionCmdBuff);
 }

@@ -56,9 +56,10 @@ class PuffinEngine {
     GuiMainUi* mainUi = nullptr;
     GuiTextOverlay* guiStatistics = nullptr;
 
-	VkSemaphore ImageAvailableSemaphore;
-    VkSemaphore RenderFinishedSemaphore;
-    VkSemaphore OffscreenRenderSemaphore;
+	VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkSemaphore reflectRenderSemaphore;
+    VkSemaphore refractRenderSemaphore;
 
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.

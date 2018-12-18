@@ -16,6 +16,7 @@
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
+const float horizon = 125.0f;
 
 class Scene
 {
@@ -30,7 +31,8 @@ public:
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
-	void CreateOffscreenCommandBuffer();
+	void CreateReflectionCommandBuffer();
+	void CreateRefractionCommandBuffer();
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
@@ -41,7 +43,8 @@ public:
 	StatusOverlay *status_overlay = nullptr;
 	
 	std::vector<VkCommandBuffer> command_buffers;
-	VkCommandBuffer commandBuffer = VK_NULL_HANDLE;
+	VkCommandBuffer reflectionCmdBuff = VK_NULL_HANDLE;
+	VkCommandBuffer refractionCmdBuff = VK_NULL_HANDLE;
 
 private:
 
@@ -139,19 +142,22 @@ private:
 
 	// Struct that holds the models positions
 	struct Constants {
+		glm::vec4 renderLimitPlane;
 		glm::vec3 pos;
 	} pushConstants;
 
 	struct {
-		enginetool::Buffer mirrored;
 		enginetool::Buffer skybox;
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
-		enginetool::Buffer objects;
 		enginetool::Buffer ocean;
 		enginetool::Buffer still_objects; //TODO
+		enginetool::Buffer objects;
 		enginetool::Buffer parameters;
-		enginetool::Buffer mirroredParameters;
+		enginetool::Buffer reflection;
+		enginetool::Buffer reflectionParameters;
+		enginetool::Buffer refraction;
+		enginetool::Buffer refractionParameters;
 	} uniform_buffers;
 
 	struct {
@@ -170,8 +176,10 @@ private:
 
 	struct OffscreenPass {
 		int32_t width, height;
-		TextureLayout offscreenImage;
-		TextureLayout offscreenDepthImage;
+		TextureLayout reflectionImage;
+		TextureLayout reflectionDepthImage;
+		TextureLayout refractionImage;
+		TextureLayout refractionDepthImage;
 	} offscreenPass;
 
 
@@ -180,10 +188,12 @@ private:
 	TextureLayout depthImage;
 
 	VkPipeline pbr_pipeline;
+	VkPipeline pbrRefractionPipeline;
+	VkPipeline pbrReflectionPipeline;
 	VkPipeline oceanPipeline;
 	VkPipeline clouds_pipeline;
 	VkPipeline skybox_pipeline;
-	VkPipeline offscreenPipeline;
+	
 
 	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logical_device);
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logical_device);

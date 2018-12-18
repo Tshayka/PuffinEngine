@@ -17,7 +17,8 @@ namespace enginetool {
 		TextureLayout normal_map;
 		TextureLayout ambient_occlucion_map;
 		VkDescriptorSet descriptor_set;
-		VkDescriptorSet offscreenDescriptorSet;
+		VkDescriptorSet reflectDescriptorSet;
+		VkDescriptorSet refractDescriptorSet;
 		VkPipeline *assigned_pipeline;
 
 	private:
