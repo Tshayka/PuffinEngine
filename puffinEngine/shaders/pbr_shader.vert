@@ -20,14 +20,14 @@ layout(location = 2) out vec3 outNormal;
 layout(location = 3) out vec3 outCameraPos;
 layout(location = 4) out vec3 outColor;
 
-layout(push_constant) uniform PushConsts
-{
-	vec3 objPos;
+layout(push_constant) uniform PushConsts {
+	vec4 renderLimitPlane;
+	vec3 objectPosition;
 } pushConsts;
 
-out gl_PerVertex 
-{
+out gl_PerVertex {
     vec4 gl_Position;
+	float gl_ClipDistance[];
 };
 
 void main() 
@@ -38,6 +38,7 @@ void main()
 	outCameraPos = ubo.camera_pos;
 	outColor = inColor;
 	
-	outWorldPos = locPos + pushConsts.objPos;
+	outWorldPos = locPos + pushConsts.objectPosition;
 	gl_Position = ubo.proj * ubo.view * vec4(outWorldPos, 1.0);
+	gl_ClipDistance[0] = dot(vec4(outWorldPos,0.0), pushConsts.renderLimitPlane);
 }

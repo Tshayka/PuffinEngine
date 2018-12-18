@@ -2,7 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 
 layout(set = 3, binding = 1) uniform samplerCube samplerIrradiance;
-layout(set = 3, binding = 2) uniform sampler2D offscreenRender;
+layout(set = 3, binding = 2) uniform sampler2D offscreenReflect;
+layout(set = 3, binding = 3) uniform sampler2D offscreenRefract;
 
 layout(location = 0) in vec4 WorldPos;
 layout(location = 1) in vec2 TexCoords;
@@ -31,11 +32,11 @@ void main() {
 		vec4 reflection = vec4(0.0);
 		for (int x = -3; x <= 3; x++) {
 			for (int y = -3; y <= 3; y++) {
-				reflection += texture(offscreenRender, vec2(projCoord.s + x, projCoord.t + y)) / 49.0;
+				reflection += texture(offscreenReflect, vec2(projCoord.s + x, projCoord.t + y)) / 49.0;
 			}
 		}
 		outColor += reflection * 1.5 * (irradiance.r);
 	};
 
-	outColor = texture(offscreenRender, vec2(projCoord.x, projCoord.y));
+	outColor = texture(offscreenRefract, vec2(projCoord.x, projCoord.y));
 }
