@@ -332,6 +332,18 @@ void Scene::CreateGraphicsPipeline() {
 
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skybox_pipeline));
 
+	// Skybox refraction pipeline
+	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxRefractionPipeline));
+
+	// Skybox reflection pipeline
+	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
+	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxReflectionPipeline));
+	
+	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
+	PipelineInfo.renderPass = logical_device->renderPass;
+
 	vkDestroyShaderModule(logical_device->device, fragCubeMapShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertCubeMapShaderModule, nullptr);
 	
@@ -362,11 +374,11 @@ void Scene::CreateGraphicsPipeline() {
 
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbr_pipeline));
 
-	// Refraction pipeline
+	// Models refraction pipeline
 	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrRefractionPipeline));
 
-	// Reflection pipeline
+	// Models reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
 	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrReflectionPipeline));
@@ -579,6 +591,15 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	VkDeviceSize offsets[1] = { 0 };
 
+	// Skybox
+	if (display_skybox)	{
+		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skyboxReflectionDescriptorSet, 0, nullptr);
+		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
+		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxReflectionPipeline);
+		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
+	}
+
 	// 3d object
 	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
 	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -644,6 +665,15 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	VkDeviceSize offsets[1] = { 0 };
 
+	// Skybox
+	if (display_skybox)	{
+		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skyboxRefractionDescriptorSet, 0, nullptr);
+		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
+		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxRefractionPipeline);
+		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
+	}
+
 	// 3d object
 	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
 	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
@@ -664,10 +694,6 @@ void Scene::CreateRefractionCommandBuffer() {
 }
 
 void Scene::CreateUniformBuffer() {
-	// Skybox Uniform buffers memory -> static
-	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
-	uniform_buffers.skybox.Map();
-
 	// Ocean Uniform buffers memory -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
 	uniform_buffers.ocean.Map();
@@ -724,6 +750,16 @@ void Scene::CreateUniformBuffer() {
 	// Additional uniform bufer parameters for refraction scene -> static
 	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refractionParameters);
 	uniform_buffers.refractionParameters.Map();
+
+	// Skybox Uniform buffers memory -> static
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
+	uniform_buffers.skybox.Map();
+
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
+	uniform_buffers.skyboxReflection.Map();
+
+	logical_device->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
+	uniform_buffers.skyboxRefraction.Map();
 
 	// Create random positions for dynamic uniform buffer
 	std::random_device rd;
@@ -846,6 +882,13 @@ void Scene::UpdateSkyboxUniformBuffer() {
 	UBO_Sky.gamma = 1.0f;
 	
 	memcpy(uniform_buffers.skybox.mapped, &UBO_Sky, sizeof(UBO_Sky));
+	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBO_Sky, sizeof(UBO_Sky));
+
+	UBO_Sky.view[1][0] *= -1;
+	UBO_Sky.view[1][1] *= -1;
+	UBO_Sky.view[1][2] *= -1;
+
+	memcpy(uniform_buffers.skyboxReflection.mapped, &UBO_Sky, sizeof(UBO_Sky));
 }
 
 void Scene::UpdateOceanUniformBuffer(const float& time) {
@@ -1029,15 +1072,15 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 8);
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 10);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 5);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 7);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 4); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 5); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
 }
@@ -1230,6 +1273,8 @@ void Scene::CreateDescriptorSet() {
 	allocInfo.pSetLayouts = &skybox_descriptor_set_layout;
 
 	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &allocInfo, &skybox_descriptor_set));
+	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &allocInfo, &skyboxReflectionDescriptorSet));
+	ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &allocInfo, &skyboxRefractionDescriptorSet));
 
 	VkDescriptorBufferInfo SkyboxBufferInfo = {};
 	SkyboxBufferInfo.buffer = uniform_buffers.skybox.buffer;
@@ -1260,6 +1305,32 @@ void Scene::CreateDescriptorSet() {
 	skyboxDescriptorWrites[1].pImageInfo = &ImageInfo;
 
 	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(skyboxDescriptorWrites.size()), skyboxDescriptorWrites.data(), 0, nullptr);
+
+	VkDescriptorBufferInfo skyboxReflectBufferInfo = {};
+	skyboxReflectBufferInfo.buffer = uniform_buffers.skyboxReflection.buffer;
+	skyboxReflectBufferInfo.offset = 0;
+	skyboxReflectBufferInfo.range = sizeof(UniformBufferObjectSky);
+
+	std::array<VkWriteDescriptorSet, 2> skyboxReflectionDescriptorWrites = skyboxDescriptorWrites;
+
+	skyboxReflectionDescriptorWrites[0].dstSet = skyboxReflectionDescriptorSet;
+	skyboxReflectionDescriptorWrites[0].pBufferInfo = &skyboxReflectBufferInfo;
+	skyboxReflectionDescriptorWrites[1].dstSet = skyboxReflectionDescriptorSet;
+	
+	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(skyboxReflectionDescriptorWrites.size()), skyboxReflectionDescriptorWrites.data(), 0, nullptr);
+
+	VkDescriptorBufferInfo skyboxRefractionBufferInfo = {};
+	skyboxRefractionBufferInfo.buffer = uniform_buffers.skyboxRefraction.buffer;
+	skyboxRefractionBufferInfo.offset = 0;
+	skyboxRefractionBufferInfo.range = sizeof(UniformBufferObjectSky);
+
+	std::array<VkWriteDescriptorSet, 2> skyboxRefractionDescriptorWrites = skyboxDescriptorWrites;
+
+	skyboxRefractionDescriptorWrites[0].dstSet = skyboxRefractionDescriptorSet;
+	skyboxRefractionDescriptorWrites[0].pBufferInfo = &skyboxRefractionBufferInfo;
+	skyboxRefractionDescriptorWrites[1].dstSet = skyboxRefractionDescriptorSet;
+	
+	vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(skyboxRefractionDescriptorWrites.size()), skyboxRefractionDescriptorWrites.data(), 0, nullptr);
 	
 	// Clouds descriptor set
 	VkDescriptorSetAllocateInfo CloudsAllocInfo = {};
@@ -2289,6 +2360,8 @@ void Scene::DeInitUniformBuffer() {
 	}
 
 	uniform_buffers.skybox.Destroy();
+	uniform_buffers.skyboxReflection.Destroy();
+	uniform_buffers.skyboxRefraction.Destroy();
 	uniform_buffers.ocean.Destroy();
 	uniform_buffers.objects.Destroy();
 	uniform_buffers.parameters.Destroy();
@@ -2307,6 +2380,8 @@ void Scene::DestroyPipeline() {
 	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbrReflectionPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbrRefractionPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, skyboxReflectionPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, skyboxRefractionPipeline, nullptr);
 }
 
 void Scene::FreeCommandBuffers() {

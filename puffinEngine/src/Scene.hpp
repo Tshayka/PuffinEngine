@@ -148,6 +148,8 @@ private:
 
 	struct {
 		enginetool::Buffer skybox;
+		enginetool::Buffer skyboxReflection;
+		enginetool::Buffer skyboxRefraction;
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
 		enginetool::Buffer ocean;
@@ -193,8 +195,9 @@ private:
 	VkPipeline oceanPipeline;
 	VkPipeline clouds_pipeline;
 	VkPipeline skybox_pipeline;
+	VkPipeline skyboxRefractionPipeline;
+	VkPipeline skyboxReflectionPipeline;
 	
-
 	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logical_device);
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logical_device);
 	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logical_device);
@@ -222,6 +225,8 @@ private:
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet clouds_descriptor_set = VK_NULL_HANDLE;
+	VkDescriptorSet skyboxReflectionDescriptorSet = VK_NULL_HANDLE;
+	VkDescriptorSet skyboxRefractionDescriptorSet = VK_NULL_HANDLE;
 	
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;
