@@ -102,13 +102,39 @@ namespace enginetool {
 					(a.min.z < b.max.z);
 		}
 
-		static bool Contains(const AABB& a, const AABB& b){
+		static bool Contains(const AABB& a, const AABB& b) {
 			return  b.min.x >= a.min.x &&
 					b.max.x <= a.max.x &&
 					b.min.y >= a.min.y &&
 					b.max.y <= a.max.y &&
 					b.min.z >= a.min.z &&
 					b.max.z <= a.max.z;
+		}
+
+		bool RayIntersection(const glm::vec3& dirFrac, const glm::vec3& rayOrg) {
+			float t1 = (boundingBox.min.x - rayOrg.x)*dirFrac.x;
+			float t2 = (boundingBox.max.x - rayOrg.x)*dirFrac.x;
+			float t3 = (boundingBox.min.y - rayOrg.y)*dirFrac.y;
+			float t4 = (boundingBox.max.y - rayOrg.y)*dirFrac.y;
+			float t5 = (boundingBox.min.z - rayOrg.z)*dirFrac.z;
+			float t6 = (boundingBox.max.z - rayOrg.z)*dirFrac.z;
+
+			float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
+			float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
+
+			// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
+			if (tmax < 0) {
+				//t = tmax;
+				return false;
+			}
+
+			if (tmin > tmax) {
+				//t = tmax;
+				return false;
+			}
+
+			//t = tmin;
+			return true;
 		}
 	};
 }

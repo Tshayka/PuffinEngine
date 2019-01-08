@@ -308,7 +308,7 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	// Skybox reflect pipeline
+	// I. Skybox reflect pipeline
 	auto vertCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.vert.spv"); 
 	auto fragCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.frag.spv"); 
 
@@ -330,7 +330,10 @@ void Scene::CreateGraphicsPipeline() {
 	shaderStages[0] = vertCubeMapShaderStageInfo;
 	shaderStages[1] = fragCubeMapShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skybox_pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxPipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxWireframePipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
 	// Skybox refraction pipeline
 	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
@@ -347,7 +350,7 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logical_device->device, fragCubeMapShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertCubeMapShaderModule, nullptr);
 	
-	// Models pipeline
+	// II. Models pipeline
 	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.vert.spv");
 	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.frag.spv");
 
@@ -372,7 +375,15 @@ void Scene::CreateGraphicsPipeline() {
 	DepthStencil.depthTestEnable = VK_TRUE;
 	DepthStencil.depthWriteEnable = VK_TRUE;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbr_pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrPipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrWireframePipeline));
+	Rasterization.lineWidth = 4.0f;
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &selectRayPipeline));
+	Rasterization.lineWidth = 1.0f;
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
 	// Models refraction pipeline
 	PipelineInfo.renderPass = logical_device->offscreenRenderPass;
@@ -389,34 +400,7 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
 	PipelineInfo.renderPass = logical_device->renderPass;
 
-	// Clouds pipeline
-	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
-	auto fragCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.frag.spv");
-
-	VkShaderModule vertCloudsShaderModule = logical_device->CreateShaderModule(vertCloudsShaderCode);
-	VkShaderModule fragCloudsShaderModule = logical_device->CreateShaderModule(fragCloudsShaderCode);
-
-	VkPipelineShaderStageCreateInfo vertCloudsShaderStageInfo = {};
-	vertCloudsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertCloudsShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertCloudsShaderStageInfo.module = vertCloudsShaderModule;
-	vertCloudsShaderStageInfo.pName = "main";
-
-	VkPipelineShaderStageCreateInfo fragCloudsShaderStageInfo = {};
-	fragCloudsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragCloudsShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragCloudsShaderStageInfo.module = fragCloudsShaderModule;
-	fragCloudsShaderStageInfo.pName = "main";
-
-	shaderStages[0] = vertCloudsShaderStageInfo;
-	shaderStages[1] = fragCloudsShaderStageInfo;
-
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &clouds_pipeline));
-
-	vkDestroyShaderModule(logical_device->device, fragCloudsShaderModule, nullptr);
-	vkDestroyShaderModule(logical_device->device, vertCloudsShaderModule, nullptr);
-
-	// Ocean pipeline
+	// III. Ocean pipeline
 	auto vertOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.vert.spv");
 	auto fragOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.frag.spv");
 
@@ -441,9 +425,50 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.cullMode = VK_CULL_MODE_NONE;
 
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &oceanPipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &oceanWireframePipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
 	vkDestroyShaderModule(logical_device->device, fragOceanShaderModule, nullptr);
 	vkDestroyShaderModule(logical_device->device, vertOceanShaderModule, nullptr);
+
+	// IV. Clouds pipeline
+	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
+	auto fragCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.frag.spv");
+
+	VkShaderModule vertCloudsShaderModule = logical_device->CreateShaderModule(vertCloudsShaderCode);
+	VkShaderModule fragCloudsShaderModule = logical_device->CreateShaderModule(fragCloudsShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertCloudsShaderStageInfo = {};
+	vertCloudsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertCloudsShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertCloudsShaderStageInfo.module = vertCloudsShaderModule;
+	vertCloudsShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragCloudsShaderStageInfo = {};
+	fragCloudsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragCloudsShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragCloudsShaderStageInfo.module = fragCloudsShaderModule;
+	fragCloudsShaderStageInfo.pName = "main";
+
+	shaderStages[0] = vertCloudsShaderStageInfo;
+	shaderStages[1] = fragCloudsShaderStageInfo;
+
+	ColorBlendAttachment.blendEnable = VK_TRUE;
+	ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &cloudsPipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &cloudsWireframePipeline));
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
+
+	vkDestroyShaderModule(logical_device->device, fragCloudsShaderModule, nullptr);
+	vkDestroyShaderModule(logical_device->device, vertCloudsShaderModule, nullptr);
 }
 
 void Scene::CreateCommandBuffers() {
@@ -495,42 +520,40 @@ void Scene::CreateCommandBuffers() {
 
 		VkDeviceSize offsets[1] = { 0 };
 
-		// Skybox
 		if (display_skybox)	{
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, skybox_pipeline);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (skyboxWireframePipeline) : (skyboxPipeline));
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
 		}
 
-		// Ocean
 		if (displayOcean) {
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 3, 1, &oceanDescriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, oceanPipeline);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (oceanWireframePipeline) : (oceanPipeline));
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(oceanIndices.size()), 1, 0, 0, 0);
 		}
 
-		// 3d object
-		vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
-		vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+		if (displaySceneGeometry) {
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-		for (size_t j = 0; j < actors.size(); j++) {
-			std::array<VkDescriptorSet, 1> descriptorSets;
-			descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, *actors[j]->mesh.assigned_material->assigned_pipeline);
-			pushConstants.pos = actors[j]->position;
-			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-			vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-			vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+			for (size_t j = 0; j < actors.size(); j++) {
+				std::array<VkDescriptorSet, 1> descriptorSets;
+				descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
+				pushConstants.pos = actors[j]->position;
+				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+				vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+				vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+			}
 		}
 
-		// Clouds
 		if (display_clouds)	{
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, clouds_pipeline);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (cloudsWireframePipeline) : (cloudsPipeline));
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.clouds.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.clouds.buffer, 0, VK_INDEX_TYPE_UINT32);
 
@@ -540,7 +563,29 @@ void Scene::CreateCommandBuffers() {
 				vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(clouds_indices.size()), 1, 0, 0, 0);
 			}
 		}
-		
+
+		if(wireframeMode) {
+			rayVertices = {
+				{ mousePicker.GetRayDirection(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+				{ mousePicker.GetRayOrigin(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+			};
+
+			enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
+			uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.mapped;
+
+			memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
+	  		memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
+
+			vertex_buffers.selectRay.Flush();
+			index_buffers.selectRay.Flush();
+			
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skybox_descriptor_set, 0, nullptr);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
+			vkCmdDrawIndexed(command_buffers[i], 2, 1, 0, 0, 0);
+		}
+	
 		vkCmdEndRenderPass(command_buffers[i]);
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
 	}
@@ -611,7 +656,7 @@ void Scene::CreateReflectionCommandBuffer() {
 		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
 		pushConstants.pos = actors[j]->position;
-		pushConstants.renderLimitPlane = glm::vec4(0.0f, 1.0f, 0.0f, -0.0f );
+		pushConstants.renderLimitPlane = glm::vec4(0.0f, 1.0f, 0.0f, -0.0f);
 		vkCmdPushConstants(reflectionCmdBuff, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 	}
@@ -762,13 +807,18 @@ void Scene::CreateUniformBuffer() {
 	uniform_buffers.skyboxRefraction.Map();
 
 	// Create random positions for dynamic uniform buffer
+	RandomPositions();
+}
+
+void Scene::RandomPositions() {
 	std::random_device rd;
 	std::mt19937 mt(rd());
-	std::uniform_real_distribution<double> dist(-1.0f, 1.0f);
+	std::uniform_real_distribution<double> dist(-cloudsVisibDist/2, cloudsVisibDist/2);
 	for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
 		rnd_pos[i] = glm::vec3(dist(mt));
 	}
 }
+
 
 void Scene::UpdateScene(const float &dt, const float &time, float const &accumulator) {
 	UpdateGUI((float)accumulator, (uint32_t)time);
@@ -789,23 +839,44 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	CreateRefractionCommandBuffer();
 }
 
+void Scene::Select() {
+	selectedActor = nullptr;
+	mousePicker.UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));
+
+	glm::vec3 dirFrac;
+	dirFrac.x = 1.0f / mousePicker.GetRayDirection().x;
+	dirFrac.y = 1.0f / mousePicker.GetRayDirection().y;
+	dirFrac.z = 1.0f / mousePicker.GetRayDirection().z;
+
+	glm::vec3 rayOrigin = mousePicker.GetRayOrigin();
+
+	for (size_t j = 1; j < actors.size(); j++) {
+		if(actors[j]->mesh.RayIntersection(dirFrac, rayOrigin)) {
+			selectedActor=actors[j];
+			std::cout <<  "Selected object: " << selectedActor->name << std::endl;
+			break;
+		}
+	}
+}
+
+void Scene::DeSelect() {
+	selectedActor = nullptr;
+	std::cout <<  "Deselected" << std::endl;
+}
+
 void Scene::UpdateUniformBuffer(const float& time) {
-	UniformBufferObject UBO = {};
 	UBO.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logical_device->swapchain_extent.width / (float)logical_device->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
 	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBO.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	UBO.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	//UBO.model = glm::mat4(1.0f);
-	UBO.camera_pos = glm::vec3(actors[0]->position);
+	UBO.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	UBO.cameraPos = glm::vec3(actors[0]->position);
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
-
 	memcpy(uniform_buffers.refraction.mapped, &UBO, sizeof(UBO));
-
 	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
 	UBO.view[1][0] *= -1;
 	UBO.view[1][1] *= -1;
 	UBO.view[1][2] *= -1;
-	UBO.camera_pos *= glm::vec3(1.0f, -1.0f, 1.0f);
+	UBO.cameraPos *= glm::vec3(1.0f, -1.0f, 1.0f);
 	memcpy(uniform_buffers.reflection.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
@@ -813,7 +884,10 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBOC.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
 	UBOC.time = time;
-	UBOC.camera_pos = actors[0]->position;
+	UBOC.view[3][0] *= 0;
+	UBOC.view[3][1] *= 0;
+	UBOC.view[3][2] *= 0;
+	UBOC.cameraPos = actors[0]->position;
 
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
@@ -835,8 +909,9 @@ void Scene::UpdateUBOParameters() {
 
 void Scene::UpdateDynamicUniformBuffer(const float& time) {
 	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
-	glm::vec3 offset(5.0f, 25.0f, 5.0f);
-
+	glm::vec3 offset(cloudsVisibDist, cloudsVisibDist/10, cloudsVisibDist);
+	cloudsPos+=0.01f;
+	
 		for (uint32_t x = 0; x < dim; x++) {
 			for (uint32_t y = 0; y < dim; y++) {
 				for (uint32_t z = 0; z < dim; z++) {
@@ -844,17 +919,23 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 
 					// Aligned offset
 					glm::mat4* modelMat = (glm::mat4*)(((uint64_t)uboDataDynamic.model + (index * dynamicAlignment)));
-			
+					
 					// Update matrices
 					glm::vec3 pos = glm::vec3(-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x, -((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y, -((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z);
 					
 					pos += rnd_pos[index];
 				
+					if(cloudsPos>cloudsVisibDist*2){
+						cloudsPos=-cloudsVisibDist*2;
+					} 
+
 					*modelMat = glm::translate(glm::mat4(1.0f), pos);
-					*modelMat = glm::translate(*modelMat, glm::vec3(0.01 + time * 0.1, 0.0f, 0.03 + time * 0.1));
-					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-					*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+					*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist*2, 0.0f));
+					//*modelMat = glm::scale(*modelMat,  glm::vec3(55.0f, 55.0f, 55.0f));
+
+					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 				}
 			}
 		}
@@ -1439,10 +1520,32 @@ void Scene::CreateDescriptorSet() {
 
 // ------------- Populate scene --------------------- //
 
-void Scene::LoadAssets() {
-	InitMaterials();
+	// layout of struct VertexLayout {
+	//glm::vec3 pos, glm::vec3 color,	glm::vec2 text_coord, glm::vec3 normals;
 
-	// Skybox
+void Scene::CreateSelectRay() {
+	rayVertices = {
+		{ {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{ {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+	};
+
+	rayIndices = {0,1};
+
+	VkDeviceSize vertexBufferSize = 2 * sizeof(enginetool::VertexLayout);
+	VkDeviceSize indexBufferSize = 2 * sizeof(uint32_t);
+
+	logical_device->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertex_buffers.selectRay.buffer, vertex_buffers.selectRay.memory);
+	vertex_buffers.selectRay.device = logical_device->device;
+	vertex_buffers.selectRay.Unmap();
+	vertex_buffers.selectRay.Map();
+
+	logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, index_buffers.selectRay.buffer, index_buffers.selectRay.memory);
+	index_buffers.selectRay.device = logical_device->device;
+	index_buffers.selectRay.Unmap();
+	index_buffers.selectRay.Map();
+}
+
+void Scene::CreateSkybox() noexcept {
 	skybox_vertices = {
 		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, 0.0f}},
 		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, 0.0f}},
@@ -1497,10 +1600,10 @@ void Scene::LoadAssets() {
 	};
 
 	CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
-	
+}
 
-	// Ocean
-	int vSize = 32;
+void Scene::CreateOcean() noexcept {
+	int vSize = horizon;
 	float offset = horizon / 2.0f; 
 	float scale = horizon / (float)vSize;
 
@@ -1547,9 +1650,16 @@ void Scene::LoadAssets() {
 		}
 
 	CreateBuffers(oceanIndices, oceanVertices, vertex_buffers.ocean, index_buffers.ocean);
+}
+
+void Scene::LoadAssets() {
+	InitMaterials();
+	CreateSelectRay();
+	CreateSkybox();
+	CreateOcean();
 
 	// Clouds
-	std::string cloud_filename = { "puffinEngine/assets/models/cloud.obj" };
+	std::string cloud_filename = { "puffinEngine/assets/models/sphere.obj" };
 	LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
 	CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	
@@ -1685,11 +1795,9 @@ void Scene::CreateBuffers(std::vector<uint32_t>& indices, std::vector<enginetool
 }
 
 void Scene::InitMaterials() {
-	if (display_skybox) {
-		sky->name = "Sky_materal";
-		LoadSkyboxTexture(sky->skybox_texture);
-		sky->assigned_pipeline = &skybox_pipeline;
-	}
+	sky->name = "Sky_materal";
+	LoadSkyboxTexture(sky->skybox_texture);
+	sky->assigned_pipeline = &skyboxPipeline;
 	
 	rust->name = "Rust";
 	LoadTexture("puffinEngine/assets/textures/rustAlbedo.jpg", rust->albedo);
@@ -1697,7 +1805,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/rustRoughness.jpg", rust->roughness);
 	LoadTexture("puffinEngine/assets/textures/rustNormal.jpg", rust->normal_map);
 	LoadTexture("puffinEngine/assets/textures/rustAo.jpg", rust->ambient_occlucion_map);
-	rust->assigned_pipeline = &pbr_pipeline;
+	rust->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*rust);
 
 	chrome->name = "Chrome";
@@ -1706,7 +1814,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/chromeRoughness.jpg", chrome->roughness);
 	LoadTexture("puffinEngine/assets/textures/chromeNormal.jpg", chrome->normal_map);
 	LoadTexture("puffinEngine/assets/textures/chromeAo.jpg", chrome->ambient_occlucion_map);
-	chrome->assigned_pipeline = &pbr_pipeline;
+	chrome->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*chrome);
 
 	plastic->name = "Plastic";
@@ -1715,7 +1823,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/plasticRoughness.jpg", plastic->roughness);
 	LoadTexture("puffinEngine/assets/textures/plasticNormal.jpg", plastic->normal_map);
 	LoadTexture("puffinEngine/assets/textures/plasticAo.jpg", plastic->ambient_occlucion_map);
-	plastic->assigned_pipeline = &pbr_pipeline;
+	plastic->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*plastic);
 
 	lightbulbMat->name = "Lightbulb material";
@@ -1724,7 +1832,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", lightbulbMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", lightbulbMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", lightbulbMat->ambient_occlucion_map);
-	lightbulbMat->assigned_pipeline = &pbr_pipeline;
+	lightbulbMat->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*lightbulbMat);
 
 	cameraMat->name = "Camera material";
@@ -1733,7 +1841,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", cameraMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", cameraMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", cameraMat->ambient_occlucion_map);
-	cameraMat->assigned_pipeline = &pbr_pipeline;
+	cameraMat->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*cameraMat);
 
 	characterMat->name = "Character material";
@@ -1742,7 +1850,7 @@ void Scene::InitMaterials() {
 	LoadTexture("puffinEngine/assets/textures/roughness.jpg", characterMat->roughness);
 	LoadTexture("puffinEngine/assets/textures/normal.jpg", characterMat->normal_map);
 	LoadTexture("puffinEngine/assets/textures/ao.jpg", characterMat->ambient_occlucion_map);
-	characterMat->assigned_pipeline = &pbr_pipeline;
+	characterMat->assigned_pipeline = &pbrPipeline;
 	scene_material.emplace_back(*characterMat);
 }
 
@@ -2075,6 +2183,9 @@ void Scene::PressKey(int key)
 	{
 		switch (key)
 		{
+		case GLFW_KEY_V:
+			wireframeMode = !wireframeMode;
+			break;
 		case GLFW_KEY_W:
 			std::cout << "Moving " << actors[0]->name << " foward " << key << std::endl;
 			actors[0]->Dolly(15.0f);
@@ -2128,20 +2239,28 @@ void Scene::PressKey(int key)
 			actors[2]->Pedestal(-15.0f);
 			break;
 		case GLFW_KEY_UP:
-			std::cout << "Moving " << actors[1]->name << " foward " << key << std::endl;
-			actors[1]->Dolly(15.0f);
+			if(selectedActor!=nullptr) {
+			std::cout << "Moving " << selectedActor->name << " foward " << key << std::endl;
+			selectedActor->Dolly(15.0f);
+			}
 			break;
 		case GLFW_KEY_DOWN:
-			std::cout << "Moving " << actors[1]->name << " back " << key << std::endl;
-			actors[1]->Dolly(-15.0f);
+			if(selectedActor!=nullptr) {
+			std::cout << "Moving " << selectedActor->name << " back " << key << std::endl;
+			selectedActor->Dolly(-15.0f);
+			}
 			break;
 		case GLFW_KEY_LEFT:
-			std::cout << "Moving " << actors[1]->name << " left " << key << std::endl;
-			actors[1]->Strafe(15.0f);
+			if(selectedActor!=nullptr) {
+			std::cout << "Moving " << selectedActor->name << " left " << key << std::endl;
+			selectedActor->Strafe(15.0f);
+			}
 			break;
 		case GLFW_KEY_RIGHT:
-			std::cout << "Moving " << actors[1]->name << " right " << key << std::endl;
-			actors[1]->Strafe(-15.0f);
+			if(selectedActor!=nullptr) {
+			std::cout << "Moving " << selectedActor->name << " right " << key << std::endl;
+			selectedActor->Strafe(-15.0f);
+			}
 			break;
 		case GLFW_KEY_SPACE:
 			std::cout << "Character makes a jump! " << key << std::endl;
@@ -2178,6 +2297,9 @@ void Scene::PressKey(int key)
 
 		switch (key)
 		{
+		case GLFW_KEY_V:
+			std::cout << "Key released: " << key << std::endl;
+			break;
 		case GLFW_KEY_W:
 			std::cout << "Key released: " << key << std::endl;
 			actors[0]->Dolly(0.0f);
@@ -2227,20 +2349,28 @@ void Scene::PressKey(int key)
 			actors[2]->Strafe(0.0f);
 			break;
 		case GLFW_KEY_UP:
+			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
-			actors[1]->Dolly(0.0f);
+			selectedActor->Dolly(0.0f);
+			}
 			break;
 		case GLFW_KEY_DOWN:
+			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
-			actors[1]->Dolly(0.0f);
+			selectedActor->Dolly(0.0f);
+			}
 			break;
 		case GLFW_KEY_LEFT:
+			if(selectedActor!=nullptr) {
 			std::cout << "Key released:" << key << std::endl;
-			actors[1]->Strafe(0.0f);
+			selectedActor->Strafe(0.0f);
+			}
 			break;
 		case GLFW_KEY_RIGHT:
+			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
-			actors[1]->Strafe(0.0f);
+			selectedActor->Strafe(0.0f);
+			}
 			break;
 		case GLFW_KEY_Z:
 			std::cout <<  "Key released: " << key << std::endl;
@@ -2298,6 +2428,9 @@ void Scene::DeInitIndexAndVertexBuffer() {
 	
 	index_buffers.objects.Destroy();//destroy only first model!
 	vertex_buffers.objects.Destroy();//destroy only first model!
+
+	index_buffers.selectRay.Destroy();
+	vertex_buffers.selectRay.Destroy();
 }
 
 void Scene::DeInitScene()
@@ -2374,10 +2507,15 @@ void Scene::DeInitUniformBuffer() {
 }
 
 void Scene::DestroyPipeline() {
-	vkDestroyPipeline(logical_device->device, skybox_pipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, selectRayPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, skyboxPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, skyboxWireframePipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, oceanPipeline, nullptr);
-	vkDestroyPipeline(logical_device->device, pbr_pipeline, nullptr);
-	vkDestroyPipeline(logical_device->device, clouds_pipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, oceanWireframePipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, pbrPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, pbrWireframePipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, cloudsPipeline, nullptr);
+	vkDestroyPipeline(logical_device->device, cloudsWireframePipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbrReflectionPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, pbrRefractionPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, skyboxReflectionPipeline, nullptr);

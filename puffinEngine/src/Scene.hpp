@@ -11,12 +11,15 @@
 #include "Device.hpp"
 #include "Light.hpp"
 #include "GuiOverlay.hpp"
+#include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
 const float horizon = 125.0f;
+static float cloudsPos = 0.0f;
+const float cloudsVisibDist = 50.0f;
 
 class Scene
 {
@@ -26,9 +29,11 @@ public:
 
 	void ConnectGamepad();
 	void DeInitScene();
+	void DeSelect();
 	void InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay);
 	void PressKey(int);
 	void RecreateForSwapchain();
+	void Select();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
 	void CreateReflectionCommandBuffer();
@@ -36,8 +41,14 @@ public:
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
+	bool wireframeMode = false;
+	bool displaySceneGeometry = true;
+
 	GuiElement* console = nullptr;
 	
+	MousePicker mousePicker;
+	std::shared_ptr<Actor> selectedActor = nullptr;
+	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::vector<std::shared_ptr<Actor>> actors;
 		
 	StatusOverlay *status_overlay = nullptr;
@@ -62,13 +73,16 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
+	void CreateOcean() noexcept;
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
+	void CreateSkybox() noexcept;
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();
 	void EndSingleTimeCommands(VkCommandBuffer);
 	bool HasStencilComponent(VkFormat);
 	void CreateCamera();
+	void CreateSelectRay(); 
 	void CreateCharacter();
 	void CreateSphereLight();
 	void CreateStillObject();
@@ -80,6 +94,7 @@ private:
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
 	void PrepareOffscreen();
+	void RandomPositions(); 
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSkyboxUniformBuffer();
@@ -101,8 +116,8 @@ private:
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 camera_pos; 
-	};
+		glm::vec3 cameraPos; 
+	} UBO;
 
 	// UBO Static parameters
 	// If the member is a three-component vector with components consuming N basic machine units, the base alignment is 4N.
@@ -131,7 +146,7 @@ private:
 	struct UboClouds {
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 camera_pos;//?
+		glm::vec3 cameraPos;
 		float time;
 	};
 
@@ -144,6 +159,7 @@ private:
 	struct Constants {
 		glm::vec4 renderLimitPlane;
 		glm::vec3 pos;
+		bool selected;
 	} pushConstants;
 
 	struct {
@@ -167,6 +183,7 @@ private:
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
+		enginetool::Buffer selectRay;
 	} vertex_buffers;
 
 	struct {
@@ -174,6 +191,7 @@ private:
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
+		enginetool::Buffer selectRay;
 	} index_buffers;
 
 	struct OffscreenPass {
@@ -189,12 +207,17 @@ private:
 
 	TextureLayout depthImage;
 
-	VkPipeline pbr_pipeline;
+	VkPipeline selectRayPipeline;
+	VkPipeline pbrWireframePipeline;
+	VkPipeline pbrPipeline;
 	VkPipeline pbrRefractionPipeline;
 	VkPipeline pbrReflectionPipeline;
 	VkPipeline oceanPipeline;
-	VkPipeline clouds_pipeline;
-	VkPipeline skybox_pipeline;
+	VkPipeline oceanWireframePipeline;
+	VkPipeline cloudsPipeline;
+	VkPipeline cloudsWireframePipeline;
+	VkPipeline skyboxPipeline;
+	VkPipeline skyboxWireframePipeline;
 	VkPipeline skyboxRefractionPipeline;
 	VkPipeline skyboxReflectionPipeline;
 	
@@ -221,6 +244,8 @@ private:
 	std::vector<enginetool::VertexLayout> oceanVertices;
 	std::vector<uint32_t> clouds_indices;
 	std::vector<enginetool::VertexLayout> clouds_vertices;
+	std::vector<uint32_t> rayIndices;
+	std::vector<enginetool::VertexLayout> rayVertices;
 
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
@@ -241,6 +266,6 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
 
-	Device* logical_device = nullptr;
+	Device* logical_device = nullptr;	
 	GLFWwindow *window = nullptr;
 };

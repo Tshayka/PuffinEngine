@@ -9,7 +9,8 @@ public:
 	MousePicker();
 	~MousePicker();
 
-    glm::vec3 GetCurrentRay() const;
+    glm::vec3 GetRayDirection() const;
+    glm::vec3 GetRayOrigin() const;
     void GetNormalisedDeviceCoordinates(const double& xpos, const double& ypos, const int& HEIGHT, const int& WIDTH) noexcept;
     void UpdateMousePicker(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix,std::shared_ptr<Camera> camera);
 

@@ -285,7 +285,7 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
 	std::dynamic_pointer_cast<Camera>(app->scene_1->actors[0])->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
-
+	app->scene_1->mousePicker.GetNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
 }
@@ -317,18 +317,27 @@ void PuffinEngine::KeyCallback(GLFWwindow* window, int key, int scancode, int ev
 }
 
 void PuffinEngine::MouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
+	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
 	ImGuiIO& io = ImGui::GetIO();
 
+
+	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+		app->scene_1->DeSelect();
 #if BUILD_ENABLE_VULKAN_DEBUG
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
 		std::cout << "You clicked right mouse button" << std::endl;
+#endif
+	}
 	
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		app->scene_1->Select();
+#if BUILD_ENABLE_VULKAN_DEBUG
 		std::cout << "You clicked left mouse button" << std::endl;
+#endif
+	}
 			
 	if (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS)
 		std::cout << "You clicked middle mouse button" << std::endl;
-#endif
+
 
 	if ((button >= 0) && (button < 3)) {
 		ImGui::GetIO().MouseDown[button] = (action == GLFW_PRESS);
