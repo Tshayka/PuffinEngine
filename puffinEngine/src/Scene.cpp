@@ -378,10 +378,11 @@ void Scene::CreateGraphicsPipeline() {
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrPipeline));
 	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrWireframePipeline));
-	Rasterization.lineWidth = 4.0f;
+	Rasterization.lineWidth = 2.0f;
 	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &selectRayPipeline));
 	Rasterization.lineWidth = 1.0f;
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &aabbPipeline));
 	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
@@ -585,6 +586,25 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
 			vkCmdDrawIndexed(command_buffers[i], 2, 1, 0, 0, 0);
 		}
+
+		if(displayAabbBorders) {
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
+
+			for (size_t k = 1; k < actors.size(); k++) {
+				std::array<VkDescriptorSet, 1> descriptorSets;
+				descriptorSets[0] = actors[k]->mesh.assigned_material->descriptor_set;
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
+				pushConstants.pos = actors[k]->position;
+				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon);
+				vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
+				//std::cout << "Model: " << k << " MIN X: " << actors[k]->currentBoundingBox.min.x << " MIN Y: " << actors[k]->currentBoundingBox.min.y << " MIN Z: " << actors[k]->currentBoundingBox.min.z << std::endl;
+				//std::cout << "Model: " << k << " MAX X: " << actors[k]->currentBoundingBox.max.x << " MAX Y: " << actors[k]->currentBoundingBox.max.y << " MAX Z:" << actors[k]->currentBoundingBox.max.z << std::endl;
+			}
+		};
+
 	
 		vkCmdEndRenderPass(command_buffers[i]);
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
@@ -1602,6 +1622,19 @@ void Scene::CreateSkybox() noexcept {
 	CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
 }
 
+void Scene::CreateAABBMesh(const enginetool::ScenePart& mesh) noexcept {
+	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
+	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+
+	aabbIndices = {0,1,1,2,2,3,3,0, 4,7,7,6, 6,5, 5,4, 0,5, 1,6, 2,7, 3,4};
+}
+
 void Scene::CreateOcean() noexcept {
 	int vSize = horizon;
 	float offset = horizon / 2.0f; 
@@ -1663,7 +1696,6 @@ void Scene::LoadAssets() {
 	LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
 	CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	
-
 	// Scene objects/actors
 	CreateCamera();
 	CreateCharacter();
@@ -1675,15 +1707,20 @@ void Scene::LoadAssets() {
 
 	for (uint32_t i = 0; i < actors.size(); i++) {
 		LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objects_vertices);
+		actors[i]->mesh.GetAABB(objects_vertices);
+		CreateAABBMesh(actors[i]->mesh);
 	}
 	CreateBuffers(objects_indices, objects_vertices, vertex_buffers.objects, index_buffers.objects);
+
+	CreateBuffers(aabbIndices, aabbVertices, vertex_buffers.aabb, index_buffers.aabb);
 
 	// assign shaders to meshes
 	actors[0]->mesh.assigned_material = &scene_material[4]; //camera
 	actors[1]->mesh.assigned_material = &scene_material[2]; //character
 	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
 	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane 
-	
+
+	mousePicker.UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));	
 }
 
 void Scene::CreateCamera() {
@@ -1771,7 +1808,6 @@ void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mes
 		}	
 		mesh.indexCount = index_offset;
 	}
-	mesh.boundingBox = mesh.GetAABB(vertices);
 }
 
 void Scene::CreateBuffers(std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertex_buffer, enginetool::Buffer& index_buffer) {
@@ -2186,6 +2222,9 @@ void Scene::PressKey(int key)
 		case GLFW_KEY_V:
 			wireframeMode = !wireframeMode;
 			break;
+		case GLFW_KEY_B:
+			displayAabbBorders = !displayAabbBorders;
+			break;
 		case GLFW_KEY_W:
 			std::cout << "Moving " << actors[0]->name << " foward " << key << std::endl;
 			actors[0]->Dolly(15.0f);
@@ -2431,6 +2470,9 @@ void Scene::DeInitIndexAndVertexBuffer() {
 
 	index_buffers.selectRay.Destroy();
 	vertex_buffers.selectRay.Destroy();
+
+	index_buffers.aabb.Destroy();
+	vertex_buffers.aabb.Destroy();
 }
 
 void Scene::DeInitScene()
@@ -2507,6 +2549,7 @@ void Scene::DeInitUniformBuffer() {
 }
 
 void Scene::DestroyPipeline() {
+	vkDestroyPipeline(logical_device->device, aabbPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, selectRayPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, skyboxPipeline, nullptr);
 	vkDestroyPipeline(logical_device->device, skyboxWireframePipeline, nullptr);

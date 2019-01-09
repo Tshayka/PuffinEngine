@@ -43,6 +43,7 @@ public:
 
 	bool wireframeMode = false;
 	bool displaySceneGeometry = true;
+	bool displayAabbBorders = false;
 
 	GuiElement* console = nullptr;
 	
@@ -63,6 +64,7 @@ private:
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);
+	void CreateAABBMesh(const enginetool::ScenePart& mesh) noexcept;
 	void CreateCommandPool(); // neccsesary to create command buffer
 	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
@@ -184,6 +186,7 @@ private:
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
+		enginetool::Buffer aabb;
 	} vertex_buffers;
 
 	struct {
@@ -192,6 +195,7 @@ private:
 		enginetool::Buffer clouds;
 		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
+		enginetool::Buffer aabb;
 	} index_buffers;
 
 	struct OffscreenPass {
@@ -207,6 +211,7 @@ private:
 
 	TextureLayout depthImage;
 
+	VkPipeline aabbPipeline;
 	VkPipeline selectRayPipeline;
 	VkPipeline pbrWireframePipeline;
 	VkPipeline pbrPipeline;
@@ -246,6 +251,8 @@ private:
 	std::vector<enginetool::VertexLayout> clouds_vertices;
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
+	std::vector<uint32_t> aabbIndices;
+	std::vector<enginetool::VertexLayout> aabbVertices;
 
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;

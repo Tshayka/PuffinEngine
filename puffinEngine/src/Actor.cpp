@@ -108,6 +108,6 @@ void Actor::UpdatePosition(float dt) {
 // }
 
 void Actor::UpdateAABB(){
-	currentBoundingBox.max = mesh.boundingBox.max + position;
-	currentBoundingBox.min = mesh.boundingBox.min + position;
+	currentBoundingBox.max = mesh.aabb.max + position;
+	currentBoundingBox.min = mesh.aabb.min + position;
 }

@@ -7,6 +7,8 @@
 
 #include "LoadTexture.cpp"//?
 
+#include <iostream> //temp
+
 namespace enginetool {
 	struct VertexLayout {
 		glm::vec3 pos;
@@ -53,22 +55,50 @@ namespace enginetool {
 			return pos == other.pos && color == other.color && text_coord == other.text_coord;
 		}
 	};
+
+	struct LineVertexLayout { //still not used
+		glm::vec3 pos;
+		glm::vec3 color;
+
+		static VkVertexInputBindingDescription getBindingDescription() {
+			VkVertexInputBindingDescription bindingDescription = {};
+			bindingDescription.binding = 0;
+			bindingDescription.stride = sizeof(LineVertexLayout);
+			bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+			return bindingDescription;
+		}
+
+		static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+
+			attributeDescriptions[0].binding = 0;
+			attributeDescriptions[0].location = 0;
+			attributeDescriptions[0].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[0].offset = offsetof(LineVertexLayout, pos);
+
+			attributeDescriptions[1].binding = 0;
+			attributeDescriptions[1].location = 1;
+			attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
+			attributeDescriptions[1].offset = offsetof(LineVertexLayout, color);
+
+			return attributeDescriptions;
+		}
+	};
 	
 	struct ScenePart {
 		
 		struct AABB {
 			glm::vec3 min;
 			glm::vec3 max;
-		}; 
+		} aabb; 
 
 		uint32_t indexBase = 0;
 		uint32_t indexCount = 0;
 		SceneMaterial* assigned_material;
 		std::string meshFilename;
 
-		AABB boundingBox;
-
-		AABB GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {
+		void GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {
 			glm::vec3 min; 
 			glm::vec3 max;
 
@@ -86,11 +116,11 @@ namespace enginetool {
 				if (vertices[i].pos.z > max.z) max.z = vertices[i].pos.z;
 			}
 
-			AABB box;
-			box.min = min;
-    		box.max = max;
+			aabb.min = min;
+    		aabb.max = max;
 
-			return box; 
+			std::cout << " MIN X: " << aabb.min.x << " MIN Y: " << aabb.min.y << " " << aabb.min.z << std::endl;
+			std::cout << " MAX X: " << aabb.max.x << " MAX Y: " << aabb.max.y << " " << aabb.max.z << std::endl;
 		}
 
 		static bool Overlaps(const AABB& a, const AABB& b){
@@ -112,12 +142,12 @@ namespace enginetool {
 		}
 
 		bool RayIntersection(const glm::vec3& dirFrac, const glm::vec3& rayOrg) {
-			float t1 = (boundingBox.min.x - rayOrg.x)*dirFrac.x;
-			float t2 = (boundingBox.max.x - rayOrg.x)*dirFrac.x;
-			float t3 = (boundingBox.min.y - rayOrg.y)*dirFrac.y;
-			float t4 = (boundingBox.max.y - rayOrg.y)*dirFrac.y;
-			float t5 = (boundingBox.min.z - rayOrg.z)*dirFrac.z;
-			float t6 = (boundingBox.max.z - rayOrg.z)*dirFrac.z;
+			float t1 = (aabb.min.x - rayOrg.x)*dirFrac.x;
+			float t2 = (aabb.max.x - rayOrg.x)*dirFrac.x;
+			float t3 = (aabb.min.y - rayOrg.y)*dirFrac.y;
+			float t4 = (aabb.max.y - rayOrg.y)*dirFrac.y;
+			float t5 = (aabb.min.z - rayOrg.z)*dirFrac.z;
+			float t6 = (aabb.max.z - rayOrg.z)*dirFrac.z;
 
 			float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
 			float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
