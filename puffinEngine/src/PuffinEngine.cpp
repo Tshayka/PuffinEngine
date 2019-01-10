@@ -65,9 +65,14 @@ void PuffinEngine::CreateStatusOverlay() {
 	statusOverlay->Init(world_device, console, guiStatistics, mainUi);
 }
 
+void PuffinEngine::CreateMousePicker() {
+	mousePicker = new MousePicker();
+	mousePicker->Init(world_device);
+}
+
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, window, console, statusOverlay);
+	scene_1->InitScene(world_device, window, console, statusOverlay, mousePicker);
 }
 
 void PuffinEngine::InitVulkan() {
@@ -76,6 +81,7 @@ void PuffinEngine::InitVulkan() {
 	CreateGuiTextOverlay();
 	CreateMainUi();
 	CreateStatusOverlay();
+	CreateMousePicker();
 	CreateScene();
 	CreateSemaphores();
 }
@@ -285,7 +291,7 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
 	std::dynamic_pointer_cast<Camera>(app->scene_1->actors[0])->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
-	app->scene_1->mousePicker.GetNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
+	app->mousePicker->GetNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
 }
@@ -379,6 +385,7 @@ void PuffinEngine::CleanUp() {
 
 	ImGui::DestroyContext();
 	DeInitSemaphores();
+	DestroyMousePicker();
 	DestroyScene();
 	DestroyGUI();
 	DestroyDevice();
@@ -425,5 +432,10 @@ void PuffinEngine::DestroyGUI() {
 	statusOverlay->DeInit();
 	delete statusOverlay;
 	statusOverlay = nullptr;
-	
+}
+
+void PuffinEngine::DestroyMousePicker() {
+	mousePicker->DeInit();
+	delete mousePicker;
+	mousePicker = nullptr;
 }

@@ -38,6 +38,7 @@ class PuffinEngine {
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
     void CreateMainUi();
+    void CreateMousePicker();
     void CreateScene();
     void CreateStatusOverlay();
     void CreateSemaphores();
@@ -50,6 +51,7 @@ class PuffinEngine {
     void Update(float);
 
     Device* world_device = nullptr;
+    MousePicker* mousePicker = nullptr;
     Scene* scene_1 = nullptr;
     GuiElement* console = nullptr;
     StatusOverlay* statusOverlay = nullptr;
@@ -65,10 +67,12 @@ class PuffinEngine {
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.
 
     // ---------------- Deinitialisation ---------------- //
+
     void CleanUp();
     void CleanUpSwapChain();
     void DeInitSemaphores();
     void DestroyDevice();
+    void DestroyMousePicker();
     void DestroyScene();
     void DestroyGUI();
 };

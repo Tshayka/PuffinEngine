@@ -30,7 +30,7 @@ public:
 	void ConnectGamepad();
 	void DeInitScene();
 	void DeSelect();
-	void InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay);
+	void InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay, MousePicker* mousePicker);
 	void PressKey(int);
 	void RecreateForSwapchain();
 	void Select();
@@ -47,7 +47,6 @@ public:
 
 	GuiElement* console = nullptr;
 	
-	MousePicker mousePicker;
 	std::shared_ptr<Actor> selectedActor = nullptr;
 	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::vector<std::shared_ptr<Actor>> actors;
@@ -206,7 +205,6 @@ private:
 		TextureLayout refractionDepthImage;
 	} offscreenPass;
 
-
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 
 	TextureLayout depthImage;
@@ -273,6 +271,7 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
 
-	Device* logical_device = nullptr;	
-	GLFWwindow *window = nullptr;
+	Device* logical_device = nullptr;
+	MousePicker* mousePicker = nullptr;	
+	GLFWwindow* window = nullptr;
 };

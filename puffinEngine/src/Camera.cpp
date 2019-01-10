@@ -74,7 +74,7 @@ void Camera::MouseMove(double xpos, double ypos, int HEIGHT, int WIDTH, float se
 	pitch = sensitivity * float(HEIGHT / 2 - ypos);
 }
 
-void Camera::GamepadMove(double xpos, double ypos, int HEIGHT, int WIDTH, float sensitivity)
+void Camera::GamepadMove(double xpos, double ypos, int HEIGHT, int WIDTH, float sensitivity) 
 {
 	yaw += sensitivity  * float(xpos);
 	pitch += sensitivity/2.0f * float(ypos);

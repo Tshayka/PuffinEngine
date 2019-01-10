@@ -55,10 +55,11 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay) {
+void Scene::InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay, MousePicker* mousePicker) {
 	this->console = console;
 	logical_device = device;
 	status_overlay = statusOverlay;
+	this->mousePicker = mousePicker;
 	this->window = window;
 
 	InitSwapchainImageViews();
@@ -567,8 +568,8 @@ void Scene::CreateCommandBuffers() {
 
 		if(wireframeMode) {
 			rayVertices = {
-				{ mousePicker.GetRayDirection(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-				{ mousePicker.GetRayOrigin(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+				{ mousePicker->GetRayDirection(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+				{ mousePicker->GetRayOrigin(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 			};
 
 			enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
@@ -605,7 +606,6 @@ void Scene::CreateCommandBuffers() {
 			}
 		};
 
-	
 		vkCmdEndRenderPass(command_buffers[i]);
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
 	}
@@ -861,14 +861,14 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 void Scene::Select() {
 	selectedActor = nullptr;
-	mousePicker.UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));
+	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));
 
 	glm::vec3 dirFrac;
-	dirFrac.x = 1.0f / mousePicker.GetRayDirection().x;
-	dirFrac.y = 1.0f / mousePicker.GetRayDirection().y;
-	dirFrac.z = 1.0f / mousePicker.GetRayDirection().z;
+	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
+	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
+	dirFrac.z = 1.0f / mousePicker->GetRayDirection().z;
 
-	glm::vec3 rayOrigin = mousePicker.GetRayOrigin();
+	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
 
 	for (size_t j = 1; j < actors.size(); j++) {
 		if(actors[j]->mesh.RayIntersection(dirFrac, rayOrigin)) {
@@ -1720,7 +1720,7 @@ void Scene::LoadAssets() {
 	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
 	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane 
 
-	mousePicker.UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));	
+	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));	
 }
 
 void Scene::CreateCamera() {

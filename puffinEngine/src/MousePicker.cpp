@@ -19,7 +19,7 @@ MousePicker::~MousePicker() {
 #endif 
 }
 
-// ---------------- Main functions ------------------ //
+// --------------- Setters and getters -------------- //
 
 glm::vec3 MousePicker::GetRayDirection() const {
 	return currentRay;
@@ -27,6 +27,12 @@ glm::vec3 MousePicker::GetRayDirection() const {
 
 glm::vec3 MousePicker::GetRayOrigin() const {
 	return currentCamera->position;
+}
+
+// ---------------- Main functions ------------------ //
+
+void MousePicker::Init(Device* device) {
+
 }
 
 void MousePicker::UpdateMousePicker(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix, std::shared_ptr<Camera> camera) {
@@ -52,4 +58,8 @@ void MousePicker::GetNormalisedDeviceCoordinates(const double& xpos, const doubl
     float x = (2.0f * xpos) / WIDTH - 1.0f;
 	float y = (2.0f * ypos) / HEIGHT - 1.0f;
 	mousePositionNormalized = glm::vec2(x, y);
+}
+
+void MousePicker::DeInit() {
+
 }
