@@ -162,14 +162,14 @@ void Scene::CreateCommandPool() {
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
-	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
+	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &commandPool));
 }
 
 VkCommandBuffer Scene::BeginSingleTimeCommands() {
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	AllocInfo.commandPool = command_pool;
+	AllocInfo.commandPool = commandPool;
 	AllocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer command_buffer;
@@ -196,7 +196,7 @@ void Scene::EndSingleTimeCommands(VkCommandBuffer command_buffer)
 	vkQueueSubmit(logical_device->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(logical_device->queue);
 
-	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &command_buffer);
+	vkFreeCommandBuffers(logical_device->device, commandPool, 1, &command_buffer);
 }
 
 void Scene::CopyBuffer(VkBuffer src_buffer, VkBuffer dst_buffer, VkDeviceSize size)
@@ -288,7 +288,7 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	PipelineLayoutInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(logical_device->device, &PipelineLayoutInfo, nullptr, &pipeline_layout));
+	ErrorCheck(vkCreatePipelineLayout(logical_device->device, &PipelineLayoutInfo, nullptr, &pipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -304,7 +304,7 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.pDepthStencilState = &DepthStencil;
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
-	PipelineInfo.layout = pipeline_layout;
+	PipelineInfo.layout = pipelineLayout;
 	PipelineInfo.renderPass = logical_device->renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -495,7 +495,7 @@ void Scene::CreateCommandBuffers() {
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = command_pool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
 
@@ -523,18 +523,18 @@ void Scene::CreateCommandBuffers() {
 		VkDeviceSize offsets[1] = { 0 };
 
 		if (display_skybox)	{
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skybox_descriptor_set, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (skyboxWireframePipeline) : (skyboxPipeline));
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displayOcean) {
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 3, 1, &oceanDescriptorSet, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, &oceanDescriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (oceanWireframePipeline) : (oceanPipeline));
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(oceanIndices.size()), 1, 0, 0, 0);
 		}
 
@@ -545,28 +545,28 @@ void Scene::CreateCommandBuffers() {
 			for (size_t j = 0; j < actors.size(); j++) {
 				std::array<VkDescriptorSet, 1> descriptorSets;
 				descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
 				pushConstants.pos = actors[j]->position;
 				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-				vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+				vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 				vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 			}
 		}
 
 		if (display_clouds)	{
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (wireframeMode) ? (cloudsWireframePipeline) : (cloudsPipeline));
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (cloudsWireframePipeline) : (cloudsPipeline));
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.clouds.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.clouds.buffer, 0, VK_INDEX_TYPE_UINT32);
 
 			for (uint32_t k = 0; k < DYNAMIC_UB_OBJECTS; k++) {
 				uint32_t dynamic_offset = k * static_cast<uint32_t>(dynamicAlignment);
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 2, 1, &clouds_descriptor_set, 1, &dynamic_offset);
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &clouds_descriptor_set, 1, &dynamic_offset);
 				vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(clouds_indices.size()), 1, 0, 0, 0);
 			}
 		}
 
-		if(wireframeMode) {
+		if(displayWireframe) {
 			rayVertices = {
 				{ mousePicker->GetRayDirection(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 				{ mousePicker->GetRayOrigin(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
@@ -581,7 +581,7 @@ void Scene::CreateCommandBuffers() {
 			vertex_buffers.selectRay.Flush();
 			index_buffers.selectRay.Flush();
 			
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skybox_descriptor_set, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
@@ -595,11 +595,11 @@ void Scene::CreateCommandBuffers() {
 			for (size_t k = 1; k < actors.size(); k++) {
 				std::array<VkDescriptorSet, 1> descriptorSets;
 				descriptorSets[0] = actors[k]->mesh.assigned_material->descriptor_set;
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 				pushConstants.pos = actors[k]->position;
 				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon);
-				vkCmdPushConstants(command_buffers[i], pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+				vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
 				//std::cout << "Model: " << k << " MIN X: " << actors[k]->currentBoundingBox.min.x << " MIN Y: " << actors[k]->currentBoundingBox.min.y << " MIN Z: " << actors[k]->currentBoundingBox.min.z << std::endl;
 				//std::cout << "Model: " << k << " MAX X: " << actors[k]->currentBoundingBox.max.x << " MAX Y: " << actors[k]->currentBoundingBox.max.y << " MAX Z:" << actors[k]->currentBoundingBox.max.z << std::endl;
@@ -632,7 +632,7 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = command_pool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = 1;
 
@@ -658,7 +658,7 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	// Skybox
 	if (display_skybox)	{
-		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skyboxReflectionDescriptorSet, 0, nullptr);
+		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skyboxReflectionDescriptorSet, 0, nullptr);
 		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxReflectionPipeline);
@@ -673,11 +673,11 @@ void Scene::CreateReflectionCommandBuffer() {
 		// reflection
 		std::array<VkDescriptorSet, 1> descriptorSets;
 		descriptorSets[0] = actors[j]->mesh.assigned_material->reflectDescriptorSet;
-		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
 		pushConstants.pos = actors[j]->position;
 		pushConstants.renderLimitPlane = glm::vec4(0.0f, 1.0f, 0.0f, -0.0f);
-		vkCmdPushConstants(reflectionCmdBuff, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		vkCmdPushConstants(reflectionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 	}
 
@@ -706,7 +706,7 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = command_pool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = 1;
 
@@ -732,7 +732,7 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	// Skybox
 	if (display_skybox)	{
-		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 1, 1, &skyboxRefractionDescriptorSet, 0, nullptr);
+		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skyboxRefractionDescriptorSet, 0, nullptr);
 		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxRefractionPipeline);
@@ -746,11 +746,11 @@ void Scene::CreateRefractionCommandBuffer() {
 	for (size_t j = 1; j < actors.size(); j++) {
 		std::array<VkDescriptorSet, 1> descriptorSets;
 		descriptorSets[0] = actors[j]->mesh.assigned_material->refractDescriptorSet;
-		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_layout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrRefractionPipeline);
 		pushConstants.pos = actors[j]->position;
 		pushConstants.renderLimitPlane = glm::vec4(0.0f, -1.0f, 0.0f, 0.0f );
-		vkCmdPushConstants(refractionCmdBuff, pipeline_layout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		vkCmdPushConstants(refractionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 		vkCmdDrawIndexed(refractionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 	}
 
@@ -1183,7 +1183,7 @@ void Scene::CreateDescriptorPool() {
 	PoolInfo.pPoolSizes = PoolSizes.data();
 	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 5); // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptor_pool));
+	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptorPool));
 }
 
 void Scene::CreateDescriptorSet() {
@@ -1221,7 +1221,7 @@ void Scene::CreateDescriptorSet() {
 
 		VkDescriptorSetAllocateInfo AllocInfo = {};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		AllocInfo.descriptorPool = descriptor_pool;
+		AllocInfo.descriptorPool = descriptorPool;
 		AllocInfo.descriptorSetCount = 1;
 		AllocInfo.pSetLayouts = &descriptor_set_layout;
 
@@ -1369,7 +1369,7 @@ void Scene::CreateDescriptorSet() {
 	// SkyBox descriptor set
 	VkDescriptorSetAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	allocInfo.descriptorPool = descriptor_pool;
+	allocInfo.descriptorPool = descriptorPool;
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = &skybox_descriptor_set_layout;
 
@@ -1436,7 +1436,7 @@ void Scene::CreateDescriptorSet() {
 	// Clouds descriptor set
 	VkDescriptorSetAllocateInfo CloudsAllocInfo = {};
 	CloudsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	CloudsAllocInfo.descriptorPool = descriptor_pool;
+	CloudsAllocInfo.descriptorPool = descriptorPool;
 	CloudsAllocInfo.descriptorSetCount = 1;
 	CloudsAllocInfo.pSetLayouts = &clouds_descriptor_set_layout;
 
@@ -1475,7 +1475,7 @@ void Scene::CreateDescriptorSet() {
 	// Ocean descriptor set
 	VkDescriptorSetAllocateInfo oceanAllocInfo = {};
 	oceanAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	oceanAllocInfo.descriptorPool = descriptor_pool;
+	oceanAllocInfo.descriptorPool = descriptorPool;
 	oceanAllocInfo.descriptorSetCount = 1;
 	oceanAllocInfo.pSetLayouts = &oceanDescriptorSetLayout;
 
@@ -2220,7 +2220,7 @@ void Scene::PressKey(int key)
 		switch (key)
 		{
 		case GLFW_KEY_V:
-			wireframeMode = !wireframeMode;
+			displayWireframe = !displayWireframe;
 			break;
 		case GLFW_KEY_B:
 			displayAabbBorders = !displayAabbBorders;
@@ -2436,7 +2436,7 @@ void Scene::CleanUpForSwapchain() {
 	DeInitFramebuffer();
 	FreeCommandBuffers();
 	DestroyPipeline();
-	vkDestroyPipelineLayout(logical_device->device, pipeline_layout, nullptr);
+	vkDestroyPipelineLayout(logical_device->device, pipelineLayout, nullptr);
 	//logical_device->DestroyRenderPass();
 }
 
@@ -2482,13 +2482,13 @@ void Scene::DeInitScene()
 	
 	DeInitIndexAndVertexBuffer();
 	DeInitTextureImage();
-	vkDestroyDescriptorPool(logical_device->device, descriptor_pool, nullptr);
+	vkDestroyDescriptorPool(logical_device->device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, oceanDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, skybox_descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logical_device->device, clouds_descriptor_set_layout, nullptr);
 
-	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
+	vkDestroyCommandPool(logical_device->device, commandPool, nullptr);
 	DeInitUniformBuffer();
 	
 	delete rust;
@@ -2566,7 +2566,7 @@ void Scene::DestroyPipeline() {
 }
 
 void Scene::FreeCommandBuffers() {
-	vkFreeCommandBuffers(logical_device->device, command_pool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
-	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &reflectionCmdBuff);
-	vkFreeCommandBuffers(logical_device->device, command_pool, 1, &refractionCmdBuff);
+	vkFreeCommandBuffers(logical_device->device, commandPool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
+	vkFreeCommandBuffers(logical_device->device, commandPool, 1, &reflectionCmdBuff);
+	vkFreeCommandBuffers(logical_device->device, commandPool, 1, &refractionCmdBuff);
 }

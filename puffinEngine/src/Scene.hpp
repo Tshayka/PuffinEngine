@@ -41,7 +41,7 @@ public:
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
-	bool wireframeMode = false;
+	bool displayWireframe = false;
 	bool displaySceneGeometry = true;
 	bool displayAabbBorders = false;
 
@@ -237,8 +237,6 @@ private:
 	enginetool::ScenePart element;
 	enginetool::ScenePart cloud_mesh;
 
-	//pog::VertexLayout skybox;
-
 	std::vector<uint32_t> objects_indices;
 	std::vector<enginetool::VertexLayout> objects_vertices;
 	std::vector<uint32_t> skybox_indices;
@@ -263,10 +261,10 @@ private:
 	VkDescriptorSetLayout skybox_descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout clouds_descriptor_set_layout = VK_NULL_HANDLE;
 
-	VkCommandPool command_pool;
+	VkCommandPool commandPool;
 	size_t dynamicAlignment;
-	VkDescriptorPool descriptor_pool;
-	VkPipelineLayout pipeline_layout;
+	VkDescriptorPool descriptorPool;
+	VkPipelineLayout pipelineLayout;
 	
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
