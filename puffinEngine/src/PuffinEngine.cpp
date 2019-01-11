@@ -60,9 +60,9 @@ void PuffinEngine::CreateMainUi() {
 	mainUi->Init(world_device);
 }
 
-void PuffinEngine::CreateStatusOverlay() {
-	statusOverlay = new StatusOverlay();
-	statusOverlay->Init(world_device, console, guiStatistics, mainUi);
+void PuffinEngine::CreateGuiMainHub() {
+	guiMainHub = new GuiMainHub();
+	guiMainHub->Init(world_device, console, guiStatistics, mainUi);
 }
 
 void PuffinEngine::CreateMousePicker() {
@@ -72,7 +72,7 @@ void PuffinEngine::CreateMousePicker() {
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, window, console, statusOverlay, mousePicker);
+	scene_1->InitScene(world_device, window, guiMainHub, mousePicker);
 }
 
 void PuffinEngine::InitVulkan() {
@@ -80,7 +80,7 @@ void PuffinEngine::InitVulkan() {
 	CreateImGuiMenu();
 	CreateGuiTextOverlay();
 	CreateMainUi();
-	CreateStatusOverlay();
+	CreateGuiMainHub();
 	CreateMousePicker();
 	CreateScene();
 	CreateSemaphores();
@@ -140,7 +140,7 @@ void PuffinEngine::CreateSemaphores() {
 
 void PuffinEngine::DrawFrame() {
 	uint32_t image_index;
-	VkResult result = vkAcquireNextImageKHR(world_device->device, world_device->swap_chain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &image_index);
+	VkResult result = vkAcquireNextImageKHR(world_device->device, world_device->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &image_index);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)	{
 		RecreateSwapChain();
@@ -177,14 +177,14 @@ void PuffinEngine::DrawFrame() {
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
 	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	statusOverlay->Submit(world_device->queue, image_index);
+	guiMainHub->Submit(world_device->queue, image_index);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores = &renderFinishedSemaphore;
 
-	VkSwapchainKHR swap_chains[] = { world_device->swap_chain };
+	VkSwapchainKHR swap_chains[] = { world_device->swapchain };
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = swap_chains;
 	present_info.pImageIndices = &image_index;
@@ -214,6 +214,7 @@ void PuffinEngine::RecreateSwapChain() {
 
 	world_device->InitSwapChain();
 	scene_1->RecreateForSwapchain();
+	guiMainHub->RecreateForSwapchain();
 }
 
 
@@ -291,7 +292,7 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
 	std::dynamic_pointer_cast<Camera>(app->scene_1->actors[0])->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
-	app->mousePicker->GetNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
+	app->mousePicker->CalculateNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
 }
@@ -396,6 +397,7 @@ void PuffinEngine::CleanUp() {
 
 void PuffinEngine::CleanUpSwapChain() {
 	scene_1->CleanUpForSwapchain();
+	guiMainHub->CleanUpForSwapchain();
 	world_device->DeInitSwapchainImageViews();
 	world_device->DestroySwapchainKHR();
 }
@@ -429,9 +431,9 @@ void PuffinEngine::DestroyGUI() {
 	console->DeInitMenu();
 	delete console;
 	console = nullptr;
-	statusOverlay->DeInit();
-	delete statusOverlay;
-	statusOverlay = nullptr;
+	guiMainHub->DeInit();
+	delete guiMainHub;
+	guiMainHub = nullptr;
 }
 
 void PuffinEngine::DestroyMousePicker() {

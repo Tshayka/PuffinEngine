@@ -2,7 +2,7 @@
 
 #include "Device.hpp"
 #include "Scene.hpp"
-#include "GuiOverlay.hpp"
+#include "GuiMainHub.hpp"
 
 const int FRAMES_PER_SECOND = 25;
 const int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
@@ -40,7 +40,7 @@ class PuffinEngine {
     void CreateMainUi();
     void CreateMousePicker();
     void CreateScene();
-    void CreateStatusOverlay();
+    void CreateGuiMainHub();
     void CreateSemaphores();
     void DrawFrame();
     void InitVulkan();
@@ -53,8 +53,9 @@ class PuffinEngine {
     Device* world_device = nullptr;
     MousePicker* mousePicker = nullptr;
     Scene* scene_1 = nullptr;
+
+    GuiMainHub* guiMainHub = nullptr;
     GuiElement* console = nullptr;
-    StatusOverlay* statusOverlay = nullptr;
     GuiMainUi* mainUi = nullptr;
     GuiTextOverlay* guiStatistics = nullptr;
 

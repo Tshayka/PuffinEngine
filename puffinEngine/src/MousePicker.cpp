@@ -15,8 +15,8 @@ MousePicker::MousePicker() {
 MousePicker::~MousePicker() {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "MousePicker destroyed\n";
-    currentCamera = nullptr;
-#endif 
+#endif
+    currentCamera = nullptr; 
 }
 
 // --------------- Setters and getters -------------- //
@@ -54,7 +54,7 @@ glm::vec3 MousePicker::CalculateMouseRay(){
 	return mouseRay;
 }
 
-void MousePicker::GetNormalisedDeviceCoordinates(const double& xpos, const double& ypos, const int& HEIGHT, const int& WIDTH) noexcept {
+void MousePicker::CalculateNormalisedDeviceCoordinates(const double& xpos, const double& ypos, const int& HEIGHT, const int& WIDTH) noexcept {
     float x = (2.0f * xpos) / WIDTH - 1.0f;
 	float y = (2.0f * ypos) / HEIGHT - 1.0f;
 	mousePositionNormalized = glm::vec2(x, y);

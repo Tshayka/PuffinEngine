@@ -7,8 +7,6 @@
 
 #include "LoadTexture.cpp"//?
 
-#include <iostream> //temp
-
 namespace enginetool {
 	struct VertexLayout {
 		glm::vec3 pos;
@@ -118,9 +116,6 @@ namespace enginetool {
 
 			aabb.min = min;
     		aabb.max = max;
-
-			std::cout << " MIN X: " << aabb.min.x << " MIN Y: " << aabb.min.y << " " << aabb.min.z << std::endl;
-			std::cout << " MAX X: " << aabb.max.x << " MAX Y: " << aabb.max.y << " " << aabb.max.z << std::endl;
 		}
 
 		static bool Overlaps(const AABB& a, const AABB& b){

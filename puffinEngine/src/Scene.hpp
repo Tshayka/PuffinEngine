@@ -10,7 +10,7 @@
 #include "Camera.hpp"
 #include "Device.hpp"
 #include "Light.hpp"
-#include "GuiOverlay.hpp"
+#include "GuiMainHub.hpp"
 #include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
@@ -30,7 +30,7 @@ public:
 	void ConnectGamepad();
 	void DeInitScene();
 	void DeSelect();
-	void InitScene(Device* device, GLFWwindow* window, GuiElement* console, StatusOverlay* statusOverlay, MousePicker* mousePicker);
+	void InitScene(Device* device, GLFWwindow* window, GuiMainHub* statusOverlay, MousePicker* mousePicker);
 	void PressKey(int);
 	void RecreateForSwapchain();
 	void Select();
@@ -44,14 +44,15 @@ public:
 	bool displayWireframe = false;
 	bool displaySceneGeometry = true;
 	bool displayAabbBorders = false;
-
-	GuiElement* console = nullptr;
+	bool displayClouds = true;
+	bool displaySkybox = true;
+	bool displayOcean = true;
 	
 	std::shared_ptr<Actor> selectedActor = nullptr;
 	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::vector<std::shared_ptr<Actor>> actors;
 		
-	StatusOverlay *status_overlay = nullptr;
+	GuiMainHub *guiMainHub = nullptr;
 	
 	std::vector<VkCommandBuffer> command_buffers;
 	VkCommandBuffer reflectionCmdBuff = VK_NULL_HANDLE;
@@ -105,7 +106,7 @@ private:
 	// ---------------- Deinitialisation ---------------- //
 
 	void DeInitFramebuffer();
-	void DeInitImageView();
+	void DeInitDepthResources();
 	void DeInitIndexAndVertexBuffer();
 	void DeInitTextureImage();
 	void DeInitUniformBuffer();
@@ -224,13 +225,13 @@ private:
 	VkPipeline skyboxRefractionPipeline;
 	VkPipeline skyboxReflectionPipeline;
 	
-	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial(logical_device);
-	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial(logical_device);
+	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial(logicalDevice);
 
 	std::vector<enginetool::SceneMaterial> scene_material;
 
@@ -238,7 +239,7 @@ private:
 	enginetool::ScenePart cloud_mesh;
 
 	std::vector<uint32_t> objects_indices;
-	std::vector<enginetool::VertexLayout> objects_vertices;
+	std::vector<enginetool::VertexLayout> objectsVertices;
 	std::vector<uint32_t> skybox_indices;
 	std::vector<enginetool::VertexLayout> skybox_vertices;
 	std::vector<uint32_t> oceanIndices;
@@ -269,7 +270,7 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {};
 
-	Device* logical_device = nullptr;
+	Device* logicalDevice = nullptr;
 	MousePicker* mousePicker = nullptr;	
 	GLFWwindow* window = nullptr;
 };

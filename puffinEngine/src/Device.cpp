@@ -46,6 +46,7 @@ void Device::InitDevice(GLFWwindow* window)
     CreateSurface();
     PickPhysicalDevice();
 	CreateLogicalDevice();
+	// all stuff below must go to scene
     InitSwapChain();
 	CreateRenderPass();
 	CreateOffscreenRenderPass(VK_FORMAT_R8G8B8A8_UNORM);  
@@ -125,14 +126,14 @@ void Device::InitSwapChain() {
 	sc_create_info.clipped = VK_TRUE; // means that we don't care about the color of pixels
 	sc_create_info.oldSwapchain = VK_NULL_HANDLE;
 
-	ErrorCheck(vkCreateSwapchainKHR(device, &sc_create_info, nullptr, &swap_chain));
+	ErrorCheck(vkCreateSwapchainKHR(device, &sc_create_info, nullptr, &swapchain));
 
-	vkGetSwapchainImagesKHR(device, swap_chain, &image_count, nullptr);
-	swapchain_images.resize(image_count);
+	vkGetSwapchainImagesKHR(device, swapchain, &image_count, nullptr);
+	swapchainImages.resize(image_count);
 	
-	ErrorCheck(vkGetSwapchainImagesKHR(device, swap_chain, &image_count, swapchain_images.data()));
+	ErrorCheck(vkGetSwapchainImagesKHR(device, swapchain, &image_count, swapchainImages.data()));
 
-	swapchain_image_format = surface_format.format;
+	swapchainImageFormat = surface_format.format;
 	swapchain_extent = extent;
 }
 
@@ -227,14 +228,14 @@ SwapChainSupportDetails Device::QuerySwapChainSupport(VkPhysicalDevice device)
 
 void Device::DeInitSwapchainImageViews()
 {
-	for (size_t i = 0; i < swapchain_image_views.size(); i++) {
-		vkDestroyImageView(device, swapchain_image_views[i], nullptr);
+	for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+		vkDestroyImageView(device, swapchainImageViews[i], nullptr);
 	}
 }
 
 void Device::DestroySwapchainKHR()
 {
-	vkDestroySwapchainKHR(device, swap_chain, nullptr);
+	vkDestroySwapchainKHR(device, swapchain, nullptr);
 }
 
 void Device::CreateInstance()
@@ -586,7 +587,7 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 
 void Device::CreateRenderPass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = swapchain_image_format;
+	color_attachment.format = swapchainImageFormat;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -712,8 +713,7 @@ void Device::CreateOffscreenRenderPass(VkFormat format) {
 	ErrorCheck(vkCreateRenderPass(device, &renderPassInfo, nullptr, &offscreenRenderPass));
 }
 
-void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory)
-{
+void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& buffer_memory) {
 	VkBufferCreateInfo BufferInfo = {};
 	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	BufferInfo.size = size;

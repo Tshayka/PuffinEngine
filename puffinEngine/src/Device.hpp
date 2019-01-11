@@ -8,10 +8,6 @@
 
 #include "Buffer.cpp"
 
-static bool display_clouds = true;
-static bool display_skybox = true;
-static bool displayOcean = true;
-
 struct QueueFamilyIndices
 {
 	int graphicsFamily = -1;
@@ -67,11 +63,11 @@ public:
 	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>); // represents the actual conditions for showing images to the screen (4 possible modes)
 	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR&); // swap extent is the resolution of the swap chain images, it's almost always exactly equal to the resolution of the window that we're drawing to
 	
-	VkSwapchainKHR swap_chain; // store swap chain object
-	VkFormat swapchain_image_format;
+	VkSwapchainKHR swapchain;
+	VkFormat swapchainImageFormat;
 	VkExtent2D swapchain_extent;
-	std::vector<VkImage> swapchain_images;
-	std::vector<VkImageView> swapchain_image_views;
+	std::vector<VkImage> swapchainImages;
+	std::vector<VkImageView> swapchainImageViews;
 	std::vector<VkFramebuffer> swap_chain_framebuffers;
 	VkFramebuffer reflectionFramebuffer;
 	VkFramebuffer refractionFramebuffer;
