@@ -6,6 +6,8 @@ layout(set = 2, binding = 0) uniform UboClouds
 {
 	mat4 proj;
     mat4 view;
+	vec3 cameraPos;
+	float time;
 } uboc;
 
 layout(set = 2, binding = 1) uniform UboCloudsMatrices
@@ -22,6 +24,8 @@ layout(location = 0) out vec3 outWorldPos;
 layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 outNormal;
 layout(location = 3) out vec3 outColor;
+layout(location = 4) out vec3 outCameraPos;
+layout(location = 5) out float outTime;
 
 out gl_PerVertex 
 {
@@ -29,9 +33,9 @@ out gl_PerVertex
 };
 
 vec3 colors[3] = vec3[](
-    vec3(1.0, 0.0, 0.0),
-    vec3(0.0, 1.0, 0.0),
-    vec3(0.0, 0.0, 1.0)
+    vec3(1.0, 1.0, 1.0),
+    vec3(1.0, 1.0, 1.0),
+    vec3(1.0, 1.0, 1.0)
 );
 
 
@@ -43,7 +47,10 @@ void main()
 	outNormal = mat3(ubo_data_dynamic.model) * inNormals;
 
 	mat4 modelView = uboc.view * ubo_data_dynamic.model;
-	outWorldPos = vec3(modelView * vec4(inPosition, 1.0));
+	outWorldPos = vec3(ubo_data_dynamic.model * vec4(inPosition, 1.0));
+
+	outCameraPos = uboc.cameraPos;
+	outTime = uboc.time;
 	
 	gl_Position = uboc.proj * modelView * vec4(inPosition.xyz, 1.0);
 }
