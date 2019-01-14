@@ -13,3 +13,10 @@ C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V clouds_shader.frag -o clouds_s
 C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V perform_stats.vert -o perform_stats.vert.spv
 C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V perform_stats.frag -o perform_stats.frag.spv
 
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V ocean_shader.vert -o ocean_shader.vert.spv
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V ocean_shader.frag -o ocean_shader.frag.spv
+
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V line_stats.vert -o line_stats.vert.spv
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V line_stats.frag -o line_stats.frag.spv
+
+
