@@ -311,7 +311,7 @@ void Scene::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	VertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	std::array<VkDescriptorSetLayout, 4> layouts = { descriptor_set_layout, skybox_descriptor_set_layout, clouds_descriptor_set_layout, oceanDescriptorSetLayout };
+	std::array<VkDescriptorSetLayout, 5> layouts = { descriptor_set_layout, skybox_descriptor_set_layout, clouds_descriptor_set_layout, oceanDescriptorSetLayout, lineDescriptorSetLayout };
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -411,14 +411,8 @@ void Scene::CreateGraphicsPipeline() {
 	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrPipeline));
 	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
 	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrWireframePipeline));
-	Rasterization.lineWidth = 2.0f;
-	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
-	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &selectRayPipeline));
-	Rasterization.lineWidth = 1.0f;
-	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &aabbPipeline));
-	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
-
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+	
 	// Models refraction pipeline
 	PipelineInfo.renderPass = logicalDevice->offscreenRenderPass;
 	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrRefractionPipeline));
@@ -465,8 +459,43 @@ void Scene::CreateGraphicsPipeline() {
 
 	vkDestroyShaderModule(logicalDevice->device, fragOceanShaderModule, nullptr);
 	vkDestroyShaderModule(logicalDevice->device, vertOceanShaderModule, nullptr);
+	
+	// IV. Line pipeline
 
-	// IV. Clouds pipeline
+	auto vertLineShaderCode = enginetool::readFile("puffinEngine/shaders/lineShader.vert.spv");
+	auto fragLineShaderCode = enginetool::readFile("puffinEngine/shaders/lineShader.frag.spv");
+
+	VkShaderModule vertLineShaderModule = logicalDevice->CreateShaderModule(vertLineShaderCode);
+	VkShaderModule fragLineShaderModule = logicalDevice->CreateShaderModule(fragLineShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertLineShaderStageInfo = {};
+	vertLineShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertLineShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertLineShaderStageInfo.module = vertLineShaderModule;
+	vertLineShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragLineShaderStageInfo = {};
+	fragLineShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragLineShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragLineShaderStageInfo.module = fragLineShaderModule;
+	fragLineShaderStageInfo.pName = "main";
+
+	shaderStages[0] = vertLineShaderStageInfo;
+	shaderStages[1] = fragLineShaderStageInfo;
+
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	Rasterization.lineWidth = 2.0f;
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &selectRayPipeline));
+	Rasterization.lineWidth = 1.0f;
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &aabbPipeline));
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+
+	vkDestroyShaderModule(logicalDevice->device, fragLineShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->device, vertLineShaderModule, nullptr); 
+
+	// V. Clouds pipeline
 	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
 	auto fragCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.frag.spv");
 
@@ -599,20 +628,7 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if(displayWireframe) {
-			rayVertices = {
-				{ mousePicker->GetRayDirection(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-				{ mousePicker->GetRayOrigin(), {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
-			};
-
-			enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
-			uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.mapped;
-
-			memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
-	  		memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
-
-			vertex_buffers.selectRay.Flush();
-			index_buffers.selectRay.Flush();
-			
+			UpdateSelectRayDrawData();
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -621,18 +637,14 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if(displayAabbBorders) {
+			UpdateAABBDrawData();
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 			for (size_t k = 1; k < actors.size(); k++) {
-				std::array<VkDescriptorSet, 1> descriptorSets;
-				descriptorSets[0] = actors[k]->mesh.assigned_material->descriptor_set;
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
 				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
-				pushConstants.pos = actors[k]->position;
-				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon);
-				vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
+				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);				
 			}
 		};
 
@@ -856,6 +868,10 @@ void Scene::CreateUniformBuffer() {
 	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
 	uniform_buffers.skyboxRefraction.Map();
 
+	// Line uniform buffer -> static
+	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
+	uniform_buffers.line.Map();
+
 	// Create random positions for dynamic uniform buffer
 	RandomPositions();
 }
@@ -869,7 +885,6 @@ void Scene::RandomPositions() {
 	}
 }
 
-
 void Scene::UpdateScene(const float &dt, const float &time, float const &accumulator) {
 	UpdateGUI((float)accumulator, (uint32_t)time);
 
@@ -879,11 +894,9 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	UpdateUBOParameters();
 	UpdateUniformBuffer(time);
 
-	std::dynamic_pointer_cast<Camera>(actors[0])->UpdatePosition(dt); // TODO not update when camera not moving?
-	std::dynamic_pointer_cast<Character>(actors[1])->UpdatePosition(dt); 
-	std::dynamic_pointer_cast<SphereLight>(actors[2])->UpdatePosition(dt);
-	actors[3]->UpdatePosition(dt); 
-
+	for(const auto& a : actors) a->UpdatePosition(dt);
+	
+	
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
@@ -892,7 +905,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 void Scene::Select() {
 	selectedActor = nullptr;
 	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));
-
+	glm::vec3 hitPoint;
 	glm::vec3 dirFrac;
 	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
 	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
@@ -901,17 +914,22 @@ void Scene::Select() {
 	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
 
 	for (size_t j = 1; j < actors.size(); j++) {
-		if(actors[j]->mesh.RayIntersection(dirFrac, rayOrigin)) {
+		std::cout << j << std::endl;
+		if(actors[j]->mesh.RayIntersection(hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), actors[j]->currentAabb)) {
+			std::cout << actors[j]->mesh.aabb.min.x << " " << actors[j]->mesh.aabb.min.y << " " << actors[j]->mesh.aabb.min.z << "\n";
+			std::cout << actors[j]->currentAabb.min.x << " " << actors[j]->currentAabb.min.y << " " << actors[j]->currentAabb.min.z << "\n";
+			mousePicker->hitPoint = hitPoint;
 			selectedActor=actors[j];
-			std::cout <<  "Selected object: " << selectedActor->name << std::endl;
+			std::cout << "Selected object: " << selectedActor->name << std::endl;
 			break;
 		}
 	}
+	
 }
 
 void Scene::DeSelect() {
 	selectedActor = nullptr;
-	std::cout <<  "Deselected" << std::endl;
+	std::cout << "Deselected" << std::endl;
 }
 
 void Scene::UpdateUniformBuffer(const float& time) {
@@ -922,6 +940,7 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	UBO.cameraPos = glm::vec3(actors[0]->position);
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 	memcpy(uniform_buffers.refraction.mapped, &UBO, sizeof(UBO));
+	memcpy(uniform_buffers.line.mapped, &UBO, sizeof(UBO));
 	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
 	UBO.view[1][0] *= -1;
 	UBO.view[1][1] *= -1;
@@ -1195,6 +1214,23 @@ void Scene::CreateDescriptorSetLayout() {
 	OceanLayoutInfo.pBindings = oceanBindings.data();
 
 	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &OceanLayoutInfo, nullptr, &oceanDescriptorSetLayout));
+
+	// Line
+	VkDescriptorSetLayoutBinding lineUBOLayoutBinding = {};
+	lineUBOLayoutBinding.binding = 0;
+	lineUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	lineUBOLayoutBinding.descriptorCount = 1;
+	lineUBOLayoutBinding.pImmutableSamplers = nullptr;
+	lineUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 1> lineBindings = { lineUBOLayoutBinding };
+
+	VkDescriptorSetLayoutCreateInfo LineLayoutInfo = {};
+	LineLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	LineLayoutInfo.bindingCount = static_cast<uint32_t>(lineBindings.size());
+	LineLayoutInfo.pBindings = lineBindings.data();
+
+	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &LineLayoutInfo, nullptr, &lineDescriptorSetLayout));
 }
 
 void Scene::CreateDescriptorPool() {
@@ -1205,13 +1241,13 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 10);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 7);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 8);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 5); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 6); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
@@ -1566,12 +1602,54 @@ void Scene::CreateDescriptorSet() {
 	oceanDescriptorWrites[3].pImageInfo = &RefractionImageInfo;
 
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(oceanDescriptorWrites.size()), oceanDescriptorWrites.data(), 0, nullptr);
+
+	// Line descriptor set
+	VkDescriptorSetAllocateInfo LineAllocInfo = {};
+	LineAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	LineAllocInfo.descriptorPool = descriptorPool;
+	LineAllocInfo.descriptorSetCount = 1;
+	LineAllocInfo.pSetLayouts = &lineDescriptorSetLayout;
+
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &LineAllocInfo, &lineDescriptorSet));
+
+	VkDescriptorBufferInfo LineBufferInfo = {};
+	LineBufferInfo.buffer = uniform_buffers.line.buffer;
+	LineBufferInfo.offset = 0;
+	LineBufferInfo.range = sizeof(UniformBufferObject);
+
+	std::array<VkWriteDescriptorSet, 1> lineDescriptorWrites = {};
+
+	lineDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	lineDescriptorWrites[0].dstSet = lineDescriptorSet;
+	lineDescriptorWrites[0].dstBinding = 0;
+	lineDescriptorWrites[0].dstArrayElement = 0;
+	lineDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	lineDescriptorWrites[0].descriptorCount = 1;
+	lineDescriptorWrites[0].pBufferInfo = &LineBufferInfo;
+
+	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(lineDescriptorWrites.size()), lineDescriptorWrites.data(), 0, nullptr);
 }
 
 // ------------- Populate scene --------------------- //
 
 	// layout of struct VertexLayout {
 	//glm::vec3 pos, glm::vec3 color,	glm::vec2 text_coord, glm::vec3 normals;
+
+void Scene::UpdateSelectRayDrawData() {
+	rayVertices = {
+		{  {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{ actors[2]->position, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+	};
+
+	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
+	uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.mapped;
+
+	memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
+	memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
+
+	vertex_buffers.selectRay.Flush();
+	index_buffers.selectRay.Flush();
+}
 
 void Scene::CreateSelectRay() {
 	rayVertices = {
@@ -1652,7 +1730,57 @@ void Scene::CreateSkybox() noexcept {
 	CreateBuffers(skybox_indices, skybox_vertices, vertex_buffers.skybox, index_buffers.skybox);
 }
 
-void Scene::CreateAABBMesh(const enginetool::ScenePart& mesh) noexcept {
+void Scene::CreateAABBBuffers() {
+	VkDeviceSize vertexBufferSize = aabbVertices.size() * sizeof(enginetool::VertexLayout);
+	logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertex_buffers.aabb.buffer, vertex_buffers.aabb.memory);
+	vertex_buffers.aabb.device = logicalDevice->device;
+	vertex_buffers.aabb.Unmap();
+	vertex_buffers.aabb.Map();
+
+	VkDeviceSize indexBufferSize = aabbIndices.size() * sizeof(uint32_t);
+	enginetool::Buffer indexStagingBuffer;
+	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, aabbIndices.data());
+	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &index_buffers.aabb);
+	CopyBuffer(indexStagingBuffer.buffer, index_buffers.aabb.buffer, indexBufferSize);
+	indexStagingBuffer.Destroy();
+}
+
+void Scene::UpdateAABBDrawData() {
+	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.aabb.mapped;
+
+	for (const auto& k : actors) {
+		aabbVertices = {
+			{{k->currentAabb.max.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.min.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.max.x, k->currentAabb.min.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.max.x, k->currentAabb.min.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.max.x, k->currentAabb.max.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.min.x, k->currentAabb.max.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+		};
+
+		memcpy(vtxDst, aabbVertices.data(), aabbVertices.size() * sizeof(enginetool::VertexLayout));
+		vtxDst += 8;
+	}
+
+	vertex_buffers.aabb.Flush();
+}	
+
+void Scene::GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept {
+
+	// aabbVertices = {
+	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+	// };
+
+
 	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
@@ -1662,7 +1790,7 @@ void Scene::CreateAABBMesh(const enginetool::ScenePart& mesh) noexcept {
 	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
 	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 
-	aabbIndices = {0,1,1,2,2,3,3,0, 4,7,7,6, 6,5, 5,4, 0,5, 1,6, 2,7, 3,4};
+	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
 }
 
 void Scene::CreateOcean() noexcept {
@@ -1730,7 +1858,8 @@ void Scene::LoadAssets() {
 	CreateCamera();
 	CreateCharacter();
 	CreateSphereLight();
-	CreateStillObject();
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/plane.obj");
+	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 2.0f),"puffinEngine/assets/models/sphere.obj");
 	
 	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
@@ -1738,17 +1867,18 @@ void Scene::LoadAssets() {
 	for (uint32_t i = 0; i < actors.size(); i++) {
 		LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
 		actors[i]->mesh.GetAABB(objectsVertices);
-		CreateAABBMesh(actors[i]->mesh);
+		GetAABBDrawData(actors[i]->mesh);
 	}
 	CreateBuffers(objects_indices, objectsVertices, vertex_buffers.objects, index_buffers.objects);
 
-	CreateBuffers(aabbIndices, aabbVertices, vertex_buffers.aabb, index_buffers.aabb);
+	CreateAABBBuffers();
 
 	// assign shaders to meshes
 	actors[0]->mesh.assigned_material = &scene_material[4]; //camera
-	actors[1]->mesh.assigned_material = &scene_material[2]; //character
+	actors[1]->mesh.assigned_material = &scene_material[5]; //character
 	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
-	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane 
+	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane
+	actors[4]->mesh.assigned_material = &scene_material[1]; //chrome sphere  
 
 	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));	
 }
@@ -1772,9 +1902,9 @@ void Scene::CreateSphereLight() {
 	actors.emplace_back(std::move(light));
 }
 
-void Scene::CreateStillObject() {
-	std::shared_ptr<Actor> stillObject = std::make_shared<Actor>("Test object", "I am simple plane", glm::vec3(10.0f, -16.0f, 2.0f));
-	stillObject->mesh.meshFilename = "puffinEngine/assets/models/plane.obj";
+void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position);
+	stillObject->mesh.meshFilename = meshFilename;
 	actors.emplace_back(std::move(stillObject));
 }
 
@@ -2474,6 +2604,7 @@ void Scene::DeInitScene() {
 	DeInitIndexAndVertexBuffer();
 	DeInitTextureImage();
 	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice->device, lineDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, oceanDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, skybox_descriptor_set_layout, nullptr);
@@ -2525,6 +2656,7 @@ void Scene::DeInitUniformBuffer() {
 		alignedFree(uboDataDynamic.model);
 	}
 
+	uniform_buffers.line.Destroy();
 	uniform_buffers.skybox.Destroy();
 	uniform_buffers.skyboxReflection.Destroy();
 	uniform_buffers.skyboxRefraction.Destroy();

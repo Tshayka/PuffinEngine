@@ -136,29 +136,32 @@ namespace enginetool {
 					b.max.z <= a.max.z;
 		}
 
-		bool RayIntersection(const glm::vec3& dirFrac, const glm::vec3& rayOrg) {
-			float t1 = (aabb.min.x - rayOrg.x)*dirFrac.x;
-			float t2 = (aabb.max.x - rayOrg.x)*dirFrac.x;
-			float t3 = (aabb.min.y - rayOrg.y)*dirFrac.y;
-			float t4 = (aabb.max.y - rayOrg.y)*dirFrac.y;
-			float t5 = (aabb.min.z - rayOrg.z)*dirFrac.z;
-			float t6 = (aabb.max.z - rayOrg.z)*dirFrac.z;
+		bool RayIntersection(glm::vec3& hitPoint, const glm::vec3& dirFrac, const glm::vec3& rayOrg, const glm::vec3& rayDir, const AABB& bb) {
+			float t;
+
+			float t1 = (bb.min.x - rayOrg.x)*dirFrac.x;
+			float t2 = (bb.max.x - rayOrg.x)*dirFrac.x;
+			float t3 = (bb.min.y - rayOrg.y)*dirFrac.y;
+			float t4 = (bb.max.y - rayOrg.y)*dirFrac.y;
+			float t5 = (bb.min.z - rayOrg.z)*dirFrac.z;
+			float t6 = (bb.max.z - rayOrg.z)*dirFrac.z;
 
 			float tmin = std::max(std::max(std::min(t1, t2), std::min(t3, t4)), std::min(t5, t6));
 			float tmax = std::min(std::min(std::max(t1, t2), std::max(t3, t4)), std::max(t5, t6));
 
 			// if tmax < 0, ray (line) is intersecting AABB, but the whole AABB is behind us
 			if (tmax < 0) {
-				//t = tmax;
+				t = tmax;
 				return false;
 			}
 
 			if (tmin > tmax) {
-				//t = tmax;
+				t = tmax;
 				return false;
 			}
 
-			//t = tmin;
+			t = tmin; // Store length of ray until intersection in t
+			hitPoint = rayOrg + rayDir * t; // intersection point
 			return true;
 		}
 	};

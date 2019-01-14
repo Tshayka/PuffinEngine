@@ -9,6 +9,7 @@
 #include "Character.hpp"
 #include "Camera.hpp"
 #include "Device.hpp"
+#include "Landscape.hpp"
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
 #include "MousePicker.hpp"
@@ -64,7 +65,8 @@ private:
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);
-	void CreateAABBMesh(const enginetool::ScenePart& mesh) noexcept;
+	void CreateAABBBuffers();
+	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
 	void CreateCommandPool(); // neccsesary to create command buffer
 	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
@@ -84,10 +86,10 @@ private:
 	void EndSingleTimeCommands(VkCommandBuffer);
 	bool HasStencilComponent(VkFormat);
 	void CreateCamera();
+	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateSelectRay(); 
 	void CreateCharacter();
 	void CreateSphereLight();
-	void CreateStillObject();
 	void InitMaterials();
 	void InitSwapchainImageViews();
 	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
@@ -97,7 +99,9 @@ private:
 	void LoadTexture(std::string, TextureLayout&);
 	void PrepareOffscreen();
 	void RandomPositions(); 
+	void UpdateAABBDrawData();
 	void UpdateDynamicUniformBuffer(const float& time);
+	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSkyboxUniformBuffer();
 	void UpdateUBOParameters();
@@ -152,6 +156,12 @@ private:
 		float time;
 	};
 
+	// struct UboLine {
+	// 	glm::mat4 proj;
+	// 	glm::mat4 view;
+	// 	glm::mat4 model;
+	// };
+
 	// UBO Dynamic that contains all clouds matrices
 	struct UboCloudsMatrices {
 		glm::mat4 *model = nullptr;
@@ -165,6 +175,7 @@ private:
 	} pushConstants;
 
 	struct {
+		enginetool::Buffer line;
 		enginetool::Buffer skybox;
 		enginetool::Buffer skyboxReflection;
 		enginetool::Buffer skyboxRefraction;
@@ -251,12 +262,14 @@ private:
 	std::vector<uint32_t> aabbIndices;
 	std::vector<enginetool::VertexLayout> aabbVertices;
 
+	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet clouds_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxReflectionDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxRefractionDescriptorSet = VK_NULL_HANDLE;
 	
+	VkDescriptorSetLayout lineDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout skybox_descriptor_set_layout = VK_NULL_HANDLE;

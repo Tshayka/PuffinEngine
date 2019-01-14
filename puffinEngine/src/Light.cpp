@@ -55,11 +55,12 @@ void Light::SetLightColor(glm::vec3 lightColor) {
 }
 
 void Light::UpdatePosition(float dt) {
-	UpdateAABB();
 	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
 
 	position += movement * dt;
+
+	Actor::UpdateAABB();
 }

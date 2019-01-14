@@ -39,7 +39,6 @@ void Character::EndJump() {
 }
 
 void Character::UpdatePosition(float dt) {
-	UpdateAABB();
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
@@ -54,6 +53,8 @@ void Character::UpdatePosition(float dt) {
 		movementGoal.y = 0.0f;
 		onGround = true;
 	}
+
+	Actor::UpdateAABB();
 }
 
 

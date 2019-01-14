@@ -16,6 +16,8 @@ public:
     void CalculateNormalisedDeviceCoordinates(const double& xpos, const double& ypos, const int& HEIGHT, const int& WIDTH) noexcept;
     void UpdateMousePicker(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix,std::shared_ptr<Camera> camera);
 
+    glm::vec3 hitPoint;
+
 private:
     glm::vec3 currentRay;
     glm::vec2 mousePositionNormalized;
