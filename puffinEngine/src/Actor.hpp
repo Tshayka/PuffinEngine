@@ -5,7 +5,7 @@
 #include "LoadMesh.cpp"
 
 enum class ActorType {
-    Actor, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera
+    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera
 };
 
 class Actor {
@@ -29,7 +29,7 @@ public:
 	void ResetPosition();
 	void Truck(float);
 	void UpdateAABB();
-	virtual void UpdatePosition(float);
+	virtual void UpdatePosition(float)=0;
 	
 	enginetool::ScenePart mesh;
 	
@@ -44,7 +44,7 @@ public:
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity;
 
-	enginetool::ScenePart::AABB currentBoundingBox;
+	enginetool::ScenePart::AABB currentAabb;
 	
 private:
 	std::string description;
