@@ -5,7 +5,7 @@
 
 class Light : public Actor {
 public:
-	Light(std::string name, std::string description, glm::vec3 position);
+	Light(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Light();
 
 	void UpdatePosition(float) override;
@@ -17,14 +17,12 @@ public:
 
 class SphereLight : public Light {
 public:
-	SphereLight(std::string name, std::string description, glm::vec3 position);
+	SphereLight(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~SphereLight();
-	ActorType type = ActorType::SphereLight;
 };
 
 class Skybox : public Light {
 public:
-	Skybox(std::string name, std::string description, glm::vec3 position);
+	Skybox(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Skybox();
-	ActorType type = ActorType::Skybox;
 };

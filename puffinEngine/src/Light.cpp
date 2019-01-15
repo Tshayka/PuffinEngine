@@ -4,8 +4,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-Light::Light(std::string name, std::string description, glm::vec3 position) 
-: Actor(name, description, position) {
+Light::Light(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Actor(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Light created\n";
 #endif
@@ -17,8 +17,8 @@ Light::~Light() {
 #endif
 }
 
-SphereLight::SphereLight(std::string name, std::string description, glm::vec3 position) 
-: Light(name, description, position) {
+SphereLight::SphereLight(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Light(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Sphere light created\n";
 #endif
@@ -30,8 +30,8 @@ SphereLight::~SphereLight() {
 #endif
 }
 
-Skybox::Skybox(std::string name, std::string description, glm::vec3 position) 
-: Light(name, description, position) {
+Skybox::Skybox(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Light(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Skybox created\n";
 #endif

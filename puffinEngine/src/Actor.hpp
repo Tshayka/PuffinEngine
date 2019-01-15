@@ -10,7 +10,7 @@ enum class ActorType {
 
 class Actor {
 public:
-	Actor(std::string name, std::string description, glm::vec3 position);
+	Actor(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Actor();
 
 	// ---------------- Main functions ------------------ //
@@ -47,9 +47,9 @@ public:
 	enginetool::ScenePart::AABB currentAabb;
 	
 private:
+	std::string CreateId();
+
 	std::string description;
 	std::string id;
 	ActorType type = ActorType::Actor;
-
-	std::string CreateId();
 };

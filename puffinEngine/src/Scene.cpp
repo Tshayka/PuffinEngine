@@ -95,6 +95,9 @@ void Scene::RecreateForSwapchain() {
 	CreateCommandBuffers();
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
+
+	mousePicker->width = (float)logicalDevice->swapchain_extent.width;
+	mousePicker->height = (float)logicalDevice->swapchain_extent.height;
 }
 
 // ------------------ Swapchain --------------------- //
@@ -902,6 +905,9 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
+
+	std::dynamic_pointer_cast<Character>(actors[1])->closestPointBelow = DetectGround();
+
 }
 
 void Scene::Select() {
@@ -913,16 +919,19 @@ void Scene::Select() {
 
 	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
 
-	for (size_t j = 0; j < actors.size(); j++) {
-		std::cout << j << std::endl;
-		if(actors[j]->mesh.RayIntersection(mousePicker->hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), actors[j]->currentAabb)) {
+	for (auto const& a : actors) {
+		if(enginetool::ScenePart::RayIntersection(mousePicker->hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), a->currentAabb)) {
 			std::cout << "Hit point: " << mousePicker->hitPoint.x << " " << mousePicker->hitPoint.y << " " << mousePicker->hitPoint.z << "\n";
-			selectedActor=actors[j];
+			selectedActor=a;
 			std::cout << "Selected object: " << selectedActor->name << std::endl;
 			break;
 		}
 	}
 	
+}
+
+float Scene::DetectGround() {
+	return 0.0f;
 }
 
 void Scene::DeSelect() {
@@ -1640,7 +1649,7 @@ void Scene::CreateDescriptorSet() {
 
 void Scene::UpdateSelectRayDrawData() {
 	rayVertices = {
-		{  {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{ {mousePicker->GetRayOrigin().x, mousePicker->GetRayOrigin().y-1.0f, mousePicker->GetRayOrigin().z}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 		{ mousePicker->hitPoint, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 	};
 
@@ -1891,26 +1900,26 @@ void Scene::LoadAssets() {
 }
 
 void Scene::CreateCamera() {
-	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 4.0f, 3.0f));
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 4.0f, 3.0f), ActorType::Camera);
 	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	sceneCameras.emplace_back(std::move(camera));
 }
 
 void Scene::CreateCharacter() {
-	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f));
+	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), ActorType::Character);
 	character->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	actors.emplace_back(std::move(character));
 }
 
 void Scene::CreateSphereLight() {
-	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f));
+	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f), ActorType::SphereLight);
 	light->mesh.meshFilename = "puffinEngine/assets/models/sphere.obj";
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	actors.emplace_back(std::move(light));
 }
 
 void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position);
+	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape);
 	stillObject->mesh.meshFilename = meshFilename;
 	actors.emplace_back(std::move(stillObject));
 }

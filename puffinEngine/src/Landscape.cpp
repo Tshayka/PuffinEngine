@@ -6,8 +6,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-Landscape::Landscape(std::string name, std::string description, glm::vec3 position) 
-: Actor(name, description, position) {
+Landscape::Landscape(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Actor(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	// create save file
 	std::cout << "Character created\n";

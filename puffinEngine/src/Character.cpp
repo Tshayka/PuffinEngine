@@ -9,8 +9,8 @@ enum class BodySlots {
 	LeftHand, RightHand, Head, Neck, Chest, Belt1, Belt2, Finger1, Finger2, Cloak, Shoes
 };
 
-Character::Character(std::string name, std::string description, glm::vec3 position) 
-: Actor(name, description, position) {
+Character::Character(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Actor(name, description, position, type) {
 	// create save file
 	std::cout << "Character created\n";
 }
@@ -48,8 +48,8 @@ void Character::UpdatePosition(float dt) {
 
 	//std::cout << onGround << " " << position.y << " " << movementGoal.y << std::endl;
 
-	if (position.y < groundLevel){
-		position.y = groundLevel;
+	if (position.y < closestPointBelow) {
+		position.y = closestPointBelow;
 		movementGoal.y = 0.0f;
 		onGround = true;
 	}

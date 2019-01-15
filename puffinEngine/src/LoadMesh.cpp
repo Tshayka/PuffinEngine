@@ -136,7 +136,7 @@ namespace enginetool {
 					b.max.z <= a.max.z;
 		}
 
-		bool RayIntersection(glm::vec3& hitPoint, const glm::vec3& dirFrac, const glm::vec3& rayOrg, const glm::vec3& rayDir, const AABB& bb) {
+		static bool RayIntersection(glm::vec3& hitPoint, const glm::vec3& dirFrac, const glm::vec3& rayOrg, const glm::vec3& rayDir, const AABB& bb) {
 			float t;
 
 			float t1 = (bb.min.x - rayOrg.x)*dirFrac.x;

@@ -6,7 +6,7 @@
 
 class Landscape : public Actor {
 public:
-	Landscape(std::string name, std::string description, glm::vec3 position);
+	Landscape(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Landscape();
 
 	void UpdatePosition(float) override;
@@ -18,6 +18,4 @@ public:
 
 private:
 	std::string albedoTexture;
-
-	ActorType type = ActorType::Landscape;
 };

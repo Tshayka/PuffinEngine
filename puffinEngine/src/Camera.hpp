@@ -6,7 +6,7 @@
 
 class Camera : public Actor {
 public:
-	Camera(std::string name, std::string description, glm::vec3 position);
+	Camera(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Camera();
 
 	void UpdatePosition(float) override;
@@ -29,6 +29,4 @@ private:
 	
 	float pitch;
 	float yaw;
-
-	ActorType type = ActorType::Camera;
 };

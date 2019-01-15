@@ -3,10 +3,11 @@
 
 #include "Actor.hpp"
 
-Actor::Actor(std::string name, std::string description, glm::vec3 position) {
+Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type) {
 	this->name = name;
 	this->description = description;
 	this->position = position;
+	this->type = type;
 	initPosition = position;
 	id = CreateId();
 	// create save file

@@ -33,6 +33,8 @@ glm::vec3 MousePicker::GetRayOrigin() const {
 
 void MousePicker::Init(Device* device) {
 	hitPoint = glm::vec3(0.0f, 0.0f, 0.0f);
+	width = 800;
+	height = 600;
 }
 
 void MousePicker::UpdateMousePicker(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix, std::shared_ptr<Camera> camera) {
@@ -50,13 +52,12 @@ glm::vec3 MousePicker::CalculateMouseRay(){
 	glm::mat4 invertedView = glm::inverse(view);
 	glm::vec4 rayWorld = invertedView * mouseEyeSpace;
 	glm::vec3 mouseRay = glm::normalize(glm::vec3(rayWorld.x, rayWorld.y, rayWorld.z));
-    //std::cout << mouseRay.x << " " << mouseRay.y << " " << mouseRay.z << "\n";
 	return mouseRay;
 }
 
-void MousePicker::CalculateNormalisedDeviceCoordinates(const double& xpos, const double& ypos, const int& HEIGHT, const int& WIDTH) noexcept {
-    float x = (2.0f * xpos) / WIDTH - 1.0f;
-	float y = (2.0f * ypos) / HEIGHT - 1.0f;
+void MousePicker::CalculateNormalisedDeviceCoordinates(const double& xpos, const double& ypos) noexcept {
+    float x = (2.0f * xpos) / width - 1.0f;
+	float y = (2.0f * ypos) / height - 1.0f;
 	mousePositionNormalized = glm::vec2(x, y);
 }
 

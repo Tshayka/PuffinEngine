@@ -6,8 +6,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-Camera::Camera(std::string name, std::string description, glm::vec3 position) 
-: Actor(name, description, position) {
+Camera::Camera(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Actor(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Camera created\n";
 #endif 

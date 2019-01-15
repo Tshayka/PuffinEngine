@@ -85,6 +85,7 @@ private:
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();
+	float DetectGround();
 	void EndSingleTimeCommands(VkCommandBuffer);
 	bool HasStencilComponent(VkFormat);
 	void CreateCamera();
