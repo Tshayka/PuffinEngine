@@ -106,6 +106,7 @@ private:
 	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSkyboxUniformBuffer();
+	void UpdateUBOOffscreen(const float& time);
 	void UpdateUBOParameters();
 	void UpdateUniformBuffer(const float& time);
 
@@ -120,12 +121,19 @@ private:
 	void FreeCommandBuffers();
 	
 	// UBO Static scene objects
-	struct UniformBufferObject {
+	struct UBOStaticGeometry {
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
 		glm::vec3 cameraPos; 
-	} UBO;
+	} UBOSG;
+
+	struct UBOOffscreen {
+		glm::mat4 model;
+		glm::mat4 proj;
+		glm::mat4 view;
+		glm::vec3 cameraPos; 
+	} UBOO;
 
 	// UBO Static parameters
 	// If the member is a three-component vector with components consuming N basic machine units, the base alignment is 4N.
@@ -135,13 +143,12 @@ private:
 		glm::vec3 light_pos[1];
 	};
 
-	// UBO for skybox
-	struct UniformBufferObjectSky {
+	struct UboSkybox {
 		glm::mat4 view;
 		glm::mat4 proj;
 		float exposure;
 		float gamma;
-	};
+	} UBOSB;
 
 	struct UboSea {
 		glm::mat4 model;
@@ -156,7 +163,7 @@ private:
 		glm::mat4 view;
 		glm::vec3 cameraPos;
 		float time;
-	};
+	} UBOC;
 
 	// struct UboLine {
 	// 	glm::mat4 proj;
