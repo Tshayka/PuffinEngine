@@ -718,7 +718,8 @@ void Scene::CreateReflectionCommandBuffer() {
 		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
 		pushConstants.pos = actors[j]->position;
-		pushConstants.renderLimitPlane = glm::vec4(0.0f, 1.0f, 0.0f, -0.0f);
+		pushConstants.renderLimitPlane = (currentCamera->position.y<0) ? (glm::vec4(0.0f, -1.0f, 0.0f, -0.0f)) : (glm::vec4(0.0f, 1.0f, 0.0f, -0.0f));
+
 		vkCmdPushConstants(reflectionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 	}
@@ -835,15 +836,15 @@ void Scene::CreateUniformBuffer() {
 	uniform_buffers.clouds_dynamic.Map();
 
 	// Objects Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.objects);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UBOStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.objects);
 	uniform_buffers.objects.Map();
 
 	// Objects Uniform buffers for reflection rendering -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UBOStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
 	uniform_buffers.reflection.Map();
 
 	// Objects Uniform buffers for refraction rendering -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UBOStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
 	uniform_buffers.refraction.Map();
 
 	// Additional uniform bufer for parameters -> static
@@ -859,17 +860,17 @@ void Scene::CreateUniformBuffer() {
 	uniform_buffers.refractionParameters.Map();
 
 	// Skybox Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
 	uniform_buffers.skybox.Map();
 
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
 	uniform_buffers.skyboxReflection.Map();
 
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObjectSky), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
 	uniform_buffers.skyboxRefraction.Map();
 
 	// Line uniform buffer -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UniformBufferObject), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
+	logicalDevice->CreateUnstagedBuffer(sizeof(UBOStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
 	uniform_buffers.line.Map();
 
 	// Create random positions for dynamic uniform buffer
@@ -893,6 +894,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	UpdateOceanUniformBuffer(time);
 	UpdateUBOParameters();
 	UpdateUniformBuffer(time);
+	UpdateUBOOffscreen(time);
 
 	for(const auto& a : actors) a->UpdatePosition(dt);
 	for(const auto& c : sceneCameras) c->UpdatePosition(dt);
@@ -904,7 +906,6 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 void Scene::Select() {
 	selectedActor = nullptr;
-	glm::vec3 hitPoint;
 	glm::vec3 dirFrac;
 	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
 	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
@@ -914,8 +915,7 @@ void Scene::Select() {
 
 	for (size_t j = 0; j < actors.size(); j++) {
 		std::cout << j << std::endl;
-		if(actors[j]->mesh.RayIntersection(hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), actors[j]->currentAabb)) {
-			mousePicker->hitPoint = hitPoint;
+		if(actors[j]->mesh.RayIntersection(mousePicker->hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), actors[j]->currentAabb)) {
 			std::cout << "Hit point: " << mousePicker->hitPoint.x << " " << mousePicker->hitPoint.y << " " << mousePicker->hitPoint.z << "\n";
 			selectedActor=actors[j];
 			std::cout << "Selected object: " << selectedActor->name << std::endl;
@@ -931,33 +931,38 @@ void Scene::DeSelect() {
 }
 
 void Scene::UpdateUniformBuffer(const float& time) {
-	UBO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
-	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBO.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), currentCamera->up);
-	UBO.cameraPos = glm::vec3(currentCamera->position);
-	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
-	memcpy(uniform_buffers.refraction.mapped, &UBO, sizeof(UBO));
-	memcpy(uniform_buffers.line.mapped, &UBO, sizeof(UBO));
-	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, currentCamera);
-	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
-	UBO.view[1][0] *= -1;
-	UBO.view[1][1] *= -1;
-	UBO.view[1][2] *= -1;
-	UBO.cameraPos *= glm::vec3(1.0f, -1.0f, 1.0f);
-	memcpy(uniform_buffers.reflection.mapped, &UBO, sizeof(UBO));
+	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSG.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
+	UBOSG.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
+	UBOSG.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), currentCamera->up);
+	UBOSG.cameraPos = glm::vec3(currentCamera->position);
+	memcpy(uniform_buffers.objects.mapped, &UBOSG, sizeof(UBOSG));
+	memcpy(uniform_buffers.line.mapped, &UBOSG, sizeof(UBOSG));
+	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 
-	UboClouds UBOC = {};
 	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
-	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
+	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.time = time;
 	UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;
 	UBOC.cameraPos = currentCamera->position;
-
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
+}
+
+void Scene::UpdateUBOOffscreen(const float& time) {
+	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
+	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
+	UBOO.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), currentCamera->up);
+	UBOO.cameraPos = glm::vec3(currentCamera->position);
+	memcpy(uniform_buffers.refraction.mapped, &UBOO, sizeof(UBOO));
+	UBOO.view[1][0] *= -1;
+	UBOO.view[1][1] *= -1;
+	UBOO.view[1][2] *= -1;
+	UBOO.cameraPos *= glm::vec3(1.0f, -1.0f, 1.0f);
+	memcpy(uniform_buffers.reflection.mapped, &UBOO, sizeof(UBOO));
 }
 
 void Scene::UpdateUBOParameters() {
@@ -1020,24 +1025,23 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
-	UniformBufferObjectSky UBO_Sky = {};
-	UBO_Sky.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
-	UBO_Sky.proj[1][1] *= -1;
-	UBO_Sky.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBO_Sky.view[3][0] *= 0;
-	UBO_Sky.view[3][1] *= 0;
-	UBO_Sky.view[3][2] *= 0;
-	UBO_Sky.exposure = 1.0f;
-	UBO_Sky.gamma = 1.0f;
+	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSB.proj[1][1] *= -1;
+	UBOSB.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
+	UBOSB.view[3][0] *= 0;
+	UBOSB.view[3][1] *= 0;
+	UBOSB.view[3][2] *= 0;
+	UBOSB.exposure = 1.0f;
+	UBOSB.gamma = 1.0f;
 	
-	memcpy(uniform_buffers.skybox.mapped, &UBO_Sky, sizeof(UBO_Sky));
-	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBO_Sky, sizeof(UBO_Sky));
+	memcpy(uniform_buffers.skybox.mapped, &UBOSB, sizeof(UBOSB));
+	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBOSB, sizeof(UBOSB));
 
-	UBO_Sky.view[1][0] *= -1;
-	UBO_Sky.view[1][1] *= -1;
-	UBO_Sky.view[1][2] *= -1;
+	UBOSB.view[1][0] *= -1;
+	UBOSB.view[1][1] *= -1;
+	UBOSB.view[1][2] *= -1;
 
-	memcpy(uniform_buffers.skyboxReflection.mapped, &UBO_Sky, sizeof(UBO_Sky));
+	memcpy(uniform_buffers.skyboxReflection.mapped, &UBOSB, sizeof(UBOSB));
 }
 
 void Scene::UpdateOceanUniformBuffer(const float& time) {
@@ -1297,7 +1301,7 @@ void Scene::CreateDescriptorSet() {
 		VkDescriptorBufferInfo BufferInfo = {};
 		BufferInfo.buffer = uniform_buffers.objects.buffer;
 		BufferInfo.offset = 0;
-		BufferInfo.range = sizeof(UniformBufferObject);
+		BufferInfo.range = sizeof(UBOStaticGeometry);
 
 		VkDescriptorBufferInfo ObjectBufferParametersInfo = {};
 		ObjectBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
@@ -1377,7 +1381,7 @@ void Scene::CreateDescriptorSet() {
 		VkDescriptorBufferInfo reflectBufferInfo = {};
 		reflectBufferInfo.buffer = uniform_buffers.reflection.buffer;
 		reflectBufferInfo.offset = 0;
-		reflectBufferInfo.range = sizeof(UniformBufferObject);
+		reflectBufferInfo.range = sizeof(UBOOffscreen);
 
 		VkDescriptorBufferInfo reflectParametersInfo = {};
 		reflectParametersInfo.buffer = uniform_buffers.reflectionParameters.buffer;
@@ -1404,7 +1408,7 @@ void Scene::CreateDescriptorSet() {
 		VkDescriptorBufferInfo refractBufferInfo = {};
 		refractBufferInfo.buffer = uniform_buffers.refraction.buffer;
 		refractBufferInfo.offset = 0;
-		refractBufferInfo.range = sizeof(UniformBufferObject);
+		refractBufferInfo.range = sizeof(UBOOffscreen);
 
 		VkDescriptorBufferInfo refractParametersInfo = {};
 		refractParametersInfo.buffer = uniform_buffers.refractionParameters.buffer;
@@ -1445,7 +1449,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo SkyboxBufferInfo = {};
 	SkyboxBufferInfo.buffer = uniform_buffers.skybox.buffer;
 	SkyboxBufferInfo.offset = 0;
-	SkyboxBufferInfo.range = sizeof(UniformBufferObjectSky);
+	SkyboxBufferInfo.range = sizeof(UboSkybox);
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1475,7 +1479,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo skyboxReflectBufferInfo = {};
 	skyboxReflectBufferInfo.buffer = uniform_buffers.skyboxReflection.buffer;
 	skyboxReflectBufferInfo.offset = 0;
-	skyboxReflectBufferInfo.range = sizeof(UniformBufferObjectSky);
+	skyboxReflectBufferInfo.range = sizeof(UboSkybox);
 
 	std::array<VkWriteDescriptorSet, 2> skyboxReflectionDescriptorWrites = skyboxDescriptorWrites;
 
@@ -1488,7 +1492,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo skyboxRefractionBufferInfo = {};
 	skyboxRefractionBufferInfo.buffer = uniform_buffers.skyboxRefraction.buffer;
 	skyboxRefractionBufferInfo.offset = 0;
-	skyboxRefractionBufferInfo.range = sizeof(UniformBufferObjectSky);
+	skyboxRefractionBufferInfo.range = sizeof(UboSkybox);
 
 	std::array<VkWriteDescriptorSet, 2> skyboxRefractionDescriptorWrites = skyboxDescriptorWrites;
 
@@ -1614,7 +1618,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo LineBufferInfo = {};
 	LineBufferInfo.buffer = uniform_buffers.line.buffer;
 	LineBufferInfo.offset = 0;
-	LineBufferInfo.range = sizeof(UniformBufferObject);
+	LineBufferInfo.range = sizeof(UBOStaticGeometry);
 
 	std::array<VkWriteDescriptorSet, 1> lineDescriptorWrites = {};
 
@@ -1637,7 +1641,7 @@ void Scene::CreateDescriptorSet() {
 void Scene::UpdateSelectRayDrawData() {
 	rayVertices = {
 		{  {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-		{ actors[2]->position, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+		{ mousePicker->hitPoint, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 	};
 
 	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
@@ -1883,7 +1887,7 @@ void Scene::LoadAssets() {
 	actors[4]->mesh.assigned_material = &scene_material[1]; //chrome sphere  
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
-	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, currentCamera);	
+	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);	
 }
 
 void Scene::CreateCamera() {

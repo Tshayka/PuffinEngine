@@ -32,7 +32,7 @@ glm::vec3 MousePicker::GetRayOrigin() const {
 // ---------------- Main functions ------------------ //
 
 void MousePicker::Init(Device* device) {
-
+	hitPoint = glm::vec3(0.0f, 0.0f, 0.0f);
 }
 
 void MousePicker::UpdateMousePicker(const glm::mat4& viewMatrix, const glm::mat4& projectionMatrix, std::shared_ptr<Camera> camera) {
