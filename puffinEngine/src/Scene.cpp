@@ -641,7 +641,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-			for (size_t k = 1; k < actors.size(); k++) {
+			for (size_t k = 0; k < actors.size(); k++) {
 				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
 				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);				
@@ -711,7 +711,7 @@ void Scene::CreateReflectionCommandBuffer() {
 	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
 	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-	for (size_t j = 1; j < actors.size(); j++) {
+	for (size_t j = 0; j < actors.size(); j++) {
 		// reflection
 		std::array<VkDescriptorSet, 1> descriptorSets;
 		descriptorSets[0] = actors[j]->mesh.assigned_material->reflectDescriptorSet;
@@ -785,7 +785,7 @@ void Scene::CreateRefractionCommandBuffer() {
 	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
 	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-	for (size_t j = 1; j < actors.size(); j++) {
+	for (size_t j = 0; j < actors.size(); j++) {
 		std::array<VkDescriptorSet, 1> descriptorSets;
 		descriptorSets[0] = actors[j]->mesh.assigned_material->refractDescriptorSet;
 		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
@@ -895,7 +895,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	UpdateUniformBuffer(time);
 
 	for(const auto& a : actors) a->UpdatePosition(dt);
-	
+	for(const auto& c : sceneCameras) c->UpdatePosition(dt);
 	
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
@@ -904,7 +904,6 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 void Scene::Select() {
 	selectedActor = nullptr;
-	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));
 	glm::vec3 hitPoint;
 	glm::vec3 dirFrac;
 	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
@@ -913,12 +912,11 @@ void Scene::Select() {
 
 	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
 
-	for (size_t j = 1; j < actors.size(); j++) {
+	for (size_t j = 0; j < actors.size(); j++) {
 		std::cout << j << std::endl;
 		if(actors[j]->mesh.RayIntersection(hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), actors[j]->currentAabb)) {
-			std::cout << actors[j]->mesh.aabb.min.x << " " << actors[j]->mesh.aabb.min.y << " " << actors[j]->mesh.aabb.min.z << "\n";
-			std::cout << actors[j]->currentAabb.min.x << " " << actors[j]->currentAabb.min.y << " " << actors[j]->currentAabb.min.z << "\n";
 			mousePicker->hitPoint = hitPoint;
+			std::cout << "Hit point: " << mousePicker->hitPoint.x << " " << mousePicker->hitPoint.y << " " << mousePicker->hitPoint.z << "\n";
 			selectedActor=actors[j];
 			std::cout << "Selected object: " << selectedActor->name << std::endl;
 			break;
@@ -933,14 +931,15 @@ void Scene::DeSelect() {
 }
 
 void Scene::UpdateUniformBuffer(const float& time) {
-	UBO.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
+	UBO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBO.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBO.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	UBO.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f),std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	UBO.cameraPos = glm::vec3(actors[0]->position);
+	UBO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
+	UBO.model = glm::mat4(1.0f);//glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), currentCamera->up);
+	UBO.cameraPos = glm::vec3(currentCamera->position);
 	memcpy(uniform_buffers.objects.mapped, &UBO, sizeof(UBO));
 	memcpy(uniform_buffers.refraction.mapped, &UBO, sizeof(UBO));
 	memcpy(uniform_buffers.line.mapped, &UBO, sizeof(UBO));
+	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, currentCamera);
 	//UBO.model = glm::scale(UBO.model, glm::vec3(1.0f, -1.0f, 1.0f));
 	UBO.view[1][0] *= -1;
 	UBO.view[1][1] *= -1;
@@ -949,14 +948,14 @@ void Scene::UpdateUniformBuffer(const float& time) {
 	memcpy(uniform_buffers.reflection.mapped, &UBO, sizeof(UBO));
 
 	UboClouds UBOC = {};
-	UBOC.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
+	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
-	UBOC.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.time = time;
 	UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;
-	UBOC.cameraPos = actors[0]->position;
+	UBOC.cameraPos = currentCamera->position;
 
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
@@ -1022,9 +1021,9 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 
 void Scene::UpdateSkyboxUniformBuffer() {
 	UniformBufferObjectSky UBO_Sky = {};
-	UBO_Sky.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
+	UBO_Sky.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBO_Sky.proj[1][1] *= -1;
-	UBO_Sky.view = glm::lookAt(std::dynamic_pointer_cast<Camera>(actors[0])->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
+	UBO_Sky.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBO_Sky.view[3][0] *= 0;
 	UBO_Sky.view[3][1] *= 0;
 	UBO_Sky.view[3][2] *= 0;
@@ -1044,10 +1043,10 @@ void Scene::UpdateSkyboxUniformBuffer() {
 void Scene::UpdateOceanUniformBuffer(const float& time) {
 	UboSea uboOcean = {};
 	uboOcean.model = glm::mat4(1.0f);
-	uboOcean.proj = glm::perspective(glm::radians(std::dynamic_pointer_cast<Camera>(actors[0])->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, std::dynamic_pointer_cast<Camera>(actors[0])->clippingNear, std::dynamic_pointer_cast<Camera>(actors[0])->clippingFar);
+	uboOcean.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	uboOcean.proj[1][1] *= -1;
-	uboOcean.view = glm::lookAt(actors[0]->position, std::dynamic_pointer_cast<Camera>(actors[0])->view, std::dynamic_pointer_cast<Camera>(actors[0])->up);
-	uboOcean.cameraPos = actors[0]->position;
+	uboOcean.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
+	uboOcean.cameraPos = currentCamera->position;
 	uboOcean.time = time;
 	
 	memcpy(uniform_buffers.ocean.mapped, &uboOcean, sizeof(uboOcean));
@@ -1653,7 +1652,7 @@ void Scene::UpdateSelectRayDrawData() {
 
 void Scene::CreateSelectRay() {
 	rayVertices = {
-		{ {1.0f, 1.0f, 1.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+		{ mousePicker->hitPoint, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 		{ {0.0f, 0.0f, 0.0f}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 	};
 
@@ -1855,13 +1854,14 @@ void Scene::LoadAssets() {
 	CreateBuffers(clouds_indices, clouds_vertices, vertex_buffers.clouds, index_buffers.clouds);
 	
 	// Scene objects/actors
+	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/sphere.obj");
 	CreateCamera();
 	CreateCharacter();
 	CreateSphereLight();
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/plane.obj");
 	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 2.0f),"puffinEngine/assets/models/sphere.obj");
 	
-	std::dynamic_pointer_cast<Camera>(actors[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+	std::dynamic_pointer_cast<Camera>(sceneCameras[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
 	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
 
 	for (uint32_t i = 0; i < actors.size(); i++) {
@@ -1874,19 +1874,22 @@ void Scene::LoadAssets() {
 	CreateAABBBuffers();
 
 	// assign shaders to meshes
-	actors[0]->mesh.assigned_material = &scene_material[4]; //camera
+	sceneCameras[0]->mesh.assigned_material = &scene_material[4]; //camera
+
+	actors[0]->mesh.assigned_material = &scene_material[2]; //green plastic sphere
 	actors[1]->mesh.assigned_material = &scene_material[5]; //character
 	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
 	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane
 	actors[4]->mesh.assigned_material = &scene_material[1]; //chrome sphere  
 
-	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, std::dynamic_pointer_cast<Camera>(actors[0]));	
+	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
+	mousePicker->UpdateMousePicker(UBO.view, UBO.proj, currentCamera);	
 }
 
 void Scene::CreateCamera() {
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 4.0f, 3.0f));
 	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
-	actors.emplace_back(std::move(camera));
+	sceneCameras.emplace_back(std::move(camera));
 }
 
 void Scene::CreateCharacter() {
@@ -2293,10 +2296,10 @@ void Scene::ConnectGamepad()
 		int axes_count;
 		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axes_count);
 		//std::cout << "Joystick/Gamepad 1 axes avaliable: " << axes_count << std::endl;
-		actors[0]->Truck(-axes[0] * 15.0f);
-		actors[0]->Dolly(axes[1] * 15.0f);
+		currentCamera->Truck(-axes[0] * 15.0f);
+		currentCamera->Dolly(axes[1] * 15.0f);
 
-		std::dynamic_pointer_cast<Camera>(actors[0])->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
+		currentCamera->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
 
 		/*std::cout << "Left Stick X Axis: " << axes[0] << std::endl;
 		std::cout << "Left Stick Y Axis: " << axes[1] << std::endl;
@@ -2322,7 +2325,7 @@ void Scene::ConnectGamepad()
 		if (GLFW_PRESS == buttons[4])
 		{
 			std::cout << "Left bumper pressed: reset camera" << std::endl;
-			actors[0]->ResetPosition();
+			currentCamera->ResetPosition();
 			//break;
 		}
 
@@ -2362,32 +2365,32 @@ void Scene::PressKey(int key)
 			displayAabbBorders = !displayAabbBorders;
 			break;
 		case GLFW_KEY_W:
-			std::cout << "Moving " << actors[0]->name << " foward " << key << std::endl;
-			actors[0]->Dolly(15.0f);
+			std::cout << "Moving " << currentCamera->name << " foward " << key << std::endl;
+			currentCamera->Dolly(15.0f);
 			break;
 		case GLFW_KEY_S:
-			std::cout << "Moving " << actors[0]->name << " back " << key << std::endl;
-			actors[0]->Dolly(-15.0f);
+			std::cout << "Moving " << currentCamera->name << " back " << key << std::endl;
+			currentCamera->Dolly(-15.0f);
 			break;
 		case GLFW_KEY_E:
-			std::cout << "Moving " << actors[0]->name << " up " << key << std::endl;
-			actors[0]->Pedestal(15.0f);
+			std::cout << "Moving " << currentCamera->name << " up " << key << std::endl;
+			currentCamera->Pedestal(15.0f);
 			break;
 		case GLFW_KEY_Q:
-			std::cout << "Moving " << actors[0]->name << " down " << key << std::endl;
-			actors[0]->Pedestal(-15.0f);
+			std::cout << "Moving " << currentCamera->name << " down " << key << std::endl;
+			currentCamera->Pedestal(-15.0f);
 			break;
 		case GLFW_KEY_D:
-			std::cout << "Moving " << actors[0]->name << " right " << key << std::endl;
-			actors[0]->Truck(-15.0f);
+			std::cout << "Moving " << currentCamera->name << " right " << key << std::endl;
+			currentCamera->Truck(-15.0f);
 			break;
 		case GLFW_KEY_A:
-			std::cout << "Moving " << actors[0]->name << " left " << key << std::endl;
-			actors[0]->Truck(15.0f);
+			std::cout << "Moving " << currentCamera->name << " left " << key << std::endl;
+			currentCamera->Truck(15.0f);
 			break;
 		case GLFW_KEY_R:
-			std::cout << "Reset " << actors[0]->name << " "<< key << std::endl;
-			actors[0]->ResetPosition();
+			std::cout << "Reset " << currentCamera->name << " "<< key << std::endl;
+			currentCamera->ResetPosition();
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving " << actors[3]->name << " foward " << key << std::endl;
@@ -2477,27 +2480,27 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_W:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Dolly(0.0f);
+			currentCamera->Dolly(0.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Pedestal(0.0f);
+			currentCamera->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Dolly(0.0f);
+			currentCamera->Dolly(0.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Pedestal(0.0f);
+			currentCamera->Pedestal(0.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Truck(0.0f);
+			currentCamera->Truck(0.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Key released: " << key << std::endl;
-			actors[0]->Truck(0.0f);
+			currentCamera->Truck(0.0f);
 			break;
 		case GLFW_KEY_0:
 			std::cout << "Key released: " << key << std::endl;

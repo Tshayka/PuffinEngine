@@ -49,8 +49,10 @@ public:
 	bool displaySkybox = true;
 	bool displayOcean = true;
 	
-	std::shared_ptr<Actor> selectedActor = nullptr;
 	std::shared_ptr<Camera> currentCamera = nullptr;
+	std::shared_ptr<Actor> selectedActor = nullptr;
+	
+	std::vector<std::shared_ptr<Actor>> sceneCameras;
 	std::vector<std::shared_ptr<Actor>> actors;
 		
 	GuiMainHub *guiMainHub = nullptr;

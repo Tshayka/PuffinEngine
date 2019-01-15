@@ -50,7 +50,7 @@ glm::vec3 MousePicker::CalculateMouseRay(){
 	glm::mat4 invertedView = glm::inverse(view);
 	glm::vec4 rayWorld = invertedView * mouseEyeSpace;
 	glm::vec3 mouseRay = glm::normalize(glm::vec3(rayWorld.x, rayWorld.y, rayWorld.z));
-    std::cout << mouseRay.x << " " << mouseRay.y << " " << mouseRay.z << "\n";
+    //std::cout << mouseRay.x << " " << mouseRay.y << " " << mouseRay.z << "\n";
 	return mouseRay;
 }
 

@@ -291,7 +291,7 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
-	std::dynamic_pointer_cast<Camera>(app->scene_1->actors[0])->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
+	app->scene_1->currentCamera->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
 	app->mousePicker->CalculateNormalisedDeviceCoordinates(xpos, ypos, app->width, app->height);
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
