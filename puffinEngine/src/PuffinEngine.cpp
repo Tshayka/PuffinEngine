@@ -336,7 +336,7 @@ void PuffinEngine::MouseButtonCallback(GLFWwindow* window, int button, int actio
 	}
 	
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		app->scene_1->Select();
+		app->scene_1->HandleMouseClick();
 #if BUILD_ENABLE_VULKAN_DEBUG
 		std::cout << "You clicked left mouse button" << std::endl;
 #endif

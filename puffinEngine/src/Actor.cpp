@@ -1,5 +1,6 @@
 #include <fstream>
 #include <iostream>
+#include <cmath>
 
 #include "Actor.hpp"
 
@@ -40,6 +41,23 @@ std::string Actor::CreateId() {
 	return "TEMP_ID";
 }
 
+void Actor::ChangePosition() {
+	glm::vec3 direction = destinationPoint - position;
+	direction = glm::normalize(direction);
+	movementGoal.x = direction.x * velocity.x;
+	movementGoal.y = direction.y * velocity.y;
+	movementGoal.z = direction.z * velocity.z;
+}
+
+void Actor::CheckIfInTheDestination() {
+	float distance = glm::distance(position, destinationPoint);
+	
+	if(distance<0.1) 
+		movementGoal=glm::vec3(0.0f, 0.0f, 0.0f);
+	else 
+		ChangePosition();
+}
+
 void Actor::LoadFromFile( ){
 
 }
@@ -60,6 +78,7 @@ void Actor::ResetPosition() {
 	position = initPosition;
 	movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
+	destinationPoint = position;
 }
 
 void Actor::Dolly(float actorVelocityGoal) {
@@ -81,4 +100,14 @@ void Actor::Truck(float actorVelocityGoal) {// change to function pointer
 void Actor::UpdateAABB(){
 	currentAabb.max = mesh.aabb.min + position;
 	currentAabb.min = mesh.aabb.max + position;
+}
+
+void Actor::offManualControl() {
+	manualControl = false;
+	destinationPoint = position;
+}
+
+void Actor::onManualControl() {
+	manualControl = true;
+	destinationPoint = position;
 }

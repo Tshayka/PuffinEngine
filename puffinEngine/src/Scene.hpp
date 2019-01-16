@@ -31,10 +31,10 @@ public:
 	void ConnectGamepad();
 	void DeInitScene();
 	void DeSelect();
+	void HandleMouseClick();
 	void InitScene(Device* device, GLFWwindow* window, GuiMainHub* statusOverlay, MousePicker* mousePicker);
 	void PressKey(int);
 	void RecreateForSwapchain();
-	void Select();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
 	void CreateReflectionCommandBuffer();
@@ -93,6 +93,7 @@ private:
 	void CreateSelectRay(); 
 	void CreateCharacter();
 	void CreateSphereLight();
+	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void InitMaterials();
 	void InitSwapchainImageViews();
 	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
@@ -101,7 +102,8 @@ private:
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
 	void PrepareOffscreen();
-	void RandomPositions(); 
+	void RandomPositions();
+	void SelectActor(); 
 	void UpdateAABBDrawData();
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSelectRayDrawData();

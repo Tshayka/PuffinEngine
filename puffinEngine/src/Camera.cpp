@@ -51,7 +51,7 @@ void Camera::UpdatePosition(float dt) {
 
 	foward = direction;
 	foward.y = 0.0f;
-	glm::normalize(foward);
+	foward = glm::normalize(foward);
 
 	velocity = foward * movement.x + glm::cross(up, foward) * movement.z;
 	velocity.y = movement.y;

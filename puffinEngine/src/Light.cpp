@@ -55,6 +55,7 @@ void Light::SetLightColor(glm::vec3 lightColor) {
 }
 
 void Light::UpdatePosition(float dt) {
+	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 80);

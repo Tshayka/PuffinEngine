@@ -19,9 +19,13 @@ public:
 	virtual ActorType GetType();
 	
 	float Approach(float, float, float);
+	void ChangePosition();
+	void CheckIfInTheDestination();
 	void Dolly(float);
    	void LoadFromFile();
 	void LoadModel();
+	void offManualControl();
+	void onManualControl();
 	void SaveToFile();
 	void SetPosition(glm::vec3 lightColor);
 	void Pedestal(float);
@@ -36,16 +40,19 @@ public:
 	std::string name;
 	glm::vec3 position;
 	glm::vec3 initPosition;
+	glm::vec3 destinationPoint;
 
 	glm::vec3 direction;
 	glm::vec3 foward;
 
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 velocity;
+	glm::vec3 velocity = glm::vec3(3.0f, 3.0f, 3.0f);
 
 	enginetool::ScenePart::AABB currentAabb;
 	
+	bool manualControl = false;
+
 private:
 	std::string CreateId();
 

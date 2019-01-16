@@ -906,12 +906,25 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 
-	std::dynamic_pointer_cast<Character>(actors[1])->closestPointBelow = DetectGround();
-
+	//std::dynamic_pointer_cast<Character>(actors[1])->closestPointBelow = DetectGround();
 }
 
-void Scene::Select() {
-	selectedActor = nullptr;
+void Scene::HandleMouseClick() {
+	if(selectedActor == nullptr) {
+		SelectActor();
+		std::cout << "Selected"<< std::endl;
+	}
+	else {
+		glm::vec3 indicatedTarget = selectedActor->position; 
+		if(FindDestinationPosition(indicatedTarget)) {
+			selectedActor->destinationPoint = indicatedTarget;
+			selectedActor->ChangePosition();
+			std::cout << "Position changed"<< std::endl;
+		}
+	}
+}
+
+void Scene::SelectActor() {
 	glm::vec3 dirFrac;
 	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
 	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
@@ -928,6 +941,24 @@ void Scene::Select() {
 		}
 	}
 	
+}
+
+bool Scene::FindDestinationPosition(glm::vec3& destinationPoint) {
+	glm::vec3 dirFrac;
+	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
+	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
+	dirFrac.z = 1.0f / mousePicker->GetRayDirection().z;
+
+	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
+
+	for (auto const& a : actors) {
+		if(enginetool::ScenePart::RayIntersection(mousePicker->hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), a->currentAabb) && selectedActor!=a) {
+			destinationPoint = mousePicker->hitPoint;
+			std::cout << "Position found"<< std::endl;
+			return true;
+		}
+	}
+	return false;	
 }
 
 float Scene::DetectGround() {
@@ -2405,6 +2436,12 @@ void Scene::PressKey(int key)
 			std::cout << "Reset " << currentCamera->name << " "<< key << std::endl;
 			currentCamera->ResetPosition();
 			break;
+		case GLFW_KEY_T:
+			if(selectedActor!=nullptr) {
+				std::cout << "Reset " << selectedActor->name << " "<< key << std::endl;
+				selectedActor->ResetPosition();
+			}
+			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving " << actors[3]->name << " foward " << key << std::endl;
 			actors[2]->Dolly(15.0f);
@@ -2432,24 +2469,28 @@ void Scene::PressKey(int key)
 		case GLFW_KEY_UP:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " foward " << key << std::endl;
+			selectedActor->onManualControl();
 			selectedActor->Dolly(15.0f);
 			}
 			break;
 		case GLFW_KEY_DOWN:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " back " << key << std::endl;
+			selectedActor->onManualControl();
 			selectedActor->Dolly(-15.0f);
 			}
 			break;
 		case GLFW_KEY_LEFT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " left " << key << std::endl;
+			selectedActor->onManualControl();
 			selectedActor->Strafe(15.0f);
 			}
 			break;
 		case GLFW_KEY_RIGHT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " right " << key << std::endl;
+			selectedActor->onManualControl();
 			selectedActor->Strafe(-15.0f);
 			}
 			break;
@@ -2542,24 +2583,28 @@ void Scene::PressKey(int key)
 		case GLFW_KEY_UP:
 			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
+			selectedActor->offManualControl();
 			selectedActor->Dolly(0.0f);
 			}
 			break;
 		case GLFW_KEY_DOWN:
 			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
+			selectedActor->offManualControl();
 			selectedActor->Dolly(0.0f);
 			}
 			break;
 		case GLFW_KEY_LEFT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Key released:" << key << std::endl;
+			selectedActor->offManualControl();
 			selectedActor->Strafe(0.0f);
 			}
 			break;
 		case GLFW_KEY_RIGHT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Key released: " << key << std::endl;
+			selectedActor->offManualControl();
 			selectedActor->Strafe(0.0f);
 			}
 			break;
