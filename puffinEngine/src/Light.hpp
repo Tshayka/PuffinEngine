@@ -8,10 +8,12 @@ public:
 	Light(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Light();
 
-	void UpdatePosition(float) override;
-
 	glm::vec3 GetLightColor() const;
 	void SetLightColor(glm::vec3 lightColor);
+
+	void UpdatePosition(float) override;
+	virtual glm::vec4 CalculateSelectionIndicatorColor() override;
+
 	glm::vec3 lightColor = glm::vec3(255.0f, 255.0f, 255.0f); // 6000K	
 };
 

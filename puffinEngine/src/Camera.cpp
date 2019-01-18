@@ -41,6 +41,11 @@ void Camera::Init(float move_x, float move_y, float move_z,
 	yaw = horiz;
 }
 
+glm::vec4 Camera::CalculateSelectionIndicatorColor() {
+	return glm::vec4(0.5, 0.5f, 0.5f,1.0f);
+}
+
+
 void Camera::UpdatePosition(float dt) {
 	// Smooth movement and edge case in approach, without is movement is const
 	movement.x = Approach(movementGoal.x, movement.x, dt * 80);

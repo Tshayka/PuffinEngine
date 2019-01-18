@@ -54,6 +54,10 @@ void Light::SetLightColor(glm::vec3 lightColor) {
 	this->lightColor = lightColor;
 }
 
+glm::vec4 Light::CalculateSelectionIndicatorColor() {
+	return glm::vec4(0.5, 0.5f, 0.5f,1.0f);
+}
+
 void Light::UpdatePosition(float dt) {
 	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 	// Smooth movement and edge case in approach, without is movement is const

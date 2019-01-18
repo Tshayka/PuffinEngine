@@ -16,9 +16,10 @@ public:
 	// ---------------- Main functions ------------------ //
 
 	std::string GetId() const;
-	virtual ActorType GetType();
+	virtual ActorType GetType();//const!
 	
 	float Approach(float, float, float);
+	virtual glm::vec4 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
 	void CheckIfInTheDestination();
 	void Dolly(float);

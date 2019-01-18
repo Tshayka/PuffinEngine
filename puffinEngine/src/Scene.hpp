@@ -48,6 +48,7 @@ public:
 	bool displayClouds = true;
 	bool displaySkybox = true;
 	bool displayOcean = true;
+	bool displaySelectionIndicator = true;
 	
 	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::shared_ptr<Actor> selectedActor = nullptr;
@@ -66,7 +67,7 @@ private:
 	// ---------------- Main functions ------------------ //
 
 	VkCommandBuffer BeginSingleTimeCommands();
-	void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize);
+	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateAABBBuffers();
 	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
 	void CreateCommandPool(); // neccsesary to create command buffer
@@ -80,24 +81,28 @@ private:
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
 	void CreateOcean() noexcept;
+	void CreateSelectionIndicator();
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateSkybox() noexcept;
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();
 	float DetectGround();
-	void EndSingleTimeCommands(VkCommandBuffer);
+	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool HasStencilComponent(VkFormat);
 	void CreateCamera();
 	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateSelectRay(); 
 	void CreateCharacter();
+	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
+	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void CreateSphereLight();
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void InitMaterials();
 	void InitSwapchainImageViews();
 	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
-	void CreateBuffers(std::vector<uint32_t>&, std::vector<enginetool::VertexLayout>&, enginetool::Buffer&, enginetool::Buffer&); //TODO
+	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
+	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer); 
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
@@ -108,10 +113,12 @@ private:
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
+	void UpdateSelectionIndicatorUniformBuffer(const float& time);
 	void UpdateSkyboxUniformBuffer();
+	void UpdateStaticUniformBuffer(const float& time);
 	void UpdateUBOOffscreen(const float& time);
 	void UpdateUBOParameters();
-	void UpdateUniformBuffer(const float& time);
+	
 
 	// ---------------- Deinitialisation ---------------- //
 
@@ -123,15 +130,22 @@ private:
 	void DestroyPipeline();
 	void FreeCommandBuffers();
 	
-	// UBO Static scene objects
-	struct UBOStaticGeometry {
+	struct UboStaticGeometry {
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
 		glm::vec3 cameraPos; 
 	} UBOSG;
 
-	struct UBOOffscreen {
+	struct UboSelectionIndicator {
+		glm::mat4 model;
+		glm::mat4 proj;
+		glm::mat4 view;
+		glm::vec3 cameraPos;
+		float time; 
+	} UBOSI;
+
+	struct UboOffscreen {
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
@@ -140,11 +154,11 @@ private:
 
 	// UBO Static parameters
 	// If the member is a three-component vector with components consuming N basic machine units, the base alignment is 4N.
-	struct UniformBufferObjectParam	{
+	struct UboParam	{
 		glm::vec3 light_col; 
 		float exposure;
 		glm::vec3 light_pos[1];
-	};
+	} UBOP;
 
 	struct UboSkybox {
 		glm::mat4 view;
@@ -159,7 +173,7 @@ private:
 		glm::mat4 view;
 		glm::vec3 cameraPos;
 		float time;
-	};
+	} UBOSE;
 
 	struct UboClouds {
 		glm::mat4 proj;
@@ -181,6 +195,7 @@ private:
 
 	// Struct that holds the models positions
 	struct Constants {
+		glm::vec4 color;
 		glm::vec4 renderLimitPlane;
 		glm::vec3 pos;
 		bool selected;
@@ -194,8 +209,8 @@ private:
 		enginetool::Buffer clouds;
 		enginetool::Buffer clouds_dynamic;
 		enginetool::Buffer ocean;
-		enginetool::Buffer still_objects; //TODO
-		enginetool::Buffer objects;
+		enginetool::Buffer selectionIndicator;
+		enginetool::Buffer stillObjects;
 		enginetool::Buffer parameters;
 		enginetool::Buffer reflection;
 		enginetool::Buffer reflectionParameters;
@@ -210,6 +225,7 @@ private:
 		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
+		enginetool::Buffer selectionIndicator;
 	} vertex_buffers;
 
 	struct {
@@ -219,6 +235,7 @@ private:
 		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
+		enginetool::Buffer selectionIndicator;
 	} index_buffers;
 
 	struct OffscreenPass {
@@ -247,6 +264,7 @@ private:
 	VkPipeline skyboxWireframePipeline;
 	VkPipeline skyboxRefractionPipeline;
 	VkPipeline skyboxReflectionPipeline;
+	VkPipeline selectionIndicatorPipeline;
 	
 	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logicalDevice);
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logicalDevice);
@@ -260,6 +278,7 @@ private:
 
 	enginetool::ScenePart element;
 	enginetool::ScenePart cloud_mesh;
+	enginetool::ScenePart selectionIndicatorMesh;
 
 	std::vector<uint32_t> objects_indices;
 	std::vector<enginetool::VertexLayout> objectsVertices;
@@ -273,6 +292,8 @@ private:
 	std::vector<enginetool::VertexLayout> rayVertices;
 	std::vector<uint32_t> aabbIndices;
 	std::vector<enginetool::VertexLayout> aabbVertices;
+	std::vector<uint32_t> selectIndicatorIndices;
+	std::vector<enginetool::VertexLayout> selectIndicatorVertices;
 
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
@@ -280,12 +301,14 @@ private:
 	VkDescriptorSet clouds_descriptor_set = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxReflectionDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxRefractionDescriptorSet = VK_NULL_HANDLE;
+	VkDescriptorSet selectionIndicatorDescriptorSet = VK_NULL_HANDLE;
 	
 	VkDescriptorSetLayout lineDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout skybox_descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout clouds_descriptor_set_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout selectionIndicatorDescriptorSetLayout;
 
 	VkCommandPool commandPool;
 	size_t dynamicAlignment;

@@ -22,8 +22,9 @@ Landscape::~Landscape() {
 
 // ---------------- Main functions ------------------ //
 
-void Landscape::Init() {
-
+void Landscape::Init(unsigned int maxHealth, int currentHealth) {
+    this->maxHealth = maxHealth;
+	this->currentHealth = currentHealth;
 }
 
 void Landscape::UpdatePosition(float dt) {
@@ -38,6 +39,10 @@ void Landscape::UpdatePosition(float dt) {
 	Actor::UpdateAABB();
 }
 
+glm::vec4 Landscape::CalculateSelectionIndicatorColor(){
+	float perentOfMax = currentHealth / maxHealth;
+	return glm::vec4(2.0f * (1.0f - perentOfMax), 2.0f * perentOfMax, 0.0f, 1.0f);
+}
 
 // void Camera::UpdatePosition(float dt)
 // {

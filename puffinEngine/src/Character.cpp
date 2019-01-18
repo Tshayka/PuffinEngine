@@ -25,6 +25,11 @@ void Character::Init(unsigned int maxHealth, int currentHealth, unsigned int gol
 	this->gold = gold;
 }
 
+glm::vec4 Character::CalculateSelectionIndicatorColor(){
+	float perentOfMax = currentHealth / maxHealth;
+	return glm::vec4(2.0f * (1.0f - perentOfMax), 2.0f * perentOfMax, 0.0f, 1.0f);
+}
+
 void Character::StartJump() {
 	if (onGround) {
     	movementGoal.y = 30.0f;

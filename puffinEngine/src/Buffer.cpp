@@ -5,9 +5,9 @@
 
 namespace enginetool {
 	struct Buffer {
-		VkDevice device = VK_NULL_HANDLE;
-		VkBuffer buffer = VK_NULL_HANDLE;
-		VkDeviceMemory memory = VK_NULL_HANDLE;
+		VkDevice device;
+		VkBuffer buffer;
+		VkDeviceMemory memory;
 		VkDeviceSize size = 0;
 		VkDeviceSize alignment = 0;
 		void* mapped = nullptr;
