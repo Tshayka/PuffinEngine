@@ -616,6 +616,20 @@ void Scene::CreateCommandBuffers() {
 
 		VkDeviceSize offsets[1] = { 0 };
 
+		if(displaySelectionIndicator && selectedActor!=nullptr) {
+			float pointerOffset = selectedActor->position.y + abs(selectedActor->mesh.aabb.max.y)+abs(selectionIndicatorMesh.aabb.max.y)+0.25f;
+			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+			pushConstants.color = selectedActor->CalculateSelectionIndicatorColor();
+			pushConstants.pos = glm::vec3(selectedActor->position.x, pointerOffset, selectedActor->position.z);
+			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+			
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectionIndicator.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectionIndicator.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(selectIndicatorVertices.size()), 1, 0, 0, 0);
+		}
+
 		if (displaySkybox)	{
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
@@ -662,7 +676,7 @@ void Scene::CreateCommandBuffers() {
 
 		if(displayWireframe) {
 			UpdateSelectRayDrawData();
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
@@ -679,20 +693,6 @@ void Scene::CreateCommandBuffers() {
 				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);				
 			}
-		}
-
-		if(displaySelectionIndicator && selectedActor!=nullptr) {
-			float pointerOffset = selectedActor->position.y + abs(selectedActor->mesh.aabb.max.y)+abs(selectionIndicatorMesh.aabb.max.y)+0.25f;
-			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-			pushConstants.color = selectedActor->CalculateSelectionIndicatorColor();
-			pushConstants.pos = glm::vec3(selectedActor->position.x, pointerOffset, selectedActor->position.z);
-			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-			
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectionIndicator.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectionIndicator.buffer , 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(selectIndicatorVertices.size()), 1, 0, 0, 0);
 		}
 
 		vkCmdEndRenderPass(command_buffers[i]);
@@ -1911,9 +1911,10 @@ void Scene::GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept {
 }
 
 void Scene::CreateOcean() noexcept {
-	int vSize = horizon;//density of grid
-	float offset = horizon / 2.0f; 
-	float scale = horizon / (float)vSize;
+	int multipler = 200;
+	int vSize = multipler;//density of grid
+	float offset = multipler / 2.0f; 
+	float scale = multipler / (float)vSize;
 
 	oceanVertices.resize(6*(vSize-1)*(vSize-1));
 
@@ -1962,7 +1963,7 @@ void Scene::CreateOcean() noexcept {
 }
 
 void Scene::CreateSelectionIndicator() {
-	LoadFromFile("puffinEngine/assets/models/sphere.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
+	LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
 	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
 	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
 	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
@@ -1986,10 +1987,10 @@ void Scene::LoadAssets() {
 	CreateCamera();
 	CreateCharacter();
 	CreateSphereLight();
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/plane.obj");
-	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 2.0f),"puffinEngine/assets/models/sphere.obj");
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 12.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
 	
-	std::dynamic_pointer_cast<Camera>(sceneCameras[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 1000.0f, 3.14f, 0.0f);
+	std::dynamic_pointer_cast<Camera>(sceneCameras[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
 	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
 
 	for (uint32_t i = 0; i < actors.size(); i++) {
@@ -2023,7 +2024,7 @@ void Scene::CreateCamera() {
 void Scene::CreateCharacter() {
 	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), ActorType::Character);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
-	character->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
+	character->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
 	actors.emplace_back(std::move(character));
 }
 
@@ -2512,27 +2513,27 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_W:
 			std::cout << "Moving " << currentCamera->name << " foward " << key << std::endl;
-			currentCamera->Dolly(15.0f);
+			currentCamera->Dolly(150.0f);
 			break;
 		case GLFW_KEY_S:
 			std::cout << "Moving " << currentCamera->name << " back " << key << std::endl;
-			currentCamera->Dolly(-15.0f);
+			currentCamera->Dolly(-150.0f);
 			break;
 		case GLFW_KEY_E:
 			std::cout << "Moving " << currentCamera->name << " up " << key << std::endl;
-			currentCamera->Pedestal(15.0f);
+			currentCamera->Pedestal(150.0f);
 			break;
 		case GLFW_KEY_Q:
 			std::cout << "Moving " << currentCamera->name << " down " << key << std::endl;
-			currentCamera->Pedestal(-15.0f);
+			currentCamera->Pedestal(-150.0f);
 			break;
 		case GLFW_KEY_D:
 			std::cout << "Moving " << currentCamera->name << " right " << key << std::endl;
-			currentCamera->Truck(-15.0f);
+			currentCamera->Truck(-150.0f);
 			break;
 		case GLFW_KEY_A:
 			std::cout << "Moving " << currentCamera->name << " left " << key << std::endl;
-			currentCamera->Truck(15.0f);
+			currentCamera->Truck(150.0f);
 			break;
 		case GLFW_KEY_R:
 			std::cout << "Reset " << currentCamera->name << " "<< key << std::endl;
@@ -2546,54 +2547,54 @@ void Scene::PressKey(int key)
 			break;
 		case GLFW_KEY_8:
 			std::cout << "Moving " << actors[3]->name << " foward " << key << std::endl;
-			actors[2]->Dolly(15.0f);
+			actors[2]->Dolly(150.0f);
 			break;
 		case GLFW_KEY_7:
 			std::cout << "Moving " << actors[3]->name << " back " << key << std::endl;
-			actors[2]->Dolly(-15.0f);
+			actors[2]->Dolly(-150.0f);
 			break;
 		case GLFW_KEY_6:
 			std::cout << "Moving " << actors[3]->name << " left " << key << std::endl;
-			actors[2]->Strafe(15.0f);
+			actors[2]->Strafe(150.0f);
 			break;
 		case GLFW_KEY_5:
 			std::cout << "Moving " << actors[3]->name << " right " << key << std::endl;
-			actors[2]->Strafe(-15.0f);
+			actors[2]->Strafe(-150.0f);
 			break;
 		case GLFW_KEY_0:
 			std::cout << "Moving " << actors[2]->name << " up " << key << std::endl;
-			actors[2]->Pedestal(15.0f);
+			actors[2]->Pedestal(150.0f);
 			break;
 		case GLFW_KEY_9:
 			std::cout << "Moving " << actors[2]->name << " down " << key << std::endl;
-			actors[2]->Pedestal(-15.0f);
+			actors[2]->Pedestal(-150.0f);
 			break;
 		case GLFW_KEY_UP:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " foward " << key << std::endl;
 			selectedActor->onManualControl();
-			selectedActor->Dolly(15.0f);
+			selectedActor->Dolly(150.0f);
 			}
 			break;
 		case GLFW_KEY_DOWN:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " back " << key << std::endl;
 			selectedActor->onManualControl();
-			selectedActor->Dolly(-15.0f);
+			selectedActor->Dolly(-150.0f);
 			}
 			break;
 		case GLFW_KEY_LEFT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " left " << key << std::endl;
 			selectedActor->onManualControl();
-			selectedActor->Strafe(15.0f);
+			selectedActor->Strafe(150.0f);
 			}
 			break;
 		case GLFW_KEY_RIGHT:
 			if(selectedActor!=nullptr) {
 			std::cout << "Moving " << selectedActor->name << " right " << key << std::endl;
 			selectedActor->onManualControl();
-			selectedActor->Strafe(-15.0f);
+			selectedActor->Strafe(-150.0f);
 			}
 			break;
 		case GLFW_KEY_SPACE:

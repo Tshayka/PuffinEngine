@@ -18,7 +18,7 @@
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
-const float horizon = 125.0f;
+const float horizon = 9832.0f; //0.5km
 static float cloudsPos = 0.0f;
 const float cloudsVisibDist = 50.0f;
 

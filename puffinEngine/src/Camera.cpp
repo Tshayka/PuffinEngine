@@ -48,9 +48,9 @@ glm::vec4 Camera::CalculateSelectionIndicatorColor() {
 
 void Camera::UpdatePosition(float dt) {
 	// Smooth movement and edge case in approach, without is movement is const
-	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
-	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
-	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
+	movement.x = Approach(movementGoal.x, movement.x, dt * 180);
+	movement.y = Approach(movementGoal.y, movement.y, dt * 180);
+	movement.z = Approach(movementGoal.z, movement.z, dt * 180);
 
 	direction = glm::vec3(cos(pitch) * sin(yaw), sin(pitch), cos(pitch) * cos(yaw));
 
@@ -70,7 +70,7 @@ void Camera::ResetPosition(){
 	up = glm::vec3(0.0f, 1.0f, 0.0f); 
 	FOV = 60.0f;
 	clippingNear = 0.001f;
-	clippingFar = 1000.0f;
+	clippingFar = 200000.0f;
 }
 
 void Camera::MouseMove(double xpos, double ypos, int HEIGHT, int WIDTH, float sensitivity)

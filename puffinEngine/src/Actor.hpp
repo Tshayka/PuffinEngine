@@ -48,7 +48,7 @@ public:
 
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
-	glm::vec3 velocity = glm::vec3(3.0f, 3.0f, 3.0f);
+	glm::vec3 velocity = glm::vec3(30.0f, 30.0f, 30.0f);
 
 	enginetool::ScenePart::AABB currentAabb;
 	

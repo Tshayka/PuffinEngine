@@ -46,14 +46,12 @@ void Character::EndJump() {
 void Character::UpdatePosition(float dt) {
 	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 	
-	movement.x = Approach(movementGoal.x, movement.x, dt * 80);
-	movement.y = Approach(movementGoal.y, movement.y, dt * 80);
- 	movement.z = Approach(movementGoal.z, movement.z, dt * 80);
+	movement.x = Approach(movementGoal.x, movement.x, dt * 180);
+	movement.y = Approach(movementGoal.y, movement.y, dt * 180);
+ 	movement.z = Approach(movementGoal.z, movement.z, dt * 180);
 
 	movement += gravity * dt;
 	position += movement * dt;
-
-	//std::cout << onGround << " " << position.y << " " << movementGoal.y << std::endl;
 
 	if (position.y < closestPointBelow) {
 		position.y = closestPointBelow;
