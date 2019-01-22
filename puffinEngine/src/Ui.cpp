@@ -105,19 +105,20 @@ void GuiElement::LoadImage() {
 	logicalDevice->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, fontData);
 	
 	font.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	font.baseMipLevel = 0;
+	font.mipLevels = 1;
+	font.layers = 1; 
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-		
-	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	font.CopyBufferToImage(staging_buffer.buffer);
-	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	staging_buffer.Destroy();
-
-	// Store our identifier
-	io.Fonts->TexID = (void *)(intptr_t)font.texture;
-
 	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	font.CopyBufferToImage(staging_buffer.buffer);
+	staging_buffer.Destroy();
+	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+
+	// Store our identifier
+	io.Fonts->TexID = (void *)(intptr_t)font.texture;	
 }
 
 void GuiElement::CreateDescriptorSetLayout() {

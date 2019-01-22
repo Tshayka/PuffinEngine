@@ -2128,168 +2128,13 @@ void Scene::InitMaterials() {
 
 // ------------------ Textures ---------------------- //
 
-void Scene::LoadSkyboxTexture(TextureLayout& layer) {
-	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
-	VkFormat format = VK_FORMAT_R8G8B8A8_UNORM;
-	
-	gli::texture_cube texCube(gli::load(texture));
-	layer.texWidth = texCube.extent().x;
-	layer.texHeight = texCube.extent().y;
-	size_t mipLevels = texCube.levels();
-
-	VkImageCreateInfo ImageInfo = {};
-	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
-	ImageInfo.format = format;
-	ImageInfo.extent.width = layer.texWidth;
-	ImageInfo.extent.height = layer.texHeight;
-	ImageInfo.extent.depth = 1;
-	ImageInfo.mipLevels = static_cast<uint32_t>(mipLevels);
-	ImageInfo.arrayLayers = 6;
-	ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-	ImageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-	ImageInfo.usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT;
-	ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	ImageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-
-	ErrorCheck(vkCreateImage(logicalDevice->device, &ImageInfo, nullptr, &layer.texture));
-
-	VkMemoryRequirements memory_requirements;
-	vkGetImageMemoryRequirements(logicalDevice->device, layer.texture, &memory_requirements); // TODO
-
-	VkMemoryAllocateInfo allocInfo = {};
-	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memory_requirements.size;
-	allocInfo.memoryTypeIndex = logicalDevice->FindMemoryType(memory_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-	if (vkAllocateMemory(logicalDevice->device, &allocInfo, nullptr, &layer.texture_image_memory) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
-		std::exit(-1);
-	}
-
-	ErrorCheck(vkBindImageMemory(logicalDevice->device, layer.texture, layer.texture_image_memory, 0));
-	
-
-	enginetool::Buffer texture_staging_buffer;
-	logicalDevice->CreateStagedBuffer(texCube.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &texture_staging_buffer, texCube.data());
-	
-	vkGetBufferMemoryRequirements(logicalDevice->device, texture_staging_buffer.buffer, &memory_requirements);
-
-	VkCommandBuffer command_buffer = BeginSingleTimeCommands();
-
-	std::vector<VkBufferImageCopy> bufferCopyRegions;
-	uint32_t offset = 0;
-
-	for (uint32_t face = 0; face < 6; face++) {
-		for (uint32_t level = 0; level < static_cast<uint32_t>(mipLevels); level++)	{
-			VkBufferImageCopy Region = {};
-			Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			Region.imageSubresource.mipLevel = level;
-			Region.imageSubresource.baseArrayLayer = face;
-			Region.imageSubresource.layerCount = 1;
-			Region.imageExtent.width = texCube[face][level].extent().x;
-			Region.imageExtent.height = texCube[face][level].extent().y;
-			Region.imageExtent.depth = 1;
-			Region.bufferOffset = offset;
-
-			bufferCopyRegions.emplace_back(Region);
-
-			offset += static_cast<uint32_t>(texCube[face][level].size());
-		}
-	}
-
-	VkImageMemoryBarrier barrier = {};
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-	barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = layer.texture;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = static_cast<uint32_t>(mipLevels);
-	barrier.subresourceRange.layerCount = 6;
-	barrier.srcAccessMask = 0;
-	barrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
-	VkPipelineStageFlags source_stage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-	VkPipelineStageFlags destination_stage = VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
-	
-	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	vkCmdCopyBufferToImage(command_buffer, texture_staging_buffer.buffer, layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
-
-	barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-	barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-	barrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = layer.texture;
-	barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = static_cast<uint32_t>(mipLevels);
-	barrier.subresourceRange.layerCount = 6;
-	barrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-	barrier.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
-	source_stage = VK_PIPELINE_STAGE_TRANSFER_BIT;
-	destination_stage = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-	vkCmdPipelineBarrier(command_buffer, source_stage, destination_stage, 0, 0, nullptr, 0, nullptr, 1, &barrier);
-
-	EndSingleTimeCommands(command_buffer, commandPool);
-
-	texture_staging_buffer.Destroy();
-
-	// Create sampler
-	VkSamplerCreateInfo SamplerInfo = {};
-	SamplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
-	SamplerInfo.magFilter = VK_FILTER_LINEAR;
-	SamplerInfo.minFilter = VK_FILTER_LINEAR;
-	SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-	SamplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	SamplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	SamplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-	SamplerInfo.mipLodBias = 0.0f;
-	SamplerInfo.compareOp = VK_COMPARE_OP_NEVER;
-	SamplerInfo.minLod = 0.0f;
-	SamplerInfo.maxLod = static_cast<float>(mipLevels);
-	SamplerInfo.anisotropyEnable = VK_TRUE;
-	SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
-	SamplerInfo.maxAnisotropy = 16.0f;
-	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
-	SamplerInfo.compareEnable = VK_FALSE;
-
-	if (vkCreateSampler(logicalDevice->device, &SamplerInfo, nullptr, &layer.texture_sampler) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture sampler!");
-		std::exit(-1);
-	}
-	
-	// Create image view
-	VkImageViewCreateInfo ViewInfo = {};
-	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-	ViewInfo.format = format;
-	ViewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
-	ViewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
-	ViewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
-	ViewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
-	ViewInfo.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
-	ViewInfo.subresourceRange.layerCount = 6;
-	ViewInfo.subresourceRange.levelCount = static_cast<uint32_t>(mipLevels);
-	ViewInfo.image = layer.texture;
-
-	if (vkCreateImageView(logicalDevice->device, &ViewInfo, nullptr, &layer.texture_image_view) != VK_SUCCESS)	{
-		assert(0 && "Vulkan ERROR: failed to create texture image view!");
-		std::exit(-1);
-	}
-}
-
 void Scene::CreateDepthResources() {
 	depthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
 	depthImage.texWidth = logicalDevice->swapchain_extent.width; 
 	depthImage.texHeight = logicalDevice->swapchain_extent.height;
-	depthImage.mipLevels = 0;  
+	depthImage.baseMipLevel = 0;
+	depthImage.mipLevels = 1;  
+	depthImage.layers = 1;   
 	depthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	depthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	depthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -2299,7 +2144,9 @@ void Scene::PrepareOffscreen() {
 	offscreenPass.reflectionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
 	offscreenPass.reflectionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
 	offscreenPass.reflectionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.reflectionImage.mipLevels = 0;  
+	offscreenPass.reflectionImage.baseMipLevel = 0;
+	offscreenPass.reflectionImage.mipLevels = 1;  
+	offscreenPass.reflectionImage.layers = 1; 
 	offscreenPass.reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	offscreenPass.reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	offscreenPass.reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -2307,7 +2154,9 @@ void Scene::PrepareOffscreen() {
 	offscreenPass.reflectionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
 	offscreenPass.reflectionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
 	offscreenPass.reflectionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.reflectionDepthImage.mipLevels = 0;  
+	offscreenPass.reflectionDepthImage.baseMipLevel = 0;
+	offscreenPass.reflectionDepthImage.mipLevels = 1;  
+	offscreenPass.reflectionDepthImage.layers = 1;   
 	offscreenPass.reflectionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	offscreenPass.reflectionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	offscreenPass.reflectionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -2315,7 +2164,9 @@ void Scene::PrepareOffscreen() {
 	offscreenPass.refractionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
 	offscreenPass.refractionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
 	offscreenPass.refractionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.refractionImage.mipLevels = 0; 
+	offscreenPass.refractionImage.baseMipLevel = 0;
+	offscreenPass.refractionImage.mipLevels = 1; 
+	offscreenPass.refractionImage.layers = 1;  
 	offscreenPass.refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	offscreenPass.refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	offscreenPass.refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -2323,7 +2174,9 @@ void Scene::PrepareOffscreen() {
 	offscreenPass.refractionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
 	offscreenPass.refractionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
 	offscreenPass.refractionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.refractionDepthImage.mipLevels = 0; 
+	offscreenPass.refractionDepthImage.baseMipLevel = 0;
+	offscreenPass.refractionDepthImage.mipLevels = 1; 
+	offscreenPass.refractionDepthImage.layers = 1;  
 	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	offscreenPass.refractionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -2337,8 +2190,6 @@ void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
 		std::exit(-1);
 	}
 
-	layer.mipLevels = 0;
-
 	VkDeviceSize imageSize = layer.texWidth * layer.texHeight * 4;
 	enginetool::Buffer stagingBuffer;
 	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, pixels);
@@ -2346,13 +2197,63 @@ void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
 	stbi_image_free(pixels);
 	
 	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	layer.baseMipLevel = 0;
+	layer.mipLevels = 1;
+	layer.layers = 1;
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	layer.CopyBufferToImage(stagingBuffer.buffer);
+	stagingBuffer.Destroy();
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	stagingBuffer.Destroy();	
+}
+
+void Scene::LoadSkyboxTexture(TextureLayout& layer) {
+	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
+	gli::texture_cube texCube(gli::load(texture));
+	
+	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	layer.texWidth = texCube.extent().x;
+	layer.texHeight = texCube.extent().y;
+	layer.mipLevels = texCube.levels();
+	layer.baseMipLevel = 0;
+	layer.layers = 6;
+	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
+	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
+	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+	VkDeviceSize imageSize = texCube.size();
+	enginetool::Buffer stagingBuffer;
+	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, texCube.data());
+
+	VkCommandBuffer command_buffer = layer.BeginSingleTimeCommands();
+	uint32_t offset = 0;
+
+	for (uint32_t face = 0; face < layer.layers; face++) {
+		for (uint32_t level = 0; level < layer.mipLevels; level++)	{
+			VkBufferImageCopy Region = {};
+			Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			Region.imageSubresource.mipLevel = level;
+			Region.imageSubresource.baseArrayLayer = face;
+			Region.imageSubresource.layerCount = 1;
+			Region.imageExtent.width = texCube[face][level].extent().x;
+			Region.imageExtent.height = texCube[face][level].extent().y;
+			Region.imageExtent.depth = 1;
+			Region.bufferOffset = offset;
+
+			layer.bufferCopyRegions.emplace_back(Region);
+
+			offset += static_cast<uint32_t>(texCube[face][level].size());
+		}
+	}
+
+	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.buffer, layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
+	layer.EndSingleTimeCommands(command_buffer);
+	stagingBuffer.Destroy();
+
+	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 // ------------------- NAVIGATION ------------------- //
@@ -2726,10 +2627,7 @@ void Scene::DeInitScene() {
 }
 
 void Scene::DeInitTextureImage() {
-	vkDestroyImageView(logicalDevice->device, sky->skybox_texture.texture_image_view, nullptr);
-	vkDestroyImage(logicalDevice->device, sky->skybox_texture.texture, nullptr);
-	vkDestroySampler(logicalDevice->device, sky->skybox_texture.texture_sampler, nullptr);
-	vkFreeMemory(logicalDevice->device, sky->skybox_texture.texture_image_memory, nullptr);
+	sky->skybox_texture.DeInit();
 
 	for (size_t i = 0; i < scene_material.size(); i++) {
 		scene_material[i].albedo.DeInit();

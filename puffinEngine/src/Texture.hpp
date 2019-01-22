@@ -10,8 +10,14 @@ class TextureLayout {
 		VkImageView texture_image_view;
 		VkDeviceMemory texture_image_memory;
 		VkSampler texture_sampler;
-		uint32_t texWidth, texHeight, mipLevels; 
+		uint32_t texWidth; 
+        uint32_t texHeight; 
+        uint32_t baseMipLevel; 
+        uint32_t mipLevels;
+        uint32_t layers; 
         int texChannels;
+
+        std::vector<VkBufferImageCopy> bufferCopyRegions;
 
         void CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImageCreateFlags flag);
         void CreateImageView(VkImageAspectFlags aspect_flags, VkImageViewType type);
@@ -22,7 +28,7 @@ class TextureLayout {
         void CopyBufferToImage(VkBuffer buffer);
         void TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout newLayout); 
 
-        private:
+        //private:
         VkCommandBuffer BeginSingleTimeCommands();
         void CreateCommandPool();
         void EndSingleTimeCommands(VkCommandBuffer commandBuffer);

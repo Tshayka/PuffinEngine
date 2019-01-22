@@ -15,8 +15,8 @@ void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, V
 	ImageInfo.extent.width = texWidth;
 	ImageInfo.extent.height = texHeight;
 	ImageInfo.extent.depth = 1;
-	ImageInfo.mipLevels = 1;
-	ImageInfo.arrayLayers = 1;
+	ImageInfo.mipLevels = mipLevels;
+	ImageInfo.arrayLayers = layers;
 	ImageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	ImageInfo.tiling = tiling;
 	ImageInfo.usage = usage;
@@ -75,7 +75,7 @@ void TextureLayout::CreateTextureSampler(enum VkSamplerAddressMode mode) {
 	SamplerInfo.anisotropyEnable = VK_TRUE;
 	SamplerInfo.maxAnisotropy = 16.0f;
 	SamplerInfo.minLod = 0.0f;
-	SamplerInfo.maxLod = static_cast<float>(mipLevels);
+	SamplerInfo.maxLod = static_cast<float>(baseMipLevel);
 	SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 	SamplerInfo.compareEnable = VK_FALSE;
@@ -91,19 +91,29 @@ void TextureLayout::CreateTextureSampler(enum VkSamplerAddressMode mode) {
 void TextureLayout::CopyBufferToImage(VkBuffer buffer) {
 	VkCommandBuffer commandBuffer = BeginSingleTimeCommands();
 
-	VkBufferImageCopy Region = {};
-	Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	Region.imageSubresource.mipLevel = mipLevels;
-	Region.imageSubresource.baseArrayLayer = 0;
-	Region.imageSubresource.layerCount = 1;
-	Region.imageExtent = { texWidth, texHeight, 1 };
-	Region.bufferOffset = 0;
-	Region.bufferRowLength = 0;
-	Region.bufferImageHeight = 0;
-	Region.imageOffset = { 0, 0, 0 };
+	uint32_t offset = 0;
+	
+	for (uint32_t face = 0; face < layers; face++) {
+		for (uint32_t level = 0; level < mipLevels; level++) {
+			VkBufferImageCopy Region = {};
+			Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			Region.imageSubresource.mipLevel = baseMipLevel;
+			Region.imageSubresource.baseArrayLayer = 0;
+			Region.imageSubresource.layerCount = 1;
+			Region.imageExtent.width = texWidth; 
+			Region.imageExtent.height = texHeight;
+			Region.imageExtent.depth = 1;
+			Region.bufferOffset = offset;
+			Region.bufferRowLength = 0;
+			Region.bufferImageHeight = 0;
+			Region.imageOffset = { 0, 0, 0 };
 
-	vkCmdCopyBufferToImage(commandBuffer, buffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &Region);
+			bufferCopyRegions.emplace_back(Region);
+		}
+	}
 
+	vkCmdCopyBufferToImage(commandBuffer, buffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
+	
 	EndSingleTimeCommands(commandBuffer);
 }
 
@@ -133,10 +143,10 @@ void TextureLayout::TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
 	}
 
-	barrier.subresourceRange.baseMipLevel = 0;
-	barrier.subresourceRange.levelCount = 1;
+	barrier.subresourceRange.baseMipLevel = baseMipLevel;
+	barrier.subresourceRange.levelCount = mipLevels;
 	barrier.subresourceRange.baseArrayLayer = 0;
-	barrier.subresourceRange.layerCount = 1;
+	barrier.subresourceRange.layerCount = layers;
 
 	VkPipelineStageFlags sourceStage;
 	VkPipelineStageFlags destinationStage;
