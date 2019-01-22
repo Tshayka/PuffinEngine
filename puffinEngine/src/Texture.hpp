@@ -10,11 +10,11 @@ class TextureLayout {
 		VkImageView texture_image_view;
 		VkDeviceMemory texture_image_memory;
 		VkSampler texture_sampler;
-		uint32_t texWidth, texHeight; 
+		uint32_t texWidth, texHeight, mipLevels; 
         int texChannels;
 
-        void CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties);
-        void CreateImageView(VkImageAspectFlags aspect_flags);
+        void CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImageCreateFlags flag);
+        void CreateImageView(VkImageAspectFlags aspect_flags, VkImageViewType type);
         void CreateTextureSampler(enum VkSamplerAddressMode mode); 
         void DeInit();
         void Init(Device* device, VkFormat format);

@@ -5,7 +5,7 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "LoadTexture.cpp"//?
+#include "LoadTexture.cpp"
 
 namespace enginetool {
 	struct VertexLayout {

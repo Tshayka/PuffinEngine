@@ -52,7 +52,7 @@ void GuiTextOverlay::LoadImage() {
 	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &staging_buffer, &stbFontData);
 
 	font.Init(logical_device, VK_FORMAT_R8_UNORM);
-	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	
 	staging_buffer.Map(indexBufferSize, 0);
 	staging_buffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
@@ -64,7 +64,7 @@ void GuiTextOverlay::LoadImage() {
 	
 	staging_buffer.Destroy();
 
-	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, memory);

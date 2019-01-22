@@ -12,7 +12,7 @@ public:
 	void SetLightColor(glm::vec3 lightColor);
 
 	void UpdatePosition(float) override;
-	virtual glm::vec4 CalculateSelectionIndicatorColor() override;
+	virtual glm::vec3 CalculateSelectionIndicatorColor() override;
 
 	glm::vec3 lightColor = glm::vec3(255.0f, 255.0f, 255.0f); // 6000K	
 };
@@ -25,6 +25,10 @@ public:
 
 class Skybox : public Light {
 public:
-	Skybox(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Skybox(std::string name, std::string description, glm::vec3 position, ActorType type, float horizon);
 	virtual ~Skybox();
+
+	void CreateMesh();
+
+	float horizon;
 };

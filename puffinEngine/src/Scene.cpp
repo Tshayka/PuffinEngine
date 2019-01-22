@@ -635,7 +635,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displayOcean) {
@@ -643,7 +643,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(oceanIndices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(seas[0]->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displaySceneGeometry) {
@@ -751,7 +751,7 @@ void Scene::CreateReflectionCommandBuffer() {
 		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxReflectionPipeline);
-		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
@@ -826,7 +826,7 @@ void Scene::CreateRefractionCommandBuffer() {
 		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxRefractionPipeline);
-		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(skybox_indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
@@ -1334,7 +1334,14 @@ void Scene::CreateDescriptorSetLayout() {
 	SelectionIndicatorUboLayoutBinding.pImmutableSamplers = nullptr;
 	SelectionIndicatorUboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 1> selectionIndicatorBindings = { SelectionIndicatorUboLayoutBinding };
+	VkDescriptorSetLayoutBinding SelectionIndicatorImageLayoutBinding = {};
+	SelectionIndicatorImageLayoutBinding.binding = 1;
+	SelectionIndicatorImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	SelectionIndicatorImageLayoutBinding.descriptorCount = 1;
+	SelectionIndicatorImageLayoutBinding.pImmutableSamplers = nullptr;
+	SelectionIndicatorImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 2> selectionIndicatorBindings = { SelectionIndicatorUboLayoutBinding, SelectionIndicatorImageLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo SelectionIndicatorLayoutInfo = {};
 	SelectionIndicatorLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1350,7 +1357,7 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 10);
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 11);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 9);
 
@@ -1753,8 +1760,13 @@ void Scene::CreateDescriptorSet() {
 	SelectionIndicatorBufferInfo.buffer = uniform_buffers.selectionIndicator.buffer;
 	SelectionIndicatorBufferInfo.offset = 0;
 	SelectionIndicatorBufferInfo.range = sizeof(UboSelectionIndicator);
+
+	VkDescriptorImageInfo SelectionIndicatorImageInfo = {};
+	SelectionIndicatorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	SelectionIndicatorImageInfo.imageView = sky->skybox_texture.texture_image_view;
+	SelectionIndicatorImageInfo.sampler = sky->skybox_texture.texture_sampler;
 	
-	std::array<VkWriteDescriptorSet, 1> selectionIndicatorDescriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 2> selectionIndicatorDescriptorWrites = {};
 
 	selectionIndicatorDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	selectionIndicatorDescriptorWrites[0].dstSet = selectionIndicatorDescriptorSet;
@@ -1763,6 +1775,14 @@ void Scene::CreateDescriptorSet() {
 	selectionIndicatorDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	selectionIndicatorDescriptorWrites[0].descriptorCount = 1;
 	selectionIndicatorDescriptorWrites[0].pBufferInfo = &SelectionIndicatorBufferInfo;
+
+	selectionIndicatorDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	selectionIndicatorDescriptorWrites[1].dstSet = selectionIndicatorDescriptorSet;
+	selectionIndicatorDescriptorWrites[1].dstBinding = 1;
+	selectionIndicatorDescriptorWrites[1].dstArrayElement = 0;
+	selectionIndicatorDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	selectionIndicatorDescriptorWrites[1].descriptorCount = 1;
+	selectionIndicatorDescriptorWrites[1].pImageInfo = &SelectionIndicatorImageInfo;
 
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(selectionIndicatorDescriptorWrites.size()), selectionIndicatorDescriptorWrites.data(), 0, nullptr);
 }
@@ -1797,64 +1817,6 @@ void Scene::CreateSelectRay() {
 
 	CreateMappedVertexBuffer(rayVertices, vertex_buffers.selectRay);
 	CreateMappedIndexBuffer(rayIndices, index_buffers.selectRay);
-}
-
-void Scene::CreateSkybox() noexcept {
-	skybox_vertices = {
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 1.0f, 0.0f}},
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 1.0f, 0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.66f}, {0.0f, 1.0f, 0.0f}},
-		
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, 0.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.0f}, {0.0f, -1.0f, 0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, 0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.0f}, {0.0f, -1.0f, 0.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, -1.0f, 0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, -1.0f, 0.0f}},
-		
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {0.0f, 0.0f, -1.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, 0.0f, -1.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {0.0f, 0.0f, -1.0f}},
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {0.0f, 0.0f, -1.0f}},
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {0.0f, 0.0f, -1.0f}},
-		
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.667f}, {-1.0f, 0.0f, 0.0f}},
-		{{horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.33f}, {-1.0f, 0.0f, 0.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.0f, 0.667f}, {-1.0f, 0.0f, 0.0f}},
-		{{horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.25f, 0.66f}, {-1.0f, 0.0f, 0.0f}},
-		
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.66f}, {0.0f, 0.0f, 1.0f}},
-		{{horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.33f}, {0.0f, 0.0f, 1.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {0.0f, 0.0f, 1.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {0.0f, 0.0f, 1.0f}},
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {0.0f, 0.0f, 1.0f}},
-		{{horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {1.0f, 0.667f}, {0.0f, 0.0f, 1.0f}},
-		
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.66f}, {1.0f, 0.0f, 0.0f}},
-		{{-horizon, horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.33f}, {1.0f, 0.0f, 0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, 0.0f}},
-		{{-horizon, horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.33f}, {1.0f, 0.0f, 0.0f}},
-		{{-horizon, -horizon, horizon}, {1.0f, 1.0f, 1.0f}, {0.5f, 0.667f}, {1.0f, 0.0f, 0.0f}},
-		{{-horizon, -horizon, -horizon}, {1.0f, 1.0f, 1.0f}, {0.75f, 0.667f}, {1.0f, 0.0f, 0.0f}}
-	};
-
-	skybox_indices = {
-		0,1,2,3,4,5,
-		6,7,8,9,10,11,
-		12,13,14,15,16,17,
-		18,19,20,21,22,23,
-		24,25,26,27,28,29,
-		30,31,32,33,34,35
-	};
-
-	CreateVertexBuffer(skybox_vertices, vertex_buffers.skybox);
-	CreateIndexBuffer(skybox_indices, index_buffers.skybox);
 }
 
 void Scene::CreateAABBBuffers() {
@@ -1910,70 +1872,9 @@ void Scene::GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept {
 	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
 }
 
-void Scene::CreateOcean() noexcept {
-	int multipler = 200;
-	int vSize = multipler;//density of grid
-	float offset = multipler / 2.0f; 
-	float scale = multipler / (float)vSize;
-
-	oceanVertices.resize(6*(vSize-1)*(vSize-1));
-
-        // create local vertices
-
-        for (uint z = 0; z < vSize; ++z) {
-            for (uint x = 0; x < vSize; ++x) {
-                uint index = z * vSize + x;
-
-				oceanVertices[index].pos.x = scale*(float)x - offset;
-				oceanVertices[index].pos.y =  0.0f;
-				oceanVertices[index].pos.z = scale*(float)z - offset;
-
-                oceanVertices[index].color.x = 1.0f;
-				oceanVertices[index].color.y = 1.0f;
-				oceanVertices[index].color.z = 1.0f;
-
-				oceanVertices[index].text_coord.x = (float)x - offset;
-				oceanVertices[index].text_coord.y = (float)z - offset;
-
-				oceanVertices[index].normals.x = 0.0f;
-				oceanVertices[index].normals.y = 1.0f;
-				oceanVertices[index].normals.z = 0.0f;
-            }
-        }
-     
-		std::cout << "Ocean vertices size: " << oceanVertices.size() << std::endl;
-
-		for(int z = 0; z < vSize-1; ++z) {
-			for(int x = 0; x < vSize-1; ++x) {
-				int topLeft = (z*vSize)+x;
-				int topRight = topLeft + 1;
-				int bottomLeft = ((z+1)*vSize)+x;
-				int bottomRight = bottomLeft + 1;
-				oceanIndices.emplace_back(topLeft);
-				oceanIndices.emplace_back(bottomLeft);
-				oceanIndices.emplace_back(topRight);
-				oceanIndices.emplace_back(topRight);
-				oceanIndices.emplace_back(bottomLeft);
-				oceanIndices.emplace_back(bottomRight);
-			}
-		}
-
-	CreateVertexBuffer(oceanVertices, vertex_buffers.ocean);
-	CreateIndexBuffer(oceanIndices, index_buffers.ocean);
-}
-
-void Scene::CreateSelectionIndicator() {
-	LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
-	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
-	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
-	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
-}
-
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
-	CreateSkybox();
-	CreateOcean();
 	CreateSelectionIndicator();
 
 	// Clouds
@@ -1983,9 +1884,11 @@ void Scene::LoadAssets() {
 	CreateIndexBuffer(clouds_indices, index_buffers.clouds);
 	
 	// Scene objects/actors
+	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
+	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
 	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/sphere.obj");
 	CreateCamera();
-	CreateCharacter();
+	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f));
 	CreateSphereLight();
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 12.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
@@ -2016,13 +1919,13 @@ void Scene::LoadAssets() {
 }
 
 void Scene::CreateCamera() {
-	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 4.0f, 3.0f), ActorType::Camera);
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 40.0f, 3.0f), ActorType::Camera);
 	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
 	sceneCameras.emplace_back(std::move(camera));
 }
 
-void Scene::CreateCharacter() {
-	std::shared_ptr<Actor> character = std::make_shared<Character>("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), ActorType::Character);
+void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position) {
+	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
 	actors.emplace_back(std::move(character));
@@ -2040,6 +1943,30 @@ void Scene::CreateLandscape(std::string name, std::string description, glm::vec3
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
 	stillObject->mesh.meshFilename = meshFilename;
 	actors.emplace_back(std::move(stillObject));
+}
+
+void Scene::CreateSea(std::string name, std::string description, glm::vec3 position) {
+	std::shared_ptr<Actor> sea = std::make_shared<Sea>(name, description, position, ActorType::Sea);
+	std::dynamic_pointer_cast<Sea>(sea)->CreateMesh();
+	CreateVertexBuffer(sea->vertices, vertex_buffers.ocean);
+	CreateIndexBuffer(sea->indices, index_buffers.ocean);
+	seas.emplace_back(std::move(sea));
+}
+
+void Scene::CreateSelectionIndicator() {
+	LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
+	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
+	
+	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
+	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
+}
+
+void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon) {
+	std::shared_ptr<Actor> skybox = std::make_shared<Skybox>(name, description, position, ActorType::Skybox, horizon);
+	std::dynamic_pointer_cast<Skybox>(skybox)->CreateMesh();
+	CreateVertexBuffer(skybox->vertices, vertex_buffers.skybox);
+	CreateIndexBuffer(skybox->indices, index_buffers.skybox);
+	skyboxes.emplace_back(std::move(skybox));
 }
 
 // Use proxy design pattern!
@@ -2209,7 +2136,7 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 	layer.texWidth = texCube.extent().x;
 	layer.texHeight = texCube.extent().y;
 	size_t mipLevels = texCube.levels();
-	
+
 	VkImageCreateInfo ImageInfo = {};
 	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -2242,6 +2169,7 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 	}
 
 	ErrorCheck(vkBindImageMemory(logicalDevice->device, layer.texture, layer.texture_image_memory, 0));
+	
 
 	enginetool::Buffer texture_staging_buffer;
 	logicalDevice->CreateStagedBuffer(texCube.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &texture_staging_buffer, texCube.data());
@@ -2328,7 +2256,7 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 	SamplerInfo.maxLod = static_cast<float>(mipLevels);
 	SamplerInfo.anisotropyEnable = VK_TRUE;
 	SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_WHITE;
-	SamplerInfo.maxAnisotropy = 2.0f;
+	SamplerInfo.maxAnisotropy = 16.0f;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 	SamplerInfo.compareEnable = VK_FALSE;
 
@@ -2357,6 +2285,50 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 	}
 }
 
+void Scene::CreateDepthResources() {
+	depthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
+	depthImage.texWidth = logicalDevice->swapchain_extent.width; 
+	depthImage.texHeight = logicalDevice->swapchain_extent.height;
+	depthImage.mipLevels = 0;  
+	depthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	depthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	depthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
+
+void Scene::PrepareOffscreen() {
+	offscreenPass.reflectionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	offscreenPass.reflectionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
+	offscreenPass.reflectionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	offscreenPass.reflectionImage.mipLevels = 0;  
+	offscreenPass.reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	offscreenPass.reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	offscreenPass.reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	offscreenPass.reflectionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
+	offscreenPass.reflectionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
+	offscreenPass.reflectionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	offscreenPass.reflectionDepthImage.mipLevels = 0;  
+	offscreenPass.reflectionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	offscreenPass.reflectionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	offscreenPass.reflectionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+
+	offscreenPass.refractionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	offscreenPass.refractionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
+	offscreenPass.refractionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	offscreenPass.refractionImage.mipLevels = 0; 
+	offscreenPass.refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	offscreenPass.refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	offscreenPass.refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+
+	offscreenPass.refractionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
+	offscreenPass.refractionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
+	offscreenPass.refractionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	offscreenPass.refractionDepthImage.mipLevels = 0; 
+	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	offscreenPass.refractionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+}
+
 void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
 	stbi_uc* pixels = stbi_load(texture.c_str(), (int*)&layer.texWidth, (int*)&layer.texHeight, &layer.texChannels, STBI_rgb_alpha);
 
@@ -2365,64 +2337,23 @@ void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
 		std::exit(-1);
 	}
 
-	VkDeviceSize image_size = layer.texWidth * layer.texHeight * 4; //  pixels are laid out row by row with 4 bytes per pixel
-	enginetool::Buffer image_staging_buffer;
-	logicalDevice->CreateStagedBuffer(image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &image_staging_buffer, pixels);
+	layer.mipLevels = 0;
+
+	VkDeviceSize imageSize = layer.texWidth * layer.texHeight * 4;
+	enginetool::Buffer stagingBuffer;
+	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, pixels);
 
 	stbi_image_free(pixels);
 	
 	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	layer.CopyBufferToImage(image_staging_buffer.buffer);
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-
-	image_staging_buffer.Destroy();
-
-	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
+	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	layer.CopyBufferToImage(stagingBuffer.buffer);
+	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	stagingBuffer.Destroy();	
 }
-
-// --------------- Depth buffering ------------------ //
-
-void Scene::CreateDepthResources() {
-	depthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	depthImage.texWidth = logicalDevice->swapchain_extent.width; 
-	depthImage.texHeight = logicalDevice->swapchain_extent.height; 
-	depthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	depthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
-	depthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-}
-
-void Scene::PrepareOffscreen() {
-	offscreenPass.reflectionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	offscreenPass.reflectionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
-	offscreenPass.reflectionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
-	offscreenPass.reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-	offscreenPass.reflectionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	offscreenPass.reflectionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
-	offscreenPass.reflectionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height; 
-	offscreenPass.reflectionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.reflectionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
-
-	offscreenPass.refractionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	offscreenPass.refractionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
-	offscreenPass.refractionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT);
-	offscreenPass.refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
-	offscreenPass.refractionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	offscreenPass.refractionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
-	offscreenPass.refractionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height; 
-	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT);
-}
-
 
 // ------------------- NAVIGATION ------------------- //
 

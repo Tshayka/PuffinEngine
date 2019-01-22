@@ -7,7 +7,7 @@ public:
 	Character(std::string name, std::string description, glm::vec3 position, ActorType type);
 	virtual ~Character();
 
-	virtual glm::vec4 CalculateSelectionIndicatorColor() override;
+	virtual glm::vec3 CalculateSelectionIndicatorColor() override;
 	void Init(unsigned int maxHealth, int currentHealth, unsigned int gold);
 	void StartJump();
 	void EndJump();

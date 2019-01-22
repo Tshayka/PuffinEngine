@@ -25,9 +25,9 @@ void Character::Init(unsigned int maxHealth, int currentHealth, unsigned int gol
 	this->gold = gold;
 }
 
-glm::vec4 Character::CalculateSelectionIndicatorColor(){
+glm::vec3 Character::CalculateSelectionIndicatorColor(){
 	float perentOfMax = currentHealth / maxHealth;
-	return glm::vec4(2.0f * (1.0f - perentOfMax), 2.0f * perentOfMax, 0.0f, 1.0f);
+	return glm::vec3(2.0f * (1.0f - perentOfMax), 2.0f * perentOfMax, 0.0f);
 }
 
 void Character::StartJump() {
@@ -46,9 +46,9 @@ void Character::EndJump() {
 void Character::UpdatePosition(float dt) {
 	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 	
-	movement.x = Approach(movementGoal.x, movement.x, dt * 180);
-	movement.y = Approach(movementGoal.y, movement.y, dt * 180);
- 	movement.z = Approach(movementGoal.z, movement.z, dt * 180);
+	movement.x = Approach(movementGoal.x, movement.x, dt * 500);
+	movement.y = Approach(movementGoal.y, movement.y, dt * 500);
+ 	movement.z = Approach(movementGoal.z, movement.z, dt * 500);
 
 	movement += gravity * dt;
 	position += movement * dt;

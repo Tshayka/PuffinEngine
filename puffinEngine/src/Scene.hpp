@@ -55,6 +55,8 @@ public:
 	
 	std::vector<std::shared_ptr<Actor>> sceneCameras;
 	std::vector<std::shared_ptr<Actor>> actors;
+	std::vector<std::shared_ptr<Actor>> seas;
+	std::vector<std::shared_ptr<Actor>> skyboxes;
 		
 	GuiMainHub *guiMainHub = nullptr;
 	
@@ -80,10 +82,10 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
-	void CreateOcean() noexcept;
+	void CreateSea(std::string name, std::string description, glm::vec3 position);
 	void CreateSelectionIndicator();
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void CreateSkybox() noexcept;
+	void CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon);
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();
@@ -93,7 +95,7 @@ private:
 	void CreateCamera();
 	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateSelectRay(); 
-	void CreateCharacter();
+	void CreateCharacter(std::string name, std::string description, glm::vec3 position);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void CreateSphereLight();
@@ -142,7 +144,7 @@ private:
 		glm::mat4 proj;
 		glm::mat4 view;
 		glm::vec3 cameraPos;
-		float time; 
+		float time;
 	} UBOSI;
 
 	struct UboOffscreen {
@@ -195,10 +197,10 @@ private:
 
 	// Struct that holds the models positions
 	struct Constants {
-		glm::vec4 color;
 		glm::vec4 renderLimitPlane;
 		glm::vec3 pos;
-		bool selected;
+		bool glow;
+		glm::vec3 color;
 	} pushConstants;
 
 	struct {
@@ -282,10 +284,6 @@ private:
 
 	std::vector<uint32_t> objects_indices;
 	std::vector<enginetool::VertexLayout> objectsVertices;
-	std::vector<uint32_t> skybox_indices;
-	std::vector<enginetool::VertexLayout> skybox_vertices;
-	std::vector<uint32_t> oceanIndices;
-	std::vector<enginetool::VertexLayout> oceanVertices;
 	std::vector<uint32_t> clouds_indices;
 	std::vector<enginetool::VertexLayout> clouds_vertices;
 	std::vector<uint32_t> rayIndices;

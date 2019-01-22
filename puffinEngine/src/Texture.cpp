@@ -7,7 +7,7 @@ void TextureLayout::Init(Device* device, VkFormat format) {
 	CreateCommandPool();
 };
 
-void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties) {
+void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImageCreateFlags flag) {
 	VkImageCreateInfo ImageInfo = {};
 	ImageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
 	ImageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -22,6 +22,7 @@ void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, V
 	ImageInfo.usage = usage;
 	ImageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	ImageInfo.flags = flag;
 
 	ErrorCheck(vkCreateImage(logicalDevice->device, &ImageInfo, nullptr, &texture));
 
@@ -41,12 +42,16 @@ void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, V
 	ErrorCheck(vkBindImageMemory(logicalDevice->device, texture, texture_image_memory, 0));
 }
 
-void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags) {
+void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageViewType type) {
 	VkImageViewCreateInfo ViewInfo = {};
 	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	ViewInfo.image = texture;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	ViewInfo.viewType = type;
 	ViewInfo.format = format;
+	ViewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
+	ViewInfo.components.g = VK_COMPONENT_SWIZZLE_G;
+	ViewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
+	ViewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 	ViewInfo.subresourceRange.aspectMask = aspect_flags;
 	ViewInfo.subresourceRange.baseMipLevel = 0;
 	ViewInfo.subresourceRange.levelCount = 1;
@@ -68,7 +73,9 @@ void TextureLayout::CreateTextureSampler(enum VkSamplerAddressMode mode) {
 	SamplerInfo.addressModeV = mode;
 	SamplerInfo.addressModeW = mode; 
 	SamplerInfo.anisotropyEnable = VK_TRUE;
-	SamplerInfo.maxAnisotropy = 16;
+	SamplerInfo.maxAnisotropy = 16.0f;
+	SamplerInfo.minLod = 0.0f;
+	SamplerInfo.maxLod = static_cast<float>(mipLevels);
 	SamplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
 	SamplerInfo.unnormalizedCoordinates = VK_FALSE;
 	SamplerInfo.compareEnable = VK_FALSE;
@@ -86,7 +93,7 @@ void TextureLayout::CopyBufferToImage(VkBuffer buffer) {
 
 	VkBufferImageCopy Region = {};
 	Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-	Region.imageSubresource.mipLevel = 0;
+	Region.imageSubresource.mipLevel = mipLevels;
 	Region.imageSubresource.baseArrayLayer = 0;
 	Region.imageSubresource.layerCount = 1;
 	Region.imageExtent = { texWidth, texHeight, 1 };

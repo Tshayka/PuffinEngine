@@ -11,7 +11,7 @@ public:
 
 	void UpdatePosition(float) override;
 
-	virtual glm::vec4 CalculateSelectionIndicatorColor() override;
+	virtual glm::vec3 CalculateSelectionIndicatorColor() override;
 	void Init(float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, float);
 	void GamepadMove(double, double, int, int, float);
 	void MouseMove(double, double, int, int, float);

@@ -5,7 +5,7 @@
 #include "LoadMesh.cpp"
 
 enum class ActorType {
-    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera
+    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea
 };
 
 class Actor {
@@ -19,7 +19,7 @@ public:
 	virtual ActorType GetType();//const!
 	
 	float Approach(float, float, float);
-	virtual glm::vec4 CalculateSelectionIndicatorColor() = 0;
+	virtual glm::vec3 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
 	void CheckIfInTheDestination();
 	void Dolly(float);
@@ -37,6 +37,8 @@ public:
 	virtual void UpdatePosition(float)=0;
 	
 	enginetool::ScenePart mesh;
+	std::vector<uint32_t> indices;
+	std::vector<enginetool::VertexLayout> vertices;
 	
 	std::string name;
 	glm::vec3 position;
