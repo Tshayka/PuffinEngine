@@ -6,9 +6,9 @@
 
 ## Screenshots
 
-![vulkan-tutorial](https://github.com/Tshayka/PuffinEngine/tree/build-branch/printscreen/engineMainPhoto.png)
+![vulkan-tutorial](https://github.com/Tshayka/PuffinEngine/blob/build-branch/printscreen/engineMainPhoto.png)
 
-![vulkan-tutorial](https://github.com/Tshayka/PuffinEngine/tree/build-branch/printscreen/engineWirePhoto.png)
+![vulkan-tutorial](https://github.com/Tshayka/PuffinEngine/blob/build-branch/printscreen/engineWirePhoto.png)
 
 ## Install graphic cards
 
