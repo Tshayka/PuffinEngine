@@ -1789,9 +1789,6 @@ void Scene::CreateDescriptorSet() {
 
 // ------------- Populate scene --------------------- //
 
-	// layout of struct VertexLayout {
-	//glm::vec3 pos, glm::vec3 color,	glm::vec2 text_coord, glm::vec3 normals;
-
 void Scene::UpdateSelectRayDrawData() {
 	rayVertices = {
 		{ {mousePicker->GetRayOrigin().x, mousePicker->GetRayOrigin().y-1.0f, mousePicker->GetRayOrigin().z}, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
@@ -1886,16 +1883,13 @@ void Scene::LoadAssets() {
 	// Scene objects/actors
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
-	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/sphere.obj");
+	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/teapotR200originMid.obj");
 	CreateCamera();
-	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f));
-	CreateSphereLight();
+	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateSphereLight("puffinEngine/assets/models/sphere.obj");
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 12.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
 	
-	std::dynamic_pointer_cast<Camera>(sceneCameras[0])->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
-	std::dynamic_pointer_cast<Character>(actors[1])->Init(1000, 1000, 1000);
-
 	for (uint32_t i = 0; i < actors.size(); i++) {
 		LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
 		actors[i]->mesh.GetAABB(objectsVertices);
@@ -1921,19 +1915,20 @@ void Scene::LoadAssets() {
 void Scene::CreateCamera() {
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 40.0f, 3.0f), ActorType::Camera);
 	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
+	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
 	sceneCameras.emplace_back(std::move(camera));
 }
 
-void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position) {
+void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character);
+	character->mesh.meshFilename = meshFilename;
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
-	character->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
 	actors.emplace_back(std::move(character));
 }
 
-void Scene::CreateSphereLight() {
+void Scene::CreateSphereLight(std::string meshFilename) {
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f), ActorType::SphereLight);
-	light->mesh.meshFilename = "puffinEngine/assets/models/sphere.obj";
+	light->mesh.meshFilename = meshFilename;
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	actors.emplace_back(std::move(light));
 }

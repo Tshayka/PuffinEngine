@@ -95,10 +95,10 @@ private:
 	void CreateCamera();
 	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateSelectRay(); 
-	void CreateCharacter(std::string name, std::string description, glm::vec3 position);
+	void CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	void CreateSphereLight();
+	void CreateSphereLight(std::string meshFilename);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void InitMaterials();
 	void InitSwapchainImageViews();

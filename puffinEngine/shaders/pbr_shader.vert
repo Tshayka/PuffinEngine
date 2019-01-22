@@ -20,9 +20,10 @@ layout(location = 3) out vec3 outCameraPos;
 layout(location = 4) out vec3 outColor;
 
 layout(push_constant) uniform PushConsts {
-	vec4 color;
 	vec4 renderLimitPlane;
 	vec3 objectPosition;
+	bool glow;
+	vec3 color;
 } pushConsts;
 
 out gl_PerVertex {
