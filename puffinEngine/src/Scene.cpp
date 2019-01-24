@@ -55,11 +55,10 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GLFWwindow* window, GuiMainHub* guiMainHub, MousePicker* mousePicker) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
-	this->window = window;
 
 	InitSwapchainImageViews();
 	CreateCommandPool();
@@ -2329,7 +2328,6 @@ void Scene::DeInitScene() {
 	
 	guiMainHub = nullptr;
 	logicalDevice = nullptr;
-	window = nullptr;
 
 	rust = nullptr;
 	sky = nullptr;

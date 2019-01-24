@@ -73,7 +73,7 @@ void PuffinEngine::CreateMousePicker() {
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, window, guiMainHub, mousePicker);
+	scene_1->InitScene(world_device, guiMainHub, mousePicker);
 }
 
 void PuffinEngine::InitVulkan() {

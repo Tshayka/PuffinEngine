@@ -31,7 +31,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GLFWwindow* window, GuiMainHub* statusOverlay, MousePicker* mousePicker);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -336,5 +336,4 @@ private:
 
 	Device* logicalDevice = nullptr;
 	MousePicker* mousePicker = nullptr;	
-	GLFWwindow* window = nullptr;
 };
