@@ -35,6 +35,7 @@ return std::min(b, std::max(what, a));
 
 void PuffinEngine::Run() {
 	InitWindow();
+	InitDefaultKeysBindings(functions);
     InitVulkan();
     MainLoop();
     CleanUp();
@@ -308,7 +309,7 @@ void PuffinEngine::FramebufferSizeCallback(GLFWwindow* window, int width, int he
 
 void PuffinEngine::KeyCallback(GLFWwindow* window, int key, int scancode, int event, int mods) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
-	app->scene_1->PressKey(key);
+	app->PressKey(key);
 	
 	ImGuiIO& io = ImGui::GetIO();
 	if (event == GLFW_PRESS)
@@ -378,6 +379,106 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 	io.MouseWheelH += (float)xoffset;
 	io.MouseWheel += (float)yoffset;
 }
+
+void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
+	FuncPair moveForward = {&Scene::MoveCameraForward, &Scene::StopCameraForwardBackward};
+	FuncPair allGuiToggle = {&Scene::AllGuiToggle, nullptr};
+	FuncPair SelectionIndicatorToggle = {&Scene::SelectionIndicatorToggle, nullptr};
+	FuncPair WireframeToggle = {&Scene::WireframeToggle, nullptr};
+	FuncPair AabbToggle = {&Scene::AabbToggle, nullptr};
+	FuncPair ConsoleToggle = {&Scene::ConsoleToggle, nullptr};
+	FuncPair MainUiToggle = {&Scene::MainUiToggle, nullptr};
+	FuncPair TextOverlayToggle = {&Scene::TextOverlayToggle, nullptr};
+
+	functions = {
+		{GLFW_KEY_B, AabbToggle},
+		{GLFW_KEY_W, moveForward},
+		{GLFW_KEY_V, WireframeToggle},
+		{GLFW_KEY_X, SelectionIndicatorToggle},
+		{GLFW_KEY_1, allGuiToggle},
+		{GLFW_KEY_2, TextOverlayToggle},
+		{GLFW_KEY_3, ConsoleToggle},
+		{GLFW_KEY_4, MainUiToggle}
+	};
+}
+
+void PuffinEngine::PressKey(int key) {
+	int state = glfwGetKey(window, key);
+		
+	if (functions.count(key)) {
+		if (state == GLFW_PRESS) 
+			functions[key].first(scene_1);
+		if (state == GLFW_RELEASE && functions[key].second!=nullptr)  
+			functions[key].second(scene_1);
+	}
+}
+
+// void PuffinEngine::ConnectGamepad()
+// {
+// 	//double seconds = 0.0;
+// 	//seconds = glfwGetTime();
+// 	//std::cout << "Time passed since init: " << seconds << std::endl;
+
+// 	int present = glfwJoystickPresent(GLFW_JOYSTICK_1);
+// 	/*std::cout << "Joystick/Gamepad 1 status: " << present << std::endl;*/
+
+// 	if (1 == present)
+// 	{
+// 		int axes_count;
+// 		const float *axes = glfwGetJoystickAxes(GLFW_JOYSTICK_1, &axes_count);
+// 		//std::cout << "Joystick/Gamepad 1 axes avaliable: " << axes_count << std::endl;
+// 		currentCamera->Truck(-axes[0] * 15.0f);
+// 		currentCamera->Dolly(axes[1] * 15.0f);
+
+// 		currentCamera->GamepadMove(-axes[2], axes[3], WIDTH, HEIGHT, 0.15f);
+
+// 		/*std::cout << "Left Stick X Axis: " << axes[0] << std::endl;
+// 		std::cout << "Left Stick Y Axis: " << axes[1] << std::endl;
+// 		std::cout << "Right Stick X Axis: " << axes[2] << std::endl;
+// 		std::cout << "Right Stick Y Axis: " << axes[3] << std::endl;
+// 		std::cout << "Left Trigger/L2: " << axes[4] << std::endl;
+// 		std::cout << "Right Trigger/R2: " << axes[5] << std::endl;*/
+
+// 		int button_count;
+// 		const unsigned char *buttons = glfwGetJoystickButtons(GLFW_JOYSTICK_1, &button_count);
+// 		//std::cout << "Joystick/Gamepad 1 buttons avaliable: " << button_count << std::endl;
+
+
+// 		if (GLFW_PRESS == buttons[0])
+// 		{
+// 			//std::cout << "X button pressed: "<< std::endl;
+// 			//break;
+// 		}
+// 		else if (GLFW_RELEASE == buttons[0])
+// 		{
+// 			//std::cout << "X button released: "<< std::endl;
+// 		}
+// 		if (GLFW_PRESS == buttons[4])
+// 		{
+// 			std::cout << "Left bumper pressed: reset camera" << std::endl;
+// 			currentCamera->ResetPosition();
+// 			//break;
+// 		}
+
+// 		/*std::cout << "A button: " << buttons[0] << std::endl;
+// 		std::cout << "B button: " << buttons[1] << std::endl;
+// 		std::cout << "X button: " << buttons[2] << std::endl;
+// 		std::cout << "Y button: " << buttons[3] << std::endl;
+// 		std::cout << "Left bumper " << buttons[4] << std::endl;
+// 		std::cout << "Right bumper " << buttons[5] << std::endl;
+// 		std::cout << "Back" << buttons[6] << std::endl;
+// 		std::cout << "Start" << buttons[7] << std::endl;
+// 		std::cout << "Guide?" << buttons[8] << std::endl;
+// 		std::cout << "Disconnect?" << buttons[9] << std::endl;
+// 		std::cout << "Up" << buttons[10] << std::endl;
+// 		std::cout << "Right" << buttons[11] << std::endl;
+// 		std::cout << "Down" << buttons[12] << std::endl;
+// 		std::cout << "Left" << buttons[13] << std::endl;*/
+
+// 		const char *name = glfwGetJoystickName(GLFW_JOYSTICK_1);
+// 		//std::cout << "Your Joystick/Gamepad 1 name: " << name << std::endl;
+// 	}
+// }
 
 // ---------------- Deinitialisation ---------------- //
 

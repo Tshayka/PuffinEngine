@@ -1,8 +1,12 @@
 #pragma once
 
+#include <utility>
+#include <map>
+
 #include "Device.hpp"
 #include "Scene.hpp"
 #include "GuiMainHub.hpp"
+#include "UserInput.cpp"
 
 const int FRAMES_PER_SECOND = 25;
 const int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
@@ -34,6 +38,10 @@ class PuffinEngine {
     static void ErrorCallback(int, const char*);
 
     // ---------------- Main functions ------------------ //
+    
+    typedef std::pair<std::function<void (Scene*)>, std::function<void (Scene*)>> FuncPair;
+
+    //void ConnectGamepad();
     void CreateDevice();
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
@@ -43,12 +51,15 @@ class PuffinEngine {
     void CreateGuiMainHub();
     void CreateSemaphores();
     void DrawFrame();
+    void InitDefaultKeysBindings(std::map<int, FuncPair>& functions);
     void InitVulkan();
     void InitWindow();
     void MainLoop();
-    //void PollJoypad();
+    void PressKey(int key);
 	void RecreateSwapChain();
     void Update(float);
+   
+    std::map<int, FuncPair> functions;
 
     Device* world_device = nullptr;
     MousePicker* mousePicker = nullptr;

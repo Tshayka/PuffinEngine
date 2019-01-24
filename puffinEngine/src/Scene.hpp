@@ -28,12 +28,10 @@ public:
 	Scene();
 	~Scene();
 
-	void ConnectGamepad();
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
 	void InitScene(Device* device, GLFWwindow* window, GuiMainHub* statusOverlay, MousePicker* mousePicker);
-	void PressKey(int);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -42,9 +40,22 @@ public:
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
+	// ---------- Keyboard assigned functions ----------- //
+
+	void MoveCameraForward();
+	void StopCameraForwardBackward();
+	
+	void SelectionIndicatorToggle();
+	void WireframeToggle();
+	void AabbToggle();
+	void ConsoleToggle();
+	void AllGuiToggle();
+	void MainUiToggle();
+	void TextOverlayToggle();
+
 	bool displayWireframe = false;
 	bool displaySceneGeometry = true;
-	bool displayAabbBorders = false;
+	bool displayAabb = false;
 	bool displayClouds = true;
 	bool displaySkybox = true;
 	bool displayOcean = true;
