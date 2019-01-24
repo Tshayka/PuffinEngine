@@ -6,7 +6,6 @@
 #include "Device.hpp"
 #include "Scene.hpp"
 #include "GuiMainHub.hpp"
-#include "UserInput.cpp"
 
 const int FRAMES_PER_SECOND = 25;
 const int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;

@@ -382,6 +382,11 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 
 void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
 	FuncPair moveForward = {&Scene::MoveCameraForward, &Scene::StopCameraForwardBackward};
+	FuncPair moveBackward = {&Scene::MoveCameraBackward, &Scene::StopCameraForwardBackward};
+	FuncPair moveLeft = {&Scene::MoveCameraLeft, &Scene::StopCameraLeftRight};
+	FuncPair moveRight = {&Scene::MoveCameraRight, &Scene::StopCameraLeftRight};
+	FuncPair moveUp = {&Scene::MoveCameraUp, &Scene::StopCameraUpDown};
+	FuncPair moveDown = {&Scene::MoveCameraDown, &Scene::StopCameraUpDown};
 	FuncPair allGuiToggle = {&Scene::AllGuiToggle, nullptr};
 	FuncPair SelectionIndicatorToggle = {&Scene::SelectionIndicatorToggle, nullptr};
 	FuncPair WireframeToggle = {&Scene::WireframeToggle, nullptr};
@@ -391,7 +396,12 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair TextOverlayToggle = {&Scene::TextOverlayToggle, nullptr};
 
 	functions = {
+		{GLFW_KEY_A, moveLeft},
 		{GLFW_KEY_B, AabbToggle},
+		{GLFW_KEY_D, moveRight},
+		{GLFW_KEY_E, moveDown},
+		{GLFW_KEY_Q, moveUp},
+		{GLFW_KEY_S, moveBackward},
 		{GLFW_KEY_W, moveForward},
 		{GLFW_KEY_V, WireframeToggle},
 		{GLFW_KEY_X, SelectionIndicatorToggle},

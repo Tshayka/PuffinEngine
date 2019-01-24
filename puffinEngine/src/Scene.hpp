@@ -43,7 +43,14 @@ public:
 	// ---------- Keyboard assigned functions ----------- //
 
 	void MoveCameraForward();
+	void MoveCameraBackward();
 	void StopCameraForwardBackward();
+	void MoveCameraLeft();
+	void MoveCameraRight();
+	void StopCameraLeftRight();
+	void MoveCameraUp();
+	void MoveCameraDown();
+	void StopCameraUpDown();
 	
 	void SelectionIndicatorToggle();
 	void WireframeToggle();

@@ -2254,7 +2254,14 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 // ---------------- Scene navigation ---------------- //
 
 void Scene::MoveCameraForward() {currentCamera->Dolly(150.0f);}
+void Scene::MoveCameraBackward() {currentCamera->Dolly(-150.0f);}
 void Scene::StopCameraForwardBackward() {currentCamera->Dolly(0.0f);}
+void Scene::MoveCameraLeft() {currentCamera->Truck(150.0f);}
+void Scene::MoveCameraRight() {currentCamera->Truck(-150.0f);}
+void Scene::StopCameraLeftRight() {currentCamera->Truck(0.0f);}
+void Scene::MoveCameraUp() {currentCamera->Pedestal(150.0f);}
+void Scene::MoveCameraDown() {currentCamera->Pedestal(-150.0f);}
+void Scene::StopCameraUpDown() {currentCamera->Pedestal(0.0f);}
 
 void Scene::WireframeToggle() {displayWireframe = !displayWireframe;}
 void Scene::AabbToggle() {displayAabb = !displayAabb;}
