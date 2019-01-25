@@ -31,3 +31,12 @@ public:
 private:
 
 };
+
+class Cloud : public Landscape {
+public:
+	Cloud(std::string name, std::string description, glm::vec3 position, ActorType type);	
+	virtual ~Cloud();
+
+private:
+
+};

@@ -10,7 +10,7 @@ Landscape::Landscape(std::string name, std::string description, glm::vec3 positi
 : Actor(name, description, position, type) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	// create save file
-	std::cout << "Character created\n";
+	std::cout << "Landscape created\n";
 #endif 
 }
 
@@ -130,4 +130,20 @@ void Sea::CreateMesh() {
 				indices.emplace_back(bottomRight);
 			}
 		}	
-}	
+}
+
+
+// ------- Constructors and dectructors ------------- //
+
+Cloud::Cloud(std::string name, std::string description, glm::vec3 position, ActorType type) 
+: Landscape(name, description, position, type) {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Cloud created\n";
+#endif
+}
+
+Cloud::~Cloud() {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Cloud destroyed\n";
+#endif
+}

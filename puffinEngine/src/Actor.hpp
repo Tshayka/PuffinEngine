@@ -2,10 +2,10 @@
 
 #include <glm/glm.hpp>
 
-#include "LoadMesh.cpp"
+#include "MeshLayout.cpp"
 
 enum class ActorType {
-    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea
+    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea, Cloud
 };
 
 class Actor {
@@ -22,9 +22,9 @@ public:
 	virtual glm::vec3 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
 	void CheckIfInTheDestination();
+	void DetectGroundLevel();
 	void Dolly(float);
-   	void LoadFromFile();
-	void LoadModel();
+   	static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
 	void offManualControl();
 	void onManualControl();
 	void SaveToFile();
@@ -51,6 +51,7 @@ public:
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity = glm::vec3(30.0f, 30.0f, 30.0f);
+	glm::vec3 groundLevel;
 
 	enginetool::ScenePart::AABB currentAabb;
 	

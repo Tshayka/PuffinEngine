@@ -40,7 +40,7 @@ public:
 	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
 	void UpdateScene(const float &dt, const float &time, float const &accumulator);
 
-	// ---------- Keyboard assigned functions ----------- //
+	// ------------ Scene navigation functions ------------- //
 
 	void MoveCameraForward();
 	void MoveCameraBackward();
@@ -59,14 +59,6 @@ public:
 	void AllGuiToggle();
 	void MainUiToggle();
 	void TextOverlayToggle();
-
-	bool displayWireframe = false;
-	bool displaySceneGeometry = true;
-	bool displayAabb = false;
-	bool displayClouds = true;
-	bool displaySkybox = true;
-	bool displayOcean = true;
-	bool displaySelectionIndicator = true;
 	
 	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::shared_ptr<Actor> selectedActor = nullptr;
@@ -75,12 +67,13 @@ public:
 	std::vector<std::shared_ptr<Actor>> actors;
 	std::vector<std::shared_ptr<Actor>> seas;
 	std::vector<std::shared_ptr<Actor>> skyboxes;
+	std::vector<std::shared_ptr<Actor>> clouds;
 		
 	GuiMainHub *guiMainHub = nullptr;
 	
 	std::vector<VkCommandBuffer> command_buffers;
-	VkCommandBuffer reflectionCmdBuff = VK_NULL_HANDLE;
-	VkCommandBuffer refractionCmdBuff = VK_NULL_HANDLE;
+	VkCommandBuffer reflectionCmdBuff;
+	VkCommandBuffer refractionCmdBuff;
 
 private:
 
@@ -89,7 +82,6 @@ private:
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateAABBBuffers();
-	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
 	void CreateCommandPool(); // neccsesary to create command buffer
 	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
@@ -106,23 +98,24 @@ private:
 	void CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon);
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
-	void CreateUniformBuffer();
-	float DetectGround();
-	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
-	bool HasStencilComponent(VkFormat);
-	void CreateCamera();
+	void CreateUniformBuffer();	
+	void CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateSelectRay(); 
 	void CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
+	void CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	void CreateSphereLight(std::string meshFilename);
-	bool FindDestinationPosition(glm::vec3& destinationPoint);
-	void InitMaterials();
-	void InitSwapchainImageViews();
-	void LoadFromFile(const std::string &filename, enginetool::ScenePart& meshes, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices); 
+	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
-	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer); 
+	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
+	float DetectGround();
+	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
+	bool FindDestinationPosition(glm::vec3& destinationPoint);
+	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
+	bool HasStencilComponent(VkFormat);
+	void InitMaterials();
+	void InitSwapchainImageViews(); 
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
@@ -266,6 +259,14 @@ private:
 		TextureLayout refractionDepthImage;
 	} offscreenPass;
 
+	bool displayWireframe = false;
+	bool displaySceneGeometry = true;
+	bool displayAabb = false;
+	bool displayClouds = true;
+	bool displaySkybox = true;
+	bool displayOcean = true;
+	bool displaySelectionIndicator = true;
+
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 
 	TextureLayout depthImage;
@@ -302,8 +303,6 @@ private:
 
 	std::vector<uint32_t> objects_indices;
 	std::vector<enginetool::VertexLayout> objectsVertices;
-	std::vector<uint32_t> clouds_indices;
-	std::vector<enginetool::VertexLayout> clouds_vertices;
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
 	std::vector<uint32_t> aabbIndices;

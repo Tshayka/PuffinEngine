@@ -4,10 +4,6 @@
 #include <iostream>
 #include <random>
 #include <stb_image.h>
-#include <unordered_map>
-
-#define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h> // loading obj files
 
 #include "LoadFile.cpp"
 #include "ErrorCheck.hpp"
@@ -109,8 +105,7 @@ void Scene::InitSwapchainImageViews() {
 	}
 }
 
-VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags)//TODO use in swapchain textureLayout class
-{
+VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags) {//TODO use in swapchain textureLayout class
 	VkImageViewCreateInfo ViewInfo = {};
 	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
 	ViewInfo.image = image;
@@ -669,7 +664,7 @@ void Scene::CreateCommandBuffers() {
 			for (uint32_t k = 0; k < DYNAMIC_UB_OBJECTS; k++) {
 				uint32_t dynamic_offset = k * static_cast<uint32_t>(dynamicAlignment);
 				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &clouds_descriptor_set, 1, &dynamic_offset);
-				vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(clouds_indices.size()), 1, 0, 0, 0);
+				vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(clouds[0]->indices.size()), 1, 0, 0, 0);
 			}
 		}
 
@@ -1872,25 +1867,20 @@ void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
 	CreateSelectionIndicator();
-
-	// Clouds
-	std::string cloud_filename = { "puffinEngine/assets/models/sphere.obj" };
-	LoadFromFile(cloud_filename, cloud_mesh, clouds_indices, clouds_vertices);
-	CreateVertexBuffer(clouds_vertices, vertex_buffers.clouds);
-	CreateIndexBuffer(clouds_indices, index_buffers.clouds);
 	
 	// Scene objects/actors
+	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
 	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/teapotR200originMid.obj");
-	CreateCamera();
+	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
 	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateSphereLight("puffinEngine/assets/models/sphere.obj");
+	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 5.0f), "puffinEngine/assets/models/sphere.obj");
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 12.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
 	
 	for (uint32_t i = 0; i < actors.size(); i++) {
-		LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
+		Actor::LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
 		actors[i]->mesh.GetAABB(objectsVertices);
 		GetAABBDrawData(actors[i]->mesh);
 	}
@@ -1911,24 +1901,24 @@ void Scene::LoadAssets() {
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);	
 }
 
-void Scene::CreateCamera() {
-	std::shared_ptr<Actor> camera = std::make_shared<Camera>("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 40.0f, 3.0f), ActorType::Camera);
-	camera->mesh.meshFilename = "puffinEngine/assets/models/cloud.obj";
+void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera);
 	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
+	camera->mesh.meshFilename = meshFilename;
 	sceneCameras.emplace_back(std::move(camera));
 }
 
 void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character);
-	character->mesh.meshFilename = meshFilename;
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
+	character->mesh.meshFilename = meshFilename;
 	actors.emplace_back(std::move(character));
 }
 
-void Scene::CreateSphereLight(std::string meshFilename) {
-	std::shared_ptr<Actor> light = std::make_shared<SphereLight>("Test Light", "Sphere light", glm::vec3(0.0f, 6.0f, 5.0f), ActorType::SphereLight);
-	light->mesh.meshFilename = meshFilename;
+void Scene::CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight);
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
+	light->mesh.meshFilename = meshFilename;
 	actors.emplace_back(std::move(light));
 }
 
@@ -1947,12 +1937,13 @@ void Scene::CreateSea(std::string name, std::string description, glm::vec3 posit
 	seas.emplace_back(std::move(sea));
 }
 
-void Scene::CreateSelectionIndicator() {
-	LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
-	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
-	
-	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
-	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
+void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud);
+	cloud->mesh.meshFilename = meshFilename;
+	Actor::LoadFromFile(cloud->mesh.meshFilename, cloud->mesh, cloud->indices, cloud->vertices);
+	CreateVertexBuffer(cloud->vertices, vertex_buffers.clouds);
+	CreateIndexBuffer(cloud->indices, index_buffers.clouds);
+	clouds.emplace_back(std::move(cloud));
 }
 
 void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon) {
@@ -1963,67 +1954,15 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 	skyboxes.emplace_back(std::move(skybox));
 }
 
-// Use proxy design pattern!
-void Scene::LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices) {
-	tinyobj::attrib_t attrib;
-	std::vector<tinyobj::shape_t> shapes;
-	std::vector<tinyobj::material_t> materials;
-	std::string warn, err;
-
-	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, filename.c_str())) {
-		throw std::runtime_error(warn + err);
-	}
-
-	mesh.indexBase = static_cast<uint32_t>(indices.size());
-	std::unordered_map<enginetool::VertexLayout, uint32_t> uniqueVertices = {};
+void Scene::CreateSelectionIndicator() {
+	Actor::LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
+	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
 	
-	// Loop over shapes
-	for (size_t s = 0; s < shapes.size(); s++) {
-		// Loop over faces(polygon)
-		uint32_t index_offset = 0;		
-		for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
-			int fv = shapes[s].mesh.num_face_vertices[f];
-
-			// Loop over vertices in the face.
-			for (size_t v = 0; v < fv; v++) {
-
-				tinyobj::index_t index = shapes[s].mesh.indices[index_offset + v];
-
-				enginetool::VertexLayout vertex = {};
-
-				vertex.pos = {
-					attrib.vertices[3 * index.vertex_index + 0],
-					attrib.vertices[3 * index.vertex_index + 1],
-					attrib.vertices[3 * index.vertex_index + 2]
-				};
-
-				vertex.text_coord = {
-					attrib.texcoords[2 * index.texcoord_index + 0],
-					1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
-				};
-
-				vertex.normals = {
-					attrib.normals[3 * index.normal_index + 0],
-					attrib.normals[3 * index.normal_index + 1],
-					attrib.normals[3 * index.normal_index + 2]
-				};
-
-				vertex.color = { 1.0f, 1.0f, 1.0f };
-
-				// if (uniqueVertices.count(vertex) == 0) {
-				// 	uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
-				// 	vertices.emplace_back(vertex);
-				// }
-				// indices.emplace_back(uniqueVertices[vertex]);
-
-				vertices.emplace_back(vertex);
-				indices.emplace_back(indices.size());
-			}
-			index_offset += fv;
-		}	
-		mesh.indexCount = index_offset;
-	}
+	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
+	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
 }
+
+// ------------------ Buffers ---------------------- //
 
 void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
