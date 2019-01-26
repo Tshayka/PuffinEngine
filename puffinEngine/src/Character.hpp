@@ -17,10 +17,6 @@ public:
 	int currentHealth;
 	unsigned int gold;
 	bool onGround = false;
-
-	glm::vec3 gravity = glm::vec3(0.0f, -10.0f, 0.0f);
-	float closestPointBelow;
-
 private:
 	std::string albedoTexture = "puffinEngine/assets/textures/icons/cameraIcon.jpg";	
 };

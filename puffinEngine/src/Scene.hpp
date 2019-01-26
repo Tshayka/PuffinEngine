@@ -109,7 +109,7 @@ private:
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	float DetectGround();
+	float DetectGroundLevel();
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;

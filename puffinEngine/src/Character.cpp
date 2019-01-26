@@ -45,21 +45,26 @@ void Character::EndJump() {
 
 void Character::UpdatePosition(float dt) {
 	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
+	onGround = false;
 	
 	movement.x = Approach(movementGoal.x, movement.x, dt * 500);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 500);
  	movement.z = Approach(movementGoal.z, movement.z, dt * 500);
 
-	movement += gravity * dt;
+	movement += freeFallVelocity * dt;
 	position += movement * dt;
 
-	if (position.y < closestPointBelow) {
-		position.y = closestPointBelow;
-		movementGoal.y = 0.0f;
+	if (position.y <= groundLevel) {
+		position.y = groundLevel;
+		//movementGoal.y = 0.0f;
 		onGround = true;
 	}
 
 	Actor::UpdateAABB();
+
+	// velocity = foward * movement.x + glm::cross(up, foward) * movement.z;
+	// velocity.y = movement.y;
+	// position += velocity * dt;
 }
 
 

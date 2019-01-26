@@ -949,7 +949,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 
-	//std::dynamic_pointer_cast<Character>(actors[1])->closestPointBelow = DetectGround();
+	actors[1]->groundLevel = DetectGroundLevel();
 }
 
 void Scene::HandleMouseClick() {
@@ -972,11 +972,8 @@ void Scene::SelectActor() {
 	dirFrac.x = 1.0f / mousePicker->GetRayDirection().x;
 	dirFrac.y = 1.0f / mousePicker->GetRayDirection().y;
 	dirFrac.z = 1.0f / mousePicker->GetRayDirection().z;
-
-	glm::vec3 rayOrigin = mousePicker->GetRayOrigin();
-
 	for (auto const& a : actors) {
-		if(enginetool::ScenePart::RayIntersection(mousePicker->hitPoint, dirFrac, rayOrigin, mousePicker->GetRayDirection(), a->currentAabb)) {
+		if(enginetool::ScenePart::RayIntersection(mousePicker->hitPoint, dirFrac, mousePicker->GetRayOrigin(), mousePicker->GetRayDirection(), a->currentAabb)) {
 			std::cout << "Hit point: " << mousePicker->hitPoint.x << " " << mousePicker->hitPoint.y << " " << mousePicker->hitPoint.z << "\n";
 			selectedActor=a;
 			std::cout << "Selected object: " << selectedActor->name << std::endl;
@@ -984,6 +981,24 @@ void Scene::SelectActor() {
 		}
 	}
 	
+}
+
+float Scene::DetectGroundLevel() {
+	glm::vec3 rayDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
+	glm::vec3 dirFrac;
+	dirFrac.x = 1.0f / rayDirection.x;
+	dirFrac.y = 1.0f / rayDirection.y;
+	dirFrac.z = 1.0f / rayDirection.z;
+	glm::vec3 hitPoint;
+	float groundLevel = -20.0f;
+	for (auto const& a : actors) {
+		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, actors[1]->position, rayDirection, a->currentAabb) && a!=actors[1]) {
+			std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
+			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
+		}
+	}
+	std::cout << "Ground is at: " << groundLevel << std::endl;
+	return groundLevel;
 }
 
 bool Scene::FindDestinationPosition(glm::vec3& destinationPoint) {
@@ -1002,10 +1017,6 @@ bool Scene::FindDestinationPosition(glm::vec3& destinationPoint) {
 		}
 	}
 	return false;	
-}
-
-float Scene::DetectGround() {
-	return 0.0f;
 }
 
 void Scene::DeSelect() {
@@ -1872,12 +1883,14 @@ void Scene::LoadAssets() {
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
-	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(7.0f, 6.0f, 10.0f),"puffinEngine/assets/models/teapotR200originMid.obj");
-	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(3.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
-	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(4.0f, 10.0f, 4.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 5.0f), "puffinEngine/assets/models/sphere.obj");
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object sphere", "I am simple sphere, watch me", glm::vec3(5.0f, 7.0f, 12.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
+	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(-7.0f, 0.0f, 20.0f),"puffinEngine/assets/models/teapotR200originMid.obj");
+	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
+	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), "puffinEngine/assets/models/sphere.obj");
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 18.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	//CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	//CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
 	
 	for (uint32_t i = 0; i < actors.size(); i++) {
 		Actor::LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);

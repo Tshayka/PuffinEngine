@@ -63,10 +63,6 @@ void Actor::CheckIfInTheDestination() {
 		ChangePosition();
 }
 
-void Actor::DetectGroundLevel( ){
-
-}
-
 // Use proxy design pattern!
 void Actor::LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices){
 	tinyobj::attrib_t attrib;

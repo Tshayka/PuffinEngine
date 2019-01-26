@@ -22,7 +22,6 @@ public:
 	virtual glm::vec3 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
 	void CheckIfInTheDestination();
-	void DetectGroundLevel();
 	void Dolly(float);
    	static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
 	void offManualControl();
@@ -51,7 +50,8 @@ public:
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity = glm::vec3(30.0f, 30.0f, 30.0f);
-	glm::vec3 groundLevel;
+	glm::vec3 freeFallVelocity = glm::vec3(0.0f, -340.0f, 0.0f);
+	float groundLevel = -20.0f;
 
 	enginetool::ScenePart::AABB currentAabb;
 	
