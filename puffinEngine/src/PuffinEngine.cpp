@@ -73,11 +73,12 @@ void PuffinEngine::CreateMousePicker() {
 
 void PuffinEngine::CreateMainCharacter() {
 	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
+	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 }
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker, std::move(mainCharacter));
+	scene_1->InitScene(world_device, guiMainHub, mousePicker);
 }
 
 void PuffinEngine::InitVulkan() {

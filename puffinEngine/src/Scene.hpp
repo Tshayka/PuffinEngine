@@ -32,7 +32,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, std::unique_ptr<MainCharacter> mainCharacter);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -80,9 +80,9 @@ public:
 	void MainUiToggle();
 	void TextOverlayToggle();
 	
-	std::shared_ptr<Camera> currentCamera = nullptr;
-	std::shared_ptr<Actor> selectedActor = nullptr;
-	std::unique_ptr<MainCharacter> mainCharacter = nullptr;
+	std::shared_ptr<Camera> currentCamera;
+	std::shared_ptr<Actor> selectedActor;
+	std::unique_ptr<Actor> mainCharacter;
 	
 	std::vector<std::shared_ptr<Actor>> sceneCameras;
 	std::vector<std::shared_ptr<Actor>> actors;
@@ -130,7 +130,7 @@ private:
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	float DetectGroundLevel();
+	float DetectGroundLevel(const Actor* sceneActor);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
@@ -140,6 +140,7 @@ private:
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
+	void PrepeareMainCharacter();
 	void PrepareOffscreen();
 	void RandomPositions();
 	void SelectActor(); 
@@ -253,6 +254,7 @@ private:
 	} uniform_buffers;
 
 	struct {
+		enginetool::Buffer mainCharacter;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
@@ -263,6 +265,7 @@ private:
 	} vertex_buffers;
 
 	struct {
+		enginetool::Buffer mainCharacter;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
@@ -287,6 +290,7 @@ private:
 	bool displaySkybox = true;
 	bool displayOcean = true;
 	bool displaySelectionIndicator = true;
+	bool displayMainCharacter = true;
 
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 

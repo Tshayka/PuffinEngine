@@ -61,7 +61,7 @@ class PuffinEngine {
    
     std::map<int, FuncPair> functions;
 
-    std::unique_ptr<MainCharacter> mainCharacter = nullptr;
+    std::unique_ptr<Actor> mainCharacter;
 
     Device* world_device = nullptr;
     MousePicker* mousePicker = nullptr;

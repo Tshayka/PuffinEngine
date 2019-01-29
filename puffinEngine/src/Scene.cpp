@@ -51,11 +51,10 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, std::unique_ptr<MainCharacter> mainCharacter) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
-	this->mainCharacter = std::move(mainCharacter);
 
 	InitSwapchainImageViews();
 	CreateCommandPool();
@@ -633,6 +632,19 @@ void Scene::CreateCommandBuffers() {
 			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
 		}
 
+		if (displayMainCharacter) {
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.mainCharacter.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.mainCharacter.buffer , 0, VK_INDEX_TYPE_UINT32);
+			std::array<VkDescriptorSet, 1> descriptorSets;
+			descriptorSets[0] = mainCharacter->mesh.assigned_material->descriptor_set;
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->mesh.assigned_material->assigned_pipeline));
+			pushConstants.pos = mainCharacter->position;
+			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(mainCharacter->indices.size()), 1, 0, 0, 0);
+		}
+
 		if (displayOcean) {
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, &oceanDescriptorSet, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
@@ -945,12 +957,14 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 
 	for(const auto& a : actors) a->UpdatePosition(dt);
 	for(const auto& c : sceneCameras) c->UpdatePosition(dt);
+	mainCharacter->UpdatePosition(dt);
 	
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 
-	actors[1]->groundLevel = DetectGroundLevel();
+	actors[1]->groundLevel = DetectGroundLevel(actors[1].get());
+	mainCharacter->groundLevel = DetectGroundLevel(mainCharacter.get());
 }
 
 void Scene::HandleMouseClick() {
@@ -981,10 +995,9 @@ void Scene::SelectActor() {
 			break;
 		}
 	}
-	
 }
 
-float Scene::DetectGroundLevel() {
+float Scene::DetectGroundLevel(const Actor* sceneActortor) {
 	glm::vec3 rayDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
 	glm::vec3 dirFrac;
 	dirFrac.x = 1.0f / rayDirection.x;
@@ -993,7 +1006,7 @@ float Scene::DetectGroundLevel() {
 	glm::vec3 hitPoint;
 	float groundLevel = -20.0f;
 	for (auto const& a : actors) {
-		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, actors[1]->position, rayDirection, a->currentAabb) && a!=actors[1]) {
+		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, sceneActortor->position, rayDirection, a->currentAabb) && a!=actors[1]) {//TODO [1]
 			std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
 			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
 		}
@@ -1879,6 +1892,7 @@ void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
 	CreateSelectionIndicator();
+	PrepeareMainCharacter();
 	
 	// Scene objects/actors
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
@@ -1903,8 +1917,10 @@ void Scene::LoadAssets() {
 		actors[i]->mesh.GetAABB(objectsVertices);
 		GetAABBDrawData(actors[i]->mesh);
 	}
+	
 	CreateVertexBuffer(objectsVertices, vertex_buffers.objects);
 	CreateIndexBuffer(objects_indices, index_buffers.objects);
+	
 	CreateAABBBuffers();
 
 	// assign shaders to meshes
@@ -1918,6 +1934,18 @@ void Scene::LoadAssets() {
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);	
+}
+
+void Scene::PrepeareMainCharacter() {
+	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
+	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
+	mainCharacter->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
+	mainCharacter->mesh.assigned_material = &scene_material[6];
+	Actor::LoadFromFile(mainCharacter->mesh.meshFilename, mainCharacter->mesh, mainCharacter->indices, mainCharacter->vertices);
+	CreateVertexBuffer(mainCharacter->vertices, vertex_buffers.mainCharacter);
+	CreateIndexBuffer(mainCharacter->indices, index_buffers.mainCharacter);
+	//mainCharacter->mesh.GetAABB(mainCharacter->vertices);
+	//GetAABBDrawData(mainCharacter->mesh);
 }
 
 void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
@@ -2233,13 +2261,13 @@ void Scene::MoveCameraUp() {currentCamera->Pedestal(150.0f);}
 void Scene::MoveCameraDown() {currentCamera->Pedestal(-150.0f);}
 void Scene::StopCameraUpDown() {currentCamera->Pedestal(0.0f);}
 
-void Scene::MakeMainCharacterJump() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Jump);}}
-void Scene::MakeMainCharacterRun() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Run);}}
-void Scene::MoveMainCharacterForward() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkForward);}}
-void Scene::MoveMainCharacterBackward() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkBackward);}}
-void Scene::MoveMainCharacterLeft() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkLeft);}}
-void Scene::MoveMainCharacterRight() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkRight);}}
-void Scene::StopMainCharacter() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Idle);}}
+void Scene::MakeMainCharacterJump() {mainCharacter->SetState(ActorState::Jump);}
+void Scene::MakeMainCharacterRun() {mainCharacter->SetState(ActorState::Run);}
+void Scene::MoveMainCharacterForward() {mainCharacter->SetState(ActorState::WalkForward);}
+void Scene::MoveMainCharacterBackward() {mainCharacter->SetState(ActorState::WalkBackward);}
+void Scene::MoveMainCharacterLeft() {mainCharacter->SetState(ActorState::WalkLeft);}
+void Scene::MoveMainCharacterRight() {mainCharacter->SetState(ActorState::WalkRight);}
+void Scene::StopMainCharacter() {mainCharacter->SetState(ActorState::Idle);}
 
 void Scene::MoveSelectedActorForward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(150.0f);}}
 void Scene::MoveSelectedActorBackward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(-150.0f);}}
@@ -2277,6 +2305,8 @@ void Scene::DeInitDepthResources() {
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
+	index_buffers.mainCharacter.Destroy();
+	vertex_buffers.mainCharacter.Destroy();
 	index_buffers.ocean.Destroy();
 	vertex_buffers.ocean.Destroy();
 	index_buffers.skybox.Destroy();
