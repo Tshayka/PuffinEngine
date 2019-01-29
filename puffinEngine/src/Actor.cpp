@@ -9,13 +9,14 @@
 
 #include "Actor.hpp"
 
-Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type) {
+Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type) : state(ActorState::Idle) {
 	this->name = name;
 	this->description = description;
 	this->position = position;
 	this->type = type;
 	initPosition = position;
 	id = CreateId();
+
 	// create save file
 	std::cout << "Actor created\n";
 }
@@ -133,27 +134,37 @@ void Actor::SetPosition(glm::vec3 position) {
 	this->position = position;
 }
 
-void Actor::ResetPosition() {
-	position = initPosition;
-	movement = glm::vec3(0.0f, 0.0f, 0.0f);
-	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
-	destinationPoint = position;
-}
+void Actor::SetState(ActorState state) {
+	if (this->state==state || inAir) return;
 
-void Actor::Dolly(float actorVelocityGoal) {
-	movementGoal.x = actorVelocityGoal;
-}
+	this->state=state;
 
-void Actor::Pedestal(float actorVelocityGoal) {
-	movementGoal.y = actorVelocityGoal;
-}
-
-void Actor::Strafe(float actorVelocityGoal) {
-	movementGoal.z = actorVelocityGoal;
-}
-
-void Actor::Truck(float actorVelocityGoal) {// change to function pointer
-	Strafe(actorVelocityGoal);
+	switch(this->state){
+		case ActorState::Idle:
+			StartIdle();
+			break;
+		case ActorState::Fall:
+			StartFall();
+			break;
+		case ActorState::Crouch:
+			StartCrouch();
+			break;
+		case ActorState::WalkForward:
+			StartWalkForward();
+			break;
+		case ActorState::WalkBackward:
+			StartWalkBackward();
+			break;
+		case ActorState::WalkLeft:
+			StartWalkLeft();
+			break;
+		case ActorState::WalkRight:
+			StartWalkRight();
+			break;
+		case ActorState::Jump:
+			StartJump();
+			break;	
+	} 
 }
 
 void Actor::UpdateAABB(){
@@ -169,4 +180,64 @@ void Actor::offManualControl() {
 void Actor::onManualControl() {
 	manualControl = true;
 	destinationPoint = position;
+}
+
+void Actor::ResetPosition() {
+	position = initPosition;
+	movement = glm::vec3(0.0f, 0.0f, 0.0f);
+	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
+	destinationPoint = position;
+}
+
+// ------------- Manual control functions --------------- //
+
+void Actor::Dolly(float actorVelocityGoal) {
+	movementGoal.x = actorVelocityGoal;
+}
+
+void Actor::Pedestal(float actorVelocityGoal) {
+	movementGoal.y = actorVelocityGoal;
+}
+
+void Actor::Strafe(float actorVelocityGoal) {
+	movementGoal.z = actorVelocityGoal;
+}
+
+void Actor::Truck(float actorVelocityGoal) {
+	Strafe(actorVelocityGoal);
+}
+
+// ---------------- State functions ------------------ //
+
+void Actor::StartCrouch() {
+
+}
+
+void Actor::StartFall() {
+	inAir = true;
+}
+
+void Actor::StartWalkBackward() {
+	movementGoal.x = -walkVelocity;
+}
+
+void Actor::StartWalkForward() {
+	movementGoal.x = walkVelocity;
+}
+
+void Actor::StartWalkLeft() {
+	movementGoal.z = walkVelocity;
+}
+
+void Actor::StartWalkRight() {
+	movementGoal.z = -walkVelocity;
+}
+
+
+void Actor::StartIdle() {
+	movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
+}
+
+void Actor::StartJump() {
+	movementGoal.y = 1300.0f;
 }
