@@ -12,6 +12,7 @@
 #include "Landscape.hpp"
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
+#include "MainCharacter.hpp"
 #include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
@@ -31,7 +32,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, std::unique_ptr<MainCharacter> mainCharacter);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -51,6 +52,25 @@ public:
 	void MoveCameraUp();
 	void MoveCameraDown();
 	void StopCameraUpDown();
+
+	void MakeMainCharacterJump();
+	void MakeMainCharacterRun();
+	void MoveMainCharacterForward();
+	void MoveMainCharacterBackward();
+	void MoveMainCharacterLeft();
+	void MoveMainCharacterRight();
+	void StopMainCharacter();
+
+	void MakeSelectedActorJump();
+	void MoveSelectedActorForward();
+	void MoveSelectedActorBackward();
+	void StopSelectedActorForwardBackward();
+	void MoveSelectedActorLeft();
+	void MoveSelectedActorRight();
+	void StopSelectedActorLeftRight();
+	void MoveSelectedActorUp();
+	void MoveSelectedActorDown();
+	void StopSelectedActorUpDown();
 	
 	void SelectionIndicatorToggle();
 	void WireframeToggle();
@@ -62,6 +82,7 @@ public:
 	
 	std::shared_ptr<Camera> currentCamera = nullptr;
 	std::shared_ptr<Actor> selectedActor = nullptr;
+	std::unique_ptr<MainCharacter> mainCharacter = nullptr;
 	
 	std::vector<std::shared_ptr<Actor>> sceneCameras;
 	std::vector<std::shared_ptr<Actor>> actors;
@@ -288,6 +309,7 @@ private:
 	VkPipeline selectionIndicatorPipeline;
 	
 	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logicalDevice);
+	enginetool::SceneMaterial *defaultMaterial = new enginetool::SceneMaterial(logicalDevice);
 	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logicalDevice);
 	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logicalDevice);
 	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial(logicalDevice);

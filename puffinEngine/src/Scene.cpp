@@ -51,10 +51,11 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, std::unique_ptr<MainCharacter> mainCharacter) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
+	this->mainCharacter = std::move(mainCharacter);
 
 	InitSwapchainImageViews();
 	CreateCommandPool();
@@ -1887,11 +1888,16 @@ void Scene::LoadAssets() {
 	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
 	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
 	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), "puffinEngine/assets/models/sphere.obj");
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 18.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	//CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	//CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
-	
+	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 20.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+
+
 	for (uint32_t i = 0; i < actors.size(); i++) {
 		Actor::LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
 		actors[i]->mesh.GetAABB(objectsVertices);
@@ -1904,11 +1910,11 @@ void Scene::LoadAssets() {
 	// assign shaders to meshes
 	sceneCameras[0]->mesh.assigned_material = &scene_material[4]; //camera
 
-	actors[0]->mesh.assigned_material = &scene_material[2]; //green plastic sphere
-	actors[1]->mesh.assigned_material = &scene_material[5]; //character
-	actors[2]->mesh.assigned_material = &scene_material[3]; //lightbulb
-	actors[3]->mesh.assigned_material = &scene_material[0]; //rusty plane
-	actors[4]->mesh.assigned_material = &scene_material[1]; //chrome sphere  
+	actors[0]->mesh.assigned_material = &scene_material[3]; //green plastic sphere
+	actors[1]->mesh.assigned_material = &scene_material[6]; //character
+	actors[2]->mesh.assigned_material = &scene_material[4]; //lightbulb
+	actors[3]->mesh.assigned_material = &scene_material[1]; //rusty plane
+	actors[4]->mesh.assigned_material = &scene_material[2]; //chrome sphere  
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);	
@@ -1918,6 +1924,7 @@ void Scene::CreateCamera(std::string name, std::string description, glm::vec3 po
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera);
 	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
 	camera->mesh.meshFilename = meshFilename;
+	camera->mesh.assigned_material = &scene_material[0];
 	sceneCameras.emplace_back(std::move(camera));
 }
 
@@ -1925,6 +1932,7 @@ void Scene::CreateCharacter(std::string name, std::string description, glm::vec3
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->mesh.meshFilename = meshFilename;
+	character->mesh.assigned_material = &scene_material[0];
 	actors.emplace_back(std::move(character));
 }
 
@@ -1932,6 +1940,7 @@ void Scene::CreateSphereLight(std::string name, std::string description, glm::ve
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight);
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	light->mesh.meshFilename = meshFilename;
+	light->mesh.assigned_material = &scene_material[0];
 	actors.emplace_back(std::move(light));
 }
 
@@ -1939,6 +1948,7 @@ void Scene::CreateLandscape(std::string name, std::string description, glm::vec3
 	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape);
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
 	stillObject->mesh.meshFilename = meshFilename;
+	stillObject->mesh.assigned_material = &scene_material[0];
 	actors.emplace_back(std::move(stillObject));
 }
 
@@ -2016,6 +2026,15 @@ void Scene::InitMaterials() {
 	sky->name = "Sky_materal";
 	LoadSkyboxTexture(sky->skybox_texture);
 	sky->assigned_pipeline = &skyboxPipeline;
+
+	defaultMaterial->name = "Default";
+	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->albedo);
+	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->metallic);
+	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->roughness);
+	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->normal_map);
+	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->ambient_occlucion_map);
+	defaultMaterial->assigned_pipeline = &pbrPipeline;
+	scene_material.emplace_back(*defaultMaterial);
 	
 	rust->name = "Rust";
 	LoadTexture("puffinEngine/assets/textures/rustAlbedo.jpg", rust->albedo);
@@ -2214,6 +2233,24 @@ void Scene::MoveCameraUp() {currentCamera->Pedestal(150.0f);}
 void Scene::MoveCameraDown() {currentCamera->Pedestal(-150.0f);}
 void Scene::StopCameraUpDown() {currentCamera->Pedestal(0.0f);}
 
+void Scene::MakeMainCharacterJump() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Jump);}}
+void Scene::MakeMainCharacterRun() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Run);}}
+void Scene::MoveMainCharacterForward() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkForward);}}
+void Scene::MoveMainCharacterBackward() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkBackward);}}
+void Scene::MoveMainCharacterLeft() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkLeft);}}
+void Scene::MoveMainCharacterRight() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::WalkRight);}}
+void Scene::StopMainCharacter() {if (mainCharacter!=nullptr) {mainCharacter->SetState(ActorState::Idle);}}
+
+void Scene::MoveSelectedActorForward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(150.0f);}}
+void Scene::MoveSelectedActorBackward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(-150.0f);}}
+void Scene::StopSelectedActorForwardBackward() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Dolly(0.0f);}}
+void Scene::MoveSelectedActorLeft() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(150.0f);}}
+void Scene::MoveSelectedActorRight() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(-150.0f); }}
+void Scene::StopSelectedActorLeftRight() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Strafe(0.0f);}}
+void Scene::MoveSelectedActorUp() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(150.0f);}}
+void Scene::MoveSelectedActorDown() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(-150.0f);}}
+void Scene::StopSelectedActorUpDown() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Strafe(0.0f);}}
+
 void Scene::WireframeToggle() {displayWireframe = !displayWireframe;}
 void Scene::AabbToggle() {displayAabb = !displayAabb;}
 void Scene::SelectionIndicatorToggle() {displaySelectionIndicator = !displaySelectionIndicator;}
@@ -2271,6 +2308,7 @@ void Scene::DeInitScene() {
 	DeInitUniformBuffer();
 	
 	delete rust;
+	delete defaultMaterial;
 	delete sky;
 	delete chrome;
 	delete plastic;
@@ -2282,6 +2320,7 @@ void Scene::DeInitScene() {
 	logicalDevice = nullptr;
 
 	rust = nullptr;
+	defaultMaterial = nullptr;
 	sky = nullptr;
 	chrome = nullptr;
 	plastic = nullptr;
