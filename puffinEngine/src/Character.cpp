@@ -5,10 +5,6 @@
 
 // ------- Constructors and dectructors ------------- //
 
-enum class BodySlots {
-	LeftHand, RightHand, Head, Neck, Chest, Belt1, Belt2, Finger1, Finger2, Cloak, Shoes
-};
-
 Character::Character(std::string name, std::string description, glm::vec3 position, ActorType type) 
 : Actor(name, description, position, type) {
 	// create save file
@@ -30,41 +26,28 @@ glm::vec3 Character::CalculateSelectionIndicatorColor(){
 	return glm::vec3(2.0f * (1.0f - perentOfMax), 2.0f * perentOfMax, 0.0f);
 }
 
-void Character::StartJump() {
-	if (onGround) {
-    	movementGoal.y = 30.0f;
-		onGround = false;
-	}
-}
-
-void Character::EndJump() {
-    if(movementGoal.y > 15.0f) {
-		movementGoal.y = -10.0f;
-	}
-}
-
 void Character::UpdatePosition(float dt) {
-	if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
-	onGround = false;
+	//if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 	
-	movement.x = Approach(movementGoal.x, movement.x, dt * 500);
-	movement.y = Approach(movementGoal.y, movement.y, dt * 500);
- 	movement.z = Approach(movementGoal.z, movement.z, dt * 500);
+	movement.x = Approach(movementGoal.x, movement.x, dt * 1000);
+	movement.y = Approach(movementGoal.y, movement.y, dt * 1000);
+ 	movement.z = Approach(movementGoal.z, movement.z, dt * 1000);
 
-	movement += freeFallVelocity * dt;
-	position += movement * dt;
+	velocity = movement;
+	position += velocity * dt;
 
 	if (position.y <= groundLevel) {
 		position.y = groundLevel;
-		//movementGoal.y = 0.0f;
-		onGround = true;
+		if (inAir) {
+			inAir = false;
+			SetState(ActorState::Idle);
+		}
 	}
+	else SetState(ActorState::Fall);
+		
+	if (inAir) movementGoal.y -= 100.0f;
 
 	Actor::UpdateAABB();
-
-	// velocity = foward * movement.x + glm::cross(up, foward) * movement.z;
-	// velocity.y = movement.y;
-	// position += velocity * dt;
 }
 
 
