@@ -44,6 +44,7 @@ class PuffinEngine {
     void CreateDevice();
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
+    void CreateMainCharacter();
     void CreateMainUi();
     void CreateMousePicker();
     void CreateScene();
@@ -59,6 +60,8 @@ class PuffinEngine {
     void Update(float);
    
     std::map<int, FuncPair> functions;
+
+    std::unique_ptr<MainCharacter> mainCharacter = nullptr;
 
     Device* world_device = nullptr;
     MousePicker* mousePicker = nullptr;

@@ -71,9 +71,13 @@ void PuffinEngine::CreateMousePicker() {
 	mousePicker->Init(world_device);
 }
 
+void PuffinEngine::CreateMainCharacter() {
+	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
+}
+
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker);
+	scene_1->InitScene(world_device, guiMainHub, mousePicker, std::move(mainCharacter));
 }
 
 void PuffinEngine::InitVulkan() {
@@ -387,6 +391,20 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair moveRight = {&Scene::MoveCameraRight, &Scene::StopCameraLeftRight};
 	FuncPair moveUp = {&Scene::MoveCameraUp, &Scene::StopCameraUpDown};
 	FuncPair moveDown = {&Scene::MoveCameraDown, &Scene::StopCameraUpDown};
+
+	FuncPair makeMainCharacterJump = {&Scene::MakeMainCharacterJump, nullptr};
+	FuncPair moveMainCharacterForward = {&Scene::MoveMainCharacterForward, &Scene::StopMainCharacter};
+	FuncPair moveMainCharacterBackward = {&Scene::MoveMainCharacterBackward, &Scene::StopMainCharacter};
+	FuncPair moveMainCharacterLeft = {&Scene::MoveMainCharacterLeft, &Scene::StopMainCharacter};
+	FuncPair moveMainCharacterRight = {&Scene::MoveMainCharacterRight, &Scene::StopMainCharacter};
+	
+	FuncPair moveSelectedActorForward = {&Scene::MoveSelectedActorForward, &Scene::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorBackward = {&Scene::MoveSelectedActorBackward, &Scene::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorLeft = {&Scene::MoveSelectedActorLeft, &Scene::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorRight = {&Scene::MoveSelectedActorRight, &Scene::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorUp = {&Scene::MoveSelectedActorUp, &Scene::StopSelectedActorUpDown};
+	FuncPair moveSelectedActorDown = {&Scene::MoveSelectedActorDown, &Scene::StopSelectedActorUpDown};
+		
 	FuncPair allGuiToggle = {&Scene::AllGuiToggle, nullptr};
 	FuncPair SelectionIndicatorToggle = {&Scene::SelectionIndicatorToggle, nullptr};
 	FuncPair WireframeToggle = {&Scene::WireframeToggle, nullptr};
@@ -396,19 +414,30 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair TextOverlayToggle = {&Scene::TextOverlayToggle, nullptr};
 
 	functions = {
+		{GLFW_KEY_SPACE, makeMainCharacterJump},
+		{GLFW_KEY_1, allGuiToggle},
+		{GLFW_KEY_2, TextOverlayToggle},
+		{GLFW_KEY_3, ConsoleToggle},
+		{GLFW_KEY_4, MainUiToggle},
 		{GLFW_KEY_A, moveLeft},
 		{GLFW_KEY_B, AabbToggle},
 		{GLFW_KEY_D, moveRight},
 		{GLFW_KEY_E, moveDown},
+		{GLFW_KEY_I, moveSelectedActorForward},
+		{GLFW_KEY_J, moveSelectedActorLeft},
+		{GLFW_KEY_K, moveSelectedActorBackward},
+		{GLFW_KEY_L, moveSelectedActorRight},
+		{GLFW_KEY_O, moveSelectedActorDown},
 		{GLFW_KEY_Q, moveUp},
 		{GLFW_KEY_S, moveBackward},
+		{GLFW_KEY_U, moveSelectedActorUp},
 		{GLFW_KEY_W, moveForward},
 		{GLFW_KEY_V, WireframeToggle},
 		{GLFW_KEY_X, SelectionIndicatorToggle},
-		{GLFW_KEY_1, allGuiToggle},
-		{GLFW_KEY_2, TextOverlayToggle},
-		{GLFW_KEY_3, ConsoleToggle},
-		{GLFW_KEY_4, MainUiToggle}
+		{GLFW_KEY_RIGHT,moveMainCharacterRight},
+		{GLFW_KEY_LEFT, moveMainCharacterLeft},
+		{GLFW_KEY_DOWN, moveMainCharacterBackward},
+		{GLFW_KEY_UP, moveMainCharacterForward},
 	};
 }
 
