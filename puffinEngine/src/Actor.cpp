@@ -7,6 +7,13 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include <tiny_obj_loader.h> // loading obj files
 
+#define BOOST_PENDING_INTEGER_LOG2_HPP
+#include <boost/integer/integer_log2.hpp>
+#include <boost/uuid/uuid.hpp>
+#include <boost/uuid/uuid_generators.hpp>
+#include <boost/uuid/uuid_io.hpp>
+#include <boost/lexical_cast.hpp>
+
 #include "Actor.hpp"
 
 Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors) : state(ActorState::Idle) {
@@ -17,7 +24,6 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position, Acto
 	interactActors = &actors;
 	initPosition = position;
 	id = CreateId();
-
 	// create save file
 	std::cout << "Actor created\n";
 }
@@ -45,7 +51,9 @@ float Actor::Approach(float actorGoal, float actorCurrent, float dt) {
 }
 
 std::string Actor::CreateId() {
-	return "TEMP_ID";
+	boost::uuids::uuid uuid = boost::uuids::random_generator()();
+	std::string id = boost::uuids::to_string(uuid);
+	return id;
 }
 
 void Actor::ChangePosition() {
