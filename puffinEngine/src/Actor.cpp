@@ -23,6 +23,7 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position, Acto
 	this->type = type;
 	interactActors = &actors;
 	initPosition = position;
+	groundLevel = position.y;
 	id = CreateId();
 	// create save file
 	std::cout << "Actor created\n";

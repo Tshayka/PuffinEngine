@@ -101,6 +101,7 @@ private:
 	// ---------------- Main functions ------------------ //
 
 	VkCommandBuffer BeginSingleTimeCommands();
+	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck); 
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateAABBBuffers();
 	void CreateCommandPool(); // neccsesary to create command buffer

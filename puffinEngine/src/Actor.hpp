@@ -40,30 +40,33 @@ public:
 	void Truck(float);
 	void UpdateAABB();
 	virtual void UpdatePosition(float)=0;
+
+	bool visible = true;
+	bool manualControl = false;
+	bool inAir = false;
+	
+	ActorState state;
 	
 	enginetool::ScenePart mesh;
 	std::vector<uint32_t> indices;
 	std::vector<enginetool::VertexLayout> vertices;
 	
+	enginetool::ScenePart::AABB currentAabb;
+	
 	std::string name;
+	
 	glm::vec3 position;
 	glm::vec3 initPosition;
 	glm::vec3 destinationPoint;
-
 	glm::vec3 direction;
 	glm::vec3 foward;
-
 	glm::vec3 movement = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	glm::vec3 velocity = glm::vec3(30.0f, 30.0f, 30.0f);
-	float walkVelocity = 150.0f;
 	glm::vec3 freeFallVelocity = glm::vec3(0.0f, -1340.0f, 0.0f);
-	float groundLevel = -20.0f;
-
-	enginetool::ScenePart::AABB currentAabb;
-	ActorState state;
-	bool manualControl = false;
-	bool inAir = false;
+	
+	float walkVelocity = 150.0f;
+	float groundLevel;
 
 private:
 	std::string CreateId();

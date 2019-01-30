@@ -658,14 +658,16 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 			for (size_t j = 0; j < actors.size(); j++) {
-				std::array<VkDescriptorSet, 1> descriptorSets;
-				descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
-				pushConstants.pos = actors[j]->position;
-				pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-				vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-				vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+				if(actors[j]->visible) {
+					std::array<VkDescriptorSet, 1> descriptorSets;
+					descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
+					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
+					pushConstants.pos = actors[j]->position;
+					pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+					vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+				}
 			}
 		}
 
@@ -696,9 +698,11 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 			for (size_t k = 0; k < actors.size(); k++) {
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
-				vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
-				vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);				
+				if(actors[k]->visible) {
+					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
+					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
+					vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
+				}				
 			}
 		}
 
@@ -958,6 +962,8 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	for(const auto& a : actors) a->UpdatePosition(dt);
 	for(const auto& c : sceneCameras) c->UpdatePosition(dt);
 	mainCharacter->UpdatePosition(dt);
+
+	for(auto& a : actors) CheckIfItIsVisible(a);
 	
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
@@ -977,6 +983,13 @@ void Scene::HandleMouseClick() {
 			std::cout << "Position changed"<< std::endl;
 		}
 	}
+}
+
+void Scene::CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck) {
+	float distance = glm::distance(mainCharacter->position, actorToCheck->position);
+	if(distance>5000.0f) 
+		actorToCheck->visible=false;
+	else actorToCheck->visible=true;
 }
 
 void Scene::SelectActor() {
@@ -1881,14 +1894,29 @@ void Scene::LoadAssets() {
 	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
 	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
 	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), "puffinEngine/assets/models/sphere.obj");
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, 2.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
-	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 20.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
 	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane5", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane6", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane7", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+
+	CreateLandscape("Visibility test post 1", "Do you see me?", glm::vec3(0.0f, 0.0f, 1000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 2", "Do you see me?", glm::vec3(0.0f, 0.0f, 2000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 3", "Do you see me?", glm::vec3(0.0f, 0.0f, 3000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 4", "Do you see me?", glm::vec3(0.0f, 0.0f, 4000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 5", "Do you see me?", glm::vec3(0.0f, 0.0f, 5000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 6", "Do you see me?", glm::vec3(0.0f, 0.0f, 6000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 7", "Do you see me?", glm::vec3(0.0f, 0.0f, 7000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 8", "Do you see me?", glm::vec3(0.0f, 0.0f, 8000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 9", "Do you see me?", glm::vec3(0.0f, 0.0f, 9000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
+
 
 
 	for (uint32_t i = 0; i < actors.size(); i++) {
