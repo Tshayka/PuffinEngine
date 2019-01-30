@@ -85,10 +85,11 @@ public:
 	std::unique_ptr<Actor> mainCharacter;
 	
 	std::vector<std::shared_ptr<Actor>> sceneCameras;
-	std::vector<std::shared_ptr<Actor>> actors;
 	std::vector<std::shared_ptr<Actor>> seas;
 	std::vector<std::shared_ptr<Actor>> skyboxes;
 	std::vector<std::shared_ptr<Actor>> clouds;
+
+	std::vector<std::shared_ptr<Actor>> actors;
 		
 	GuiMainHub *guiMainHub = nullptr;
 	
@@ -97,7 +98,6 @@ public:
 	VkCommandBuffer refractionCmdBuff;
 
 private:
-
 	// ---------------- Main functions ------------------ //
 
 	VkCommandBuffer BeginSingleTimeCommands();
@@ -130,7 +130,6 @@ private:
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	float DetectGroundLevel(const Actor* sceneActor);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
@@ -154,7 +153,6 @@ private:
 	void UpdateUBOOffscreen(const float& time);
 	void UpdateUBOParameters();
 	
-
 	// ---------------- Deinitialisation ---------------- //
 
 	void DeInitFramebuffer();

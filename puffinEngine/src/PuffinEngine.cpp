@@ -72,8 +72,8 @@ void PuffinEngine::CreateMousePicker() {
 }
 
 void PuffinEngine::CreateMainCharacter() {
-	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
-	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
+	//mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
+	//dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 }
 
 void PuffinEngine::CreateScene() {

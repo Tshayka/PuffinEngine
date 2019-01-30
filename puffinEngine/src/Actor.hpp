@@ -14,7 +14,7 @@ enum class ActorState {
 
 class Actor {
 public:
-	Actor(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Actor(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Actor();
 
 	// ---------------- Main functions ------------------ //
@@ -26,6 +26,7 @@ public:
 	virtual glm::vec3 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
 	void CheckIfInTheDestination();
+	float DetectGroundLevel();
 	void Dolly(float);
    	static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
 	void offManualControl();
@@ -74,6 +75,8 @@ private:
 	void StartWalkForward();
 	void StartWalkLeft();
 	void StartWalkRight();
+
+	std::vector<std::shared_ptr<Actor>>* interactActors;
 
 	std::string description;
 	std::string id;

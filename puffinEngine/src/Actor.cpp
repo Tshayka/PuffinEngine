@@ -9,11 +9,12 @@
 
 #include "Actor.hpp"
 
-Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type) : state(ActorState::Idle) {
+Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors) : state(ActorState::Idle) {
 	this->name = name;
 	this->description = description;
 	this->position = position;
 	this->type = type;
+	interactActors = &actors;
 	initPosition = position;
 	id = CreateId();
 
@@ -62,6 +63,27 @@ void Actor::CheckIfInTheDestination() {
 		movementGoal=glm::vec3(0.0f, 0.0f, 0.0f);
 	else 
 		ChangePosition();
+}
+
+float Actor::DetectGroundLevel() {
+	glm::vec3 rayDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
+	glm::vec3 dirFrac;
+	dirFrac.x = 1.0f / rayDirection.x;
+	dirFrac.y = 1.0f / rayDirection.y;
+	dirFrac.z = 1.0f / rayDirection.z;
+	glm::vec3 hitPoint;
+	float groundLevel = -20.0f;
+
+	std::vector<std::shared_ptr<Actor>>::iterator it;
+
+	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
+		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, position, rayDirection, it->get()->currentAabb) && it->get()!=this) {//TODO [1]
+			std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
+			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
+		}
+	}
+	std::cout << "Ground is at: " << groundLevel << std::endl;
+	return groundLevel;
 }
 
 // Use proxy design pattern!

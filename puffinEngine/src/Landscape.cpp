@@ -6,8 +6,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-Landscape::Landscape(std::string name, std::string description, glm::vec3 position, ActorType type) 
-: Actor(name, description, position, type) {
+Landscape::Landscape(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
+: Actor(name, description, position, type, actors) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	// create save file
 	std::cout << "Landscape created\n";
@@ -69,8 +69,8 @@ void Landscape::ResetPosition(){
 
 // ------- Constructors and dectructors ------------- //
 
-Sea::Sea(std::string name, std::string description, glm::vec3 position, ActorType type) 
-: Landscape(name, description, position, type) {
+Sea::Sea(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
+: Landscape(name, description, position, type, actors) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Sea created\n";
 #endif
@@ -135,8 +135,8 @@ void Sea::CreateMesh() {
 
 // ------- Constructors and dectructors ------------- //
 
-Cloud::Cloud(std::string name, std::string description, glm::vec3 position, ActorType type) 
-: Landscape(name, description, position, type) {
+Cloud::Cloud(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
+: Landscape(name, description, position, type, actors) {
 #if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Cloud created\n";
 #endif

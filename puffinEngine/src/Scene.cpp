@@ -962,9 +962,6 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
-
-	actors[1]->groundLevel = DetectGroundLevel(actors[1].get());
-	mainCharacter->groundLevel = DetectGroundLevel(mainCharacter.get());
 }
 
 void Scene::HandleMouseClick() {
@@ -995,24 +992,6 @@ void Scene::SelectActor() {
 			break;
 		}
 	}
-}
-
-float Scene::DetectGroundLevel(const Actor* sceneActortor) {
-	glm::vec3 rayDirection = glm::normalize(glm::vec3(0.0f, -1.0f, 0.0f));
-	glm::vec3 dirFrac;
-	dirFrac.x = 1.0f / rayDirection.x;
-	dirFrac.y = 1.0f / rayDirection.y;
-	dirFrac.z = 1.0f / rayDirection.z;
-	glm::vec3 hitPoint;
-	float groundLevel = -20.0f;
-	for (auto const& a : actors) {
-		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, sceneActortor->position, rayDirection, a->currentAabb) && a!=actors[1]) {//TODO [1]
-			std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
-			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
-		}
-	}
-	std::cout << "Ground is at: " << groundLevel << std::endl;
-	return groundLevel;
 }
 
 bool Scene::FindDestinationPosition(glm::vec3& destinationPoint) {
@@ -1933,11 +1912,11 @@ void Scene::LoadAssets() {
 	actors[4]->mesh.assigned_material = &scene_material[2]; //chrome sphere  
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
-	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);	
+	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 }
 
 void Scene::PrepeareMainCharacter() {
-	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
+	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter, actors);
 	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 	mainCharacter->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
 	mainCharacter->mesh.assigned_material = &scene_material[6];
@@ -1949,7 +1928,7 @@ void Scene::PrepeareMainCharacter() {
 }
 
 void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera);
+	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera, actors);
 	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
 	camera->mesh.meshFilename = meshFilename;
 	camera->mesh.assigned_material = &scene_material[0];
@@ -1957,7 +1936,7 @@ void Scene::CreateCamera(std::string name, std::string description, glm::vec3 po
 }
 
 void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character);
+	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character, actors);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->mesh.meshFilename = meshFilename;
 	character->mesh.assigned_material = &scene_material[0];
@@ -1965,7 +1944,7 @@ void Scene::CreateCharacter(std::string name, std::string description, glm::vec3
 }
 
 void Scene::CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight);
+	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight, actors);
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	light->mesh.meshFilename = meshFilename;
 	light->mesh.assigned_material = &scene_material[0];
@@ -1973,7 +1952,7 @@ void Scene::CreateSphereLight(std::string name, std::string description, glm::ve
 }
 
 void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape);
+	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape, actors);
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
 	stillObject->mesh.meshFilename = meshFilename;
 	stillObject->mesh.assigned_material = &scene_material[0];
@@ -1981,7 +1960,7 @@ void Scene::CreateLandscape(std::string name, std::string description, glm::vec3
 }
 
 void Scene::CreateSea(std::string name, std::string description, glm::vec3 position) {
-	std::shared_ptr<Actor> sea = std::make_shared<Sea>(name, description, position, ActorType::Sea);
+	std::shared_ptr<Actor> sea = std::make_shared<Sea>(name, description, position, ActorType::Sea, actors);
 	std::dynamic_pointer_cast<Sea>(sea)->CreateMesh();
 	CreateVertexBuffer(sea->vertices, vertex_buffers.ocean);
 	CreateIndexBuffer(sea->indices, index_buffers.ocean);
@@ -1989,7 +1968,7 @@ void Scene::CreateSea(std::string name, std::string description, glm::vec3 posit
 }
 
 void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud);
+	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
 	cloud->mesh.meshFilename = meshFilename;
 	Actor::LoadFromFile(cloud->mesh.meshFilename, cloud->mesh, cloud->indices, cloud->vertices);
 	CreateVertexBuffer(cloud->vertices, vertex_buffers.clouds);
@@ -1998,7 +1977,7 @@ void Scene::CreateCloud(std::string name, std::string description, glm::vec3 pos
 }
 
 void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon) {
-	std::shared_ptr<Actor> skybox = std::make_shared<Skybox>(name, description, position, ActorType::Skybox, horizon);
+	std::shared_ptr<Actor> skybox = std::make_shared<Skybox>(name, description, position, ActorType::Skybox, actors, horizon);
 	std::dynamic_pointer_cast<Skybox>(skybox)->CreateMesh();
 	CreateVertexBuffer(skybox->vertices, vertex_buffers.skybox);
 	CreateIndexBuffer(skybox->indices, index_buffers.skybox);

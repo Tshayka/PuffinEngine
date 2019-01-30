@@ -5,7 +5,7 @@
 
 class Light : public Actor {
 public:
-	Light(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Light(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Light();
 
 	glm::vec3 GetLightColor() const;
@@ -19,13 +19,13 @@ public:
 
 class SphereLight : public Light {
 public:
-	SphereLight(std::string name, std::string description, glm::vec3 position, ActorType type);
+	SphereLight(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~SphereLight();
 };
 
 class Skybox : public Light {
 public:
-	Skybox(std::string name, std::string description, glm::vec3 position, ActorType type, float horizon);
+	Skybox(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors, float horizon);
 	virtual ~Skybox();
 
 	void CreateMesh();

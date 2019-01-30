@@ -6,7 +6,7 @@
 
 class Camera : public Actor {
 public:
-	Camera(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Camera(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Camera();
 
 	void UpdatePosition(float) override;

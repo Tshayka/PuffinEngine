@@ -6,7 +6,7 @@
 
 class Landscape : public Actor {
 public:
-	Landscape(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Landscape(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Landscape();
 
 	virtual glm::vec3 CalculateSelectionIndicatorColor() override;
@@ -23,7 +23,7 @@ private:
 
 class Sea : public Landscape {
 public:
-	Sea(std::string name, std::string description, glm::vec3 position, ActorType type);	
+	Sea(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);	
 	virtual ~Sea();
 
 	void CreateMesh();
@@ -34,7 +34,7 @@ private:
 
 class Cloud : public Landscape {
 public:
-	Cloud(std::string name, std::string description, glm::vec3 position, ActorType type);	
+	Cloud(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);	
 	virtual ~Cloud();
 
 private:

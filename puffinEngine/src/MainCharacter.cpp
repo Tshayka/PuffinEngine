@@ -5,8 +5,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-MainCharacter::MainCharacter(std::string name, std::string description, glm::vec3 position, ActorType type) 
-: Character(name, description, position, type) {
+MainCharacter::MainCharacter(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors ) 
+: Character(name, description, position, type, actors) {
 	// create save file
 	std::cout << "MainCharacter created\n";
 }

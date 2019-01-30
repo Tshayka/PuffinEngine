@@ -5,8 +5,8 @@
 
 // ------- Constructors and dectructors ------------- //
 
-Character::Character(std::string name, std::string description, glm::vec3 position, ActorType type) 
-: Actor(name, description, position, type) {
+Character::Character(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
+: Actor(name, description, position, type, actors) {
 	// create save file
 	std::cout << "Character created\n";
 }
@@ -28,6 +28,8 @@ glm::vec3 Character::CalculateSelectionIndicatorColor(){
 
 void Character::UpdatePosition(float dt) {
 	//if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
+
+	groundLevel = DetectGroundLevel();
 	
 	movement.x = Approach(movementGoal.x, movement.x, dt * 1000);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 1000);
@@ -47,7 +49,7 @@ void Character::UpdatePosition(float dt) {
 		
 	if (inAir) movementGoal.y -= 100.0f;
 
-	Actor::UpdateAABB();
+	UpdateAABB();
 }
 
 

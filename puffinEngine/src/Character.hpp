@@ -4,7 +4,7 @@
 
 class Character : public Actor {
 public:
-	Character(std::string name, std::string description, glm::vec3 position, ActorType type);
+	Character(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Character();
 
 	enum class BodySlots {
@@ -18,7 +18,7 @@ public:
 	int currentHealth;
 	unsigned int gold;
 	bool onGround = false;
-
+		
 private:
 	void UpdatePosition(float) override;
 
