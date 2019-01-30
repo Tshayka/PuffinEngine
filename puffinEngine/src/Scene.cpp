@@ -2251,8 +2251,8 @@ void Scene::StopMainCharacter() {mainCharacter->SetState(ActorState::Idle);}
 void Scene::MoveSelectedActorForward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(150.0f);}}
 void Scene::MoveSelectedActorBackward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(-150.0f);}}
 void Scene::StopSelectedActorForwardBackward() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Dolly(0.0f);}}
-void Scene::MoveSelectedActorLeft() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(150.0f);}}
-void Scene::MoveSelectedActorRight() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(-150.0f); }}
+void Scene::MoveSelectedActorLeft() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(-150.0f);}}
+void Scene::MoveSelectedActorRight() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(150.0f); }}
 void Scene::StopSelectedActorLeftRight() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Strafe(0.0f);}}
 void Scene::MoveSelectedActorUp() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(150.0f);}}
 void Scene::MoveSelectedActorDown() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(-150.0f);}}

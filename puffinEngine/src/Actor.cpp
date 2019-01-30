@@ -256,11 +256,11 @@ void Actor::StartWalkForward() {
 }
 
 void Actor::StartWalkLeft() {
-	movementGoal.z = walkVelocity;
+	movementGoal.z = -walkVelocity;
 }
 
 void Actor::StartWalkRight() {
-	movementGoal.z = -walkVelocity;
+	movementGoal.z = walkVelocity;
 }
 
 
