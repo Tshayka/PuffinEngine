@@ -108,6 +108,25 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${STB_INCLUDE_DIR})
 
 add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
 
+#[[---Downloading and unpack BOOST into libraries directory.---]]
+
+include(ExternalProject)
+ExternalProject_Add(BOOST
+	URL                     "https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2"
+    URL_MD5                 "a1332494397bf48332cb152abfefcec2"
+    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost"
+	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost"
+    CONFIGURE_COMMAND       ./bootstrap.sh --with-libraries=atomic,date_time,filesystem,program_options,system,thread
+    BUILD_COMMAND           ./b2 link=static
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+	UPDATE_COMMAND  ""
+)
+
+set(BOOST_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost)
+target_include_directories(${PROJECT_NAME} PUBLIC ${BOOST_INCLUDE_DIR})
+
+
 #[[----Include GTest in project.----]]
 
 #enable_testing()
