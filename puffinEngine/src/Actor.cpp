@@ -87,11 +87,11 @@ float Actor::DetectGroundLevel() {
 
 	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
 		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, position, rayDirection, it->get()->currentAabb) && it->get()!=this) {//TODO [1]
-			std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
+			//std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
 			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
 		}
 	}
-	std::cout << "Ground is at: " << groundLevel << std::endl;
+	//std::cout << "Ground is at: " << groundLevel << std::endl;
 	return groundLevel;
 }
 

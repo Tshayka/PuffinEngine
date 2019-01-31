@@ -696,13 +696,10 @@ void Scene::CreateCommandBuffers() {
 			UpdateAABBDrawData();
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
-
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 			for (size_t k = 0; k < actors.size(); k++) {
-				if(actors[k]->visible) {
-					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
-					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
-					vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
-				}				
+				if(actors[k]->visible) vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
 			}
 		}
 
@@ -987,7 +984,7 @@ void Scene::HandleMouseClick() {
 
 void Scene::CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck) {
 	float distance = glm::distance(mainCharacter->position, actorToCheck->position);
-	if(distance>5000.0f) 
+	if(distance>3000.0f) 
 		actorToCheck->visible=false;
 	else actorToCheck->visible=true;
 }
@@ -1798,6 +1795,10 @@ void Scene::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(selectionIndicatorDescriptorWrites.size()), selectionIndicatorDescriptorWrites.data(), 0, nullptr);
 }
 
+void Scene::Test() {
+	std::cout << "TEST" << std::endl;
+}
+
 // ------------- Populate scene --------------------- //
 
 void Scene::UpdateSelectRayDrawData() {
@@ -1854,7 +1855,7 @@ void Scene::UpdateAABBDrawData() {
 	vertex_buffers.aabb.Flush();
 }	
 
-void Scene::GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept {
+void Scene::GetAABBDrawData() {
 
 	// aabbVertices = {
 	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
@@ -1867,16 +1868,17 @@ void Scene::GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept {
 	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 	// };
 
-
-	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
-	aabbVertices.push_back({{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-
+	for (uint32_t i = 0; i < actors.size(); i++) {
+		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
+		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	}
+	
 	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
 }
 
@@ -1917,27 +1919,21 @@ void Scene::LoadAssets() {
 	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
 	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
 
-
-
-	for (uint32_t i = 0; i < actors.size(); i++) {
-		Actor::LoadFromFile(actors[i]->mesh.meshFilename, actors[i]->mesh, objects_indices, objectsVertices);
-		actors[i]->mesh.GetAABB(objectsVertices);
-		GetAABBDrawData(actors[i]->mesh);
-	}
 	
 	CreateVertexBuffer(objectsVertices, vertex_buffers.objects);
 	CreateIndexBuffer(objects_indices, index_buffers.objects);
 	
+	GetAABBDrawData();
 	CreateAABBBuffers();
 
 	// assign shaders to meshes
 	sceneCameras[0]->mesh.assigned_material = &scene_material[4]; //camera
 
-	actors[0]->mesh.assigned_material = &scene_material[3]; //green plastic sphere
+	actors[0]->mesh.assigned_material = &scene_material[2]; //green plastic sphere
 	actors[1]->mesh.assigned_material = &scene_material[6]; //character
 	actors[2]->mesh.assigned_material = &scene_material[4]; //lightbulb
 	actors[3]->mesh.assigned_material = &scene_material[1]; //rusty plane
-	actors[4]->mesh.assigned_material = &scene_material[2]; //chrome sphere  
+	actors[4]->mesh.assigned_material = &scene_material[3]; //chrome sphere  
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
@@ -1949,10 +1945,9 @@ void Scene::PrepeareMainCharacter() {
 	mainCharacter->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
 	mainCharacter->mesh.assigned_material = &scene_material[6];
 	Actor::LoadFromFile(mainCharacter->mesh.meshFilename, mainCharacter->mesh, mainCharacter->indices, mainCharacter->vertices);
+	mainCharacter->mesh.GetAABB(mainCharacter->vertices);
 	CreateVertexBuffer(mainCharacter->vertices, vertex_buffers.mainCharacter);
 	CreateIndexBuffer(mainCharacter->indices, index_buffers.mainCharacter);
-	//mainCharacter->mesh.GetAABB(mainCharacter->vertices);
-	//GetAABBDrawData(mainCharacter->mesh);
 }
 
 void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
@@ -1968,6 +1963,8 @@ void Scene::CreateCharacter(std::string name, std::string description, glm::vec3
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->mesh.meshFilename = meshFilename;
 	character->mesh.assigned_material = &scene_material[0];
+	Actor::LoadFromFile(character->mesh.meshFilename, character->mesh, objects_indices, objectsVertices);
+	character->mesh.GetAABB(objectsVertices);
 	actors.emplace_back(std::move(character));
 }
 
@@ -1976,6 +1973,8 @@ void Scene::CreateSphereLight(std::string name, std::string description, glm::ve
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	light->mesh.meshFilename = meshFilename;
 	light->mesh.assigned_material = &scene_material[0];
+	Actor::LoadFromFile(light->mesh.meshFilename, light->mesh, objects_indices, objectsVertices);
+	light->mesh.GetAABB(objectsVertices);
 	actors.emplace_back(std::move(light));
 }
 
@@ -1984,6 +1983,8 @@ void Scene::CreateLandscape(std::string name, std::string description, glm::vec3
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
 	stillObject->mesh.meshFilename = meshFilename;
 	stillObject->mesh.assigned_material = &scene_material[0];
+	Actor::LoadFromFile(stillObject->mesh.meshFilename, stillObject->mesh, objects_indices, objectsVertices);
+	stillObject->mesh.GetAABB(objectsVertices);
 	actors.emplace_back(std::move(stillObject));
 }
 
@@ -2257,6 +2258,8 @@ void Scene::LoadSkyboxTexture(TextureLayout& layer) {
 }
 
 // ---------------- Scene navigation ---------------- //
+
+void Scene::TestButton() {Test();}
 
 void Scene::MoveCameraForward() {currentCamera->Dolly(150.0f);}
 void Scene::MoveCameraBackward() {currentCamera->Dolly(-150.0f);}

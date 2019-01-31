@@ -386,6 +386,8 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 }
 
 void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
+	FuncPair test = {&Scene::Test, nullptr};
+
 	FuncPair moveForward = {&Scene::MoveCameraForward, &Scene::StopCameraForwardBackward};
 	FuncPair moveBackward = {&Scene::MoveCameraBackward, &Scene::StopCameraForwardBackward};
 	FuncPair moveLeft = {&Scene::MoveCameraLeft, &Scene::StopCameraLeftRight};
@@ -431,6 +433,7 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 		{GLFW_KEY_O, moveSelectedActorDown},
 		{GLFW_KEY_Q, moveUp},
 		{GLFW_KEY_S, moveBackward},
+		{GLFW_KEY_T, test},
 		{GLFW_KEY_U, moveSelectedActorUp},
 		{GLFW_KEY_W, moveForward},
 		{GLFW_KEY_V, WireframeToggle},

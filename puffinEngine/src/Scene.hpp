@@ -43,6 +43,9 @@ public:
 
 	// ------------ Scene navigation functions ------------- //
 
+	void TestButton();
+	void Test();
+
 	void MoveCameraForward();
 	void MoveCameraBackward();
 	void StopCameraForwardBackward();
@@ -133,7 +136,7 @@ private:
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
-	void GetAABBDrawData(const enginetool::ScenePart& mesh) noexcept;
+	void GetAABBDrawData();
 	bool HasStencilComponent(VkFormat);
 	void InitMaterials();
 	void InitSwapchainImageViews(); 
