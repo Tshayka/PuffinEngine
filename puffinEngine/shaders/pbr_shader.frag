@@ -20,6 +20,7 @@ layout(location = 1) in vec2 TexCoords;
 layout(location = 2) in vec3 Normal;
 layout(location = 3) in vec3 CameraPos;
 layout(location = 4) in vec3 Color;
+layout(location = 5) in float fogAlpha;
 
 layout(location = 0) out vec4 outColor;
 
@@ -257,4 +258,7 @@ void main()
 	color = pow(color, vec3(1.0 / 2.2));
 		
 	outColor = vec4(color, 1.0);
+
+	// add fog to final color
+	outColor = mix(vec4(0.0,0.0,0.0,1.0), outColor, fogAlpha);
 }

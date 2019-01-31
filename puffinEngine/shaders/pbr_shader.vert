@@ -18,6 +18,7 @@ layout(location = 1) out vec2 fragTexCoord;
 layout(location = 2) out vec3 outNormal;
 layout(location = 3) out vec3 outCameraPos;
 layout(location = 4) out vec3 outColor;
+layout(location = 5) out float outFogAlpha;
 
 layout(push_constant) uniform PushConsts {
 	vec4 renderLimitPlane;
@@ -31,6 +32,9 @@ out gl_PerVertex {
 	float gl_ClipDistance[];
 };
 
+const float fogDensity = 0.0007;
+const float fogGradient = 2.0;
+
 void main() 
 {
 	vec3 locPos = vec3(ubo.model * vec4(inPosition, 1.0));
@@ -38,8 +42,12 @@ void main()
 	outNormal = mat3(ubo.model) * inNormals;
 	outCameraPos = ubo.cameraPos;
 	outColor = inColor;
-	
 	outWorldPos = locPos + pushConsts.objectPosition;
 	gl_Position = ubo.proj * ubo.view * vec4(outWorldPos, 1.0);
 	gl_ClipDistance[0] = dot(vec4(outWorldPos,0.0), pushConsts.renderLimitPlane);
+
+	vec4 relativePositionToCamera = ubo.view * vec4(outWorldPos, 1.0);
+	float d = length(relativePositionToCamera.xyz);
+	outFogAlpha = exp(-pow((d * fogDensity), fogGradient));
+	outFogAlpha = clamp(outFogAlpha, 0.0,1.0);		
 }
