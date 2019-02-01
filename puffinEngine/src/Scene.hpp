@@ -13,6 +13,7 @@
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
 #include "MainCharacter.hpp"
+#include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
@@ -32,7 +33,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -118,20 +119,19 @@ private:
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
 	void CreateSea(std::string name, std::string description, glm::vec3 position);
-	void CreateSelectionIndicator();
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon);
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateUniformBuffer();	
-	void CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
-	void CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
+	void CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
+	void CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateSelectRay(); 
-	void CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
+	void CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
-	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
+	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
@@ -143,7 +143,7 @@ private:
 	void LoadAssets();
 	void LoadSkyboxTexture(TextureLayout&);
 	void LoadTexture(std::string, TextureLayout&);
-	void PrepeareMainCharacter();
+	void PrepeareMainCharacter(enginetool::ScenePart &mesh);
 	void PrepareOffscreen();
 	void RandomPositions();
 	void SelectActor(); 
@@ -256,25 +256,21 @@ private:
 	} uniform_buffers;
 
 	struct {
-		enginetool::Buffer mainCharacter;
+		enginetool::Buffer meshLibraryObjects;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
-		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
-		enginetool::Buffer selectionIndicator;
 	} vertex_buffers;
 
 	struct {
-		enginetool::Buffer mainCharacter;
+		enginetool::Buffer meshLibraryObjects;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
 		enginetool::Buffer clouds;
-		enginetool::Buffer objects;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
-		enginetool::Buffer selectionIndicator;
 	} index_buffers;
 
 	struct OffscreenPass {
@@ -324,19 +320,17 @@ private:
 	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial(logicalDevice);
 
 	std::vector<enginetool::SceneMaterial> scene_material;
-
+	
 	enginetool::ScenePart element;
 	enginetool::ScenePart cloud_mesh;
-	enginetool::ScenePart selectionIndicatorMesh;
+	enginetool::ScenePart* selectionIndicatorMesh;
 
-	std::vector<uint32_t> objects_indices;
-	std::vector<enginetool::VertexLayout> objectsVertices;
+	// std::vector<uint32_t> objects_indices;
+	// std::vector<enginetool::VertexLayout> objectsVertices;
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
 	std::vector<uint32_t> aabbIndices;
 	std::vector<enginetool::VertexLayout> aabbVertices;
-	std::vector<uint32_t> selectIndicatorIndices;
-	std::vector<enginetool::VertexLayout> selectIndicatorVertices;
 
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
@@ -362,5 +356,6 @@ private:
 	VkViewport viewport = {};
 
 	Device* logicalDevice = nullptr;
+	MeshLibrary* meshLibrary = nullptr;
 	MousePicker* mousePicker = nullptr;	
 };

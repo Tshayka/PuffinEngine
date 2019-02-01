@@ -5,8 +5,6 @@
 #include <vector>
 #include <vulkan/vulkan.h>
 
-#include "LoadTexture.cpp"
-
 namespace enginetool {
 	struct VertexLayout {
 		glm::vec3 pos;
@@ -67,8 +65,8 @@ namespace enginetool {
 			return bindingDescription;
 		}
 
-		static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-			std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions = {};
+		static std::array<VkVertexInputAttributeDescription, 2> getAttributeDescriptions() {
+			std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
 
 			attributeDescriptions[0].binding = 0;
 			attributeDescriptions[0].location = 0;
@@ -93,7 +91,6 @@ namespace enginetool {
 
 		uint32_t indexBase = 0;
 		uint32_t indexCount = 0;
-		SceneMaterial* assigned_material;
 		std::string meshFilename;
 
 		void GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {

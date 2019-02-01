@@ -71,6 +71,11 @@ void PuffinEngine::CreateMousePicker() {
 	mousePicker->Init(world_device);
 }
 
+void PuffinEngine::CreateMeshLibrary() {
+	meshLibrary = new MeshLibrary();
+	meshLibrary->Init(world_device);
+}
+
 void PuffinEngine::CreateMainCharacter() {
 	//mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
 	//dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
@@ -78,7 +83,7 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker);
+	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary);
 }
 
 void PuffinEngine::InitVulkan() {
@@ -88,6 +93,7 @@ void PuffinEngine::InitVulkan() {
 	CreateMainUi();
 	CreateGuiMainHub();
 	CreateMousePicker();
+	CreateMeshLibrary();
 	CreateScene();
 	CreateSemaphores();
 }
@@ -532,6 +538,7 @@ void PuffinEngine::CleanUp() {
 	DeInitSemaphores();
 	DestroyMousePicker();
 	DestroyScene();
+	DestroyMeshLibrary();
 	DestroyGUI();
 	DestroyDevice();
 	glfwDestroyWindow(window);
@@ -557,6 +564,12 @@ void PuffinEngine::DestroyDevice() {
 	world_device->DeInitDevice();
 	delete world_device;
 	world_device = nullptr;
+}
+
+void PuffinEngine::DestroyMeshLibrary() {
+	meshLibrary->DeInit();
+	delete meshLibrary;
+	meshLibrary = nullptr;
 }
 
 void PuffinEngine::DestroyScene() {// can't see destructor working

@@ -51,10 +51,14 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
+	this->meshLibrary = meshLibrary; 
+
+	this->meshLibrary->meshes.empty();
+	selectionIndicatorMesh = &meshLibrary->meshes["SmallCoinB"];
 
 	InitSwapchainImageViews();
 	CreateCommandPool();
@@ -588,7 +592,7 @@ void Scene::CreateCommandBuffers() {
 	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
 
 	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, command_buffers.data()));
-	
+
 	// starting command buffer recording
 	for (size_t i = 0; i < command_buffers.size(); i++)	{
 		// Set target frame buffer
@@ -611,20 +615,20 @@ void Scene::CreateCommandBuffers() {
 		VkDeviceSize offsets[1] = { 0 };
 
 		if(displaySelectionIndicator && selectedActor!=nullptr) {
-			float pointerOffset = selectedActor->position.y + abs(selectedActor->mesh.aabb.max.y)+abs(selectionIndicatorMesh.aabb.max.y)+0.25f;
+			float pointerOffset = selectedActor->position.y + abs(selectedActor->assignedMesh->aabb.max.y)+abs(selectionIndicatorMesh->aabb.max.y)+0.25f;
 			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 			pushConstants.color = selectedActor->CalculateSelectionIndicatorColor();
 			pushConstants.pos = glm::vec3(selectedActor->position.x, pointerOffset, selectedActor->position.z);
 			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
 			
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectionIndicator.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectionIndicator.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(selectIndicatorVertices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], selectionIndicatorMesh->indexCount, 1, 0,  selectionIndicatorMesh->indexBase, 0);
 		}
 
-		if (displaySkybox)	{
+		if (displaySkybox) {
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
@@ -633,16 +637,16 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if (displayMainCharacter) {
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.mainCharacter.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.mainCharacter.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 			std::array<VkDescriptorSet, 1> descriptorSets;
-			descriptorSets[0] = mainCharacter->mesh.assigned_material->descriptor_set;
+			descriptorSets[0] = mainCharacter->assignedMaterial->descriptor_set;
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->mesh.assigned_material->assigned_pipeline));
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->assignedMaterial->assigned_pipeline));
 			pushConstants.pos = mainCharacter->position;
 			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(mainCharacter->indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], mainCharacter->assignedMesh->indexCount, 1, 0, mainCharacter->assignedMesh->indexBase, 0);
 		}
 
 		if (displayOcean) {
@@ -654,19 +658,19 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if (displaySceneGeometry) {
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.objects.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
-			for (size_t j = 0; j < actors.size(); j++) {
-				if(actors[j]->visible) {
+			for (const auto& a : actors) {
+				if(a->visible) {
 					std::array<VkDescriptorSet, 1> descriptorSets;
-					descriptorSets[0] = actors[j]->mesh.assigned_material->descriptor_set;
+					descriptorSets[0] = a->assignedMaterial->descriptor_set;
 					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*actors[j]->mesh.assigned_material->assigned_pipeline));
-					pushConstants.pos = actors[j]->position;
+					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*a->assignedMaterial->assigned_pipeline));
+					pushConstants.pos = a->position;
 					pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-					vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+					vkCmdDrawIndexed(command_buffers[i], a->assignedMesh->indexCount, 1, 0, a->assignedMesh->indexBase, 0);
 				}
 			}
 		}
@@ -763,20 +767,20 @@ void Scene::CreateReflectionCommandBuffer() {
 	}
 
 	// 3d object
-	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
-	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 	for (size_t j = 0; j < actors.size(); j++) {
 		// reflection
 		std::array<VkDescriptorSet, 1> descriptorSets;
-		descriptorSets[0] = actors[j]->mesh.assigned_material->reflectDescriptorSet;
+		descriptorSets[0] = actors[j]->assignedMaterial->reflectDescriptorSet;
 		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
 		pushConstants.pos = actors[j]->position;
 		pushConstants.renderLimitPlane = (currentCamera->position.y<0) ? (glm::vec4(0.0f, -1.0f, 0.0f, -0.0f)) : (glm::vec4(0.0f, 1.0f, 0.0f, -0.0f));
 
 		vkCmdPushConstants(reflectionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->assignedMesh->indexCount, 1, 0, actors[j]->assignedMesh->indexBase, 0);
 	}
 
 	vkCmdEndRenderPass(reflectionCmdBuff);
@@ -838,18 +842,18 @@ void Scene::CreateRefractionCommandBuffer() {
 	}
 
 	// 3d object
-	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.objects.buffer, offsets);
-	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.objects.buffer , 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 	for (size_t j = 0; j < actors.size(); j++) {
 		std::array<VkDescriptorSet, 1> descriptorSets;
-		descriptorSets[0] = actors[j]->mesh.assigned_material->refractDescriptorSet;
+		descriptorSets[0] = actors[j]->assignedMaterial->refractDescriptorSet;
 		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrRefractionPipeline);
 		pushConstants.pos = actors[j]->position;
 		pushConstants.renderLimitPlane = glm::vec4(0.0f, -1.0f, 0.0f, 0.0f );
 		vkCmdPushConstants(refractionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-		vkCmdDrawIndexed(refractionCmdBuff, actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
+		vkCmdDrawIndexed(refractionCmdBuff, actors[j]->assignedMesh->indexCount, 1, 0, actors[j]->assignedMesh->indexBase, 0);
 	}
 
 	vkCmdEndRenderPass(refractionCmdBuff);
@@ -1797,6 +1801,7 @@ void Scene::CreateDescriptorSet() {
 
 void Scene::Test() {
 	std::cout << "TEST" << std::endl;
+	CreateLandscape("Runtime creation test ", "Do you see box?", glm::vec3(500.0f, 0.0f, 500.0f), meshLibrary->meshes["box"]);
 }
 
 // ------------- Populate scene --------------------- //
@@ -1869,14 +1874,14 @@ void Scene::GetAABBDrawData() {
 	// };
 
 	for (uint32_t i = 0; i < actors.size(); i++) {
-		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.max.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.max.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
-		aabbVertices.push_back({{actors[i]->mesh.aabb.min.x, actors[i]->mesh.aabb.min.y, actors[i]->mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
+		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 	}
 	
 	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
@@ -1885,106 +1890,95 @@ void Scene::GetAABBDrawData() {
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
-	CreateSelectionIndicator();
-	PrepeareMainCharacter();
+	PrepeareMainCharacter(meshLibrary->meshes["human"]);
 	
 	// Scene objects/actors
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
-	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(-7.0f, 0.0f, 20.0f),"puffinEngine/assets/models/teapotR200originMid.obj");
-	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), "puffinEngine/assets/models/cloud.obj");
-	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), "puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), "puffinEngine/assets/models/sphere.obj");
+	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"]);
+	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), meshLibrary->meshes["box"]);
+	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), meshLibrary->meshes["human"]);
+	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), meshLibrary->meshes["sphere"]);
 	
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f),"puffinEngine/assets/models/box100x100x100originMId.obj");
-	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane5", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane6", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
-	CreateLandscape("Test object plane7", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f),"puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj");
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f), meshLibrary->meshes["box"]);
+	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane5", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane6", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane7", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f), meshLibrary->meshes["plane"]);
 
-	CreateLandscape("Visibility test post 1", "Do you see me?", glm::vec3(0.0f, 0.0f, 1000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 2", "Do you see me?", glm::vec3(0.0f, 0.0f, 2000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 3", "Do you see me?", glm::vec3(0.0f, 0.0f, 3000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 4", "Do you see me?", glm::vec3(0.0f, 0.0f, 4000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 5", "Do you see me?", glm::vec3(0.0f, 0.0f, 5000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 6", "Do you see me?", glm::vec3(0.0f, 0.0f, 6000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 7", "Do you see me?", glm::vec3(0.0f, 0.0f, 7000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 8", "Do you see me?", glm::vec3(0.0f, 0.0f, 8000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 9", "Do you see me?", glm::vec3(0.0f, 0.0f, 9000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f),"puffinEngine/assets/models/box180x500x500originMidBot.obj");
-
+	CreateLandscape("Visibility test post 1", "Do you see me?", glm::vec3(0.0f, 0.0f, 1000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 2", "Do you see me?", glm::vec3(0.0f, 0.0f, 2000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 3", "Do you see me?", glm::vec3(0.0f, 0.0f, 3000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 4", "Do you see me?", glm::vec3(0.0f, 0.0f, 4000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 5", "Do you see me?", glm::vec3(0.0f, 0.0f, 5000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 6", "Do you see me?", glm::vec3(0.0f, 0.0f, 6000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 7", "Do you see me?", glm::vec3(0.0f, 0.0f, 7000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 8", "Do you see me?", glm::vec3(0.0f, 0.0f, 8000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 9", "Do you see me?", glm::vec3(0.0f, 0.0f, 9000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f), meshLibrary->meshes["human"]);
 	
-	CreateVertexBuffer(objectsVertices, vertex_buffers.objects);
-	CreateIndexBuffer(objects_indices, index_buffers.objects);
-	
+	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
+	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
+		
 	GetAABBDrawData();
 	CreateAABBBuffers();
 
 	// assign shaders to meshes
-	sceneCameras[0]->mesh.assigned_material = &scene_material[4]; //camera
+	sceneCameras[0]->assignedMaterial = &scene_material[4]; //camera
 
-	actors[0]->mesh.assigned_material = &scene_material[2]; //green plastic sphere
-	actors[1]->mesh.assigned_material = &scene_material[6]; //character
-	actors[2]->mesh.assigned_material = &scene_material[4]; //lightbulb
-	actors[3]->mesh.assigned_material = &scene_material[1]; //rusty plane
-	actors[4]->mesh.assigned_material = &scene_material[3]; //chrome sphere  
+	actors[0]->assignedMaterial = &scene_material[2]; //green plastic sphere
+	actors[1]->assignedMaterial = &scene_material[6]; //character
+	actors[2]->assignedMaterial = &scene_material[4]; //lightbulb
+	actors[3]->assignedMaterial = &scene_material[1]; //rusty plane
+	actors[4]->assignedMaterial = &scene_material[3]; //chrome sphere  
 
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 }
 
-void Scene::PrepeareMainCharacter() {
+void Scene::PrepeareMainCharacter(enginetool::ScenePart &mesh) {
 	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter, actors);
 	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
-	mainCharacter->mesh.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
-	mainCharacter->mesh.assigned_material = &scene_material[6];
-	Actor::LoadFromFile(mainCharacter->mesh.meshFilename, mainCharacter->mesh, mainCharacter->indices, mainCharacter->vertices);
-	mainCharacter->mesh.GetAABB(mainCharacter->vertices);
-	CreateVertexBuffer(mainCharacter->vertices, vertex_buffers.mainCharacter);
-	CreateIndexBuffer(mainCharacter->indices, index_buffers.mainCharacter);
+	mainCharacter->assignedMesh = &mesh;
+	mainCharacter->assignedMaterial = &scene_material[1];
+	//dynamic_cast<MainCharacter*>(mainCharacter.get())->mesh.GetAABB(mainCharacter->vertices);
 }
 
-void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera, actors);
 	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
-	camera->mesh.meshFilename = meshFilename;
-	camera->mesh.assigned_material = &scene_material[0];
+	camera->assignedMesh = &mesh;
+	camera->assignedMaterial = &scene_material[0];
 	sceneCameras.emplace_back(std::move(camera));
 }
 
-void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character, actors);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
-	character->mesh.meshFilename = meshFilename;
-	character->mesh.assigned_material = &scene_material[0];
-	Actor::LoadFromFile(character->mesh.meshFilename, character->mesh, objects_indices, objectsVertices);
-	character->mesh.GetAABB(objectsVertices);
+	character->assignedMesh = &mesh;
+	character->assignedMaterial = &scene_material[0];
 	actors.emplace_back(std::move(character));
 }
 
-void Scene::CreateSphereLight(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+void Scene::CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight, actors);
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
-	light->mesh.meshFilename = meshFilename;
-	light->mesh.assigned_material = &scene_material[0];
-	Actor::LoadFromFile(light->mesh.meshFilename, light->mesh, objects_indices, objectsVertices);
-	light->mesh.GetAABB(objectsVertices);
+	light->assignedMesh = &mesh;
+	light->assignedMaterial = &scene_material[0];
 	actors.emplace_back(std::move(light));
 }
 
-void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
+void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
 	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape, actors);
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
-	stillObject->mesh.meshFilename = meshFilename;
-	stillObject->mesh.assigned_material = &scene_material[0];
-	Actor::LoadFromFile(stillObject->mesh.meshFilename, stillObject->mesh, objects_indices, objectsVertices);
-	stillObject->mesh.GetAABB(objectsVertices);
+	stillObject->assignedMesh = &mesh;
+	stillObject->assignedMaterial = &scene_material[0];
 	actors.emplace_back(std::move(stillObject));
 }
 
@@ -1999,7 +1993,7 @@ void Scene::CreateSea(std::string name, std::string description, glm::vec3 posit
 void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
 	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
 	cloud->mesh.meshFilename = meshFilename;
-	Actor::LoadFromFile(cloud->mesh.meshFilename, cloud->mesh, cloud->indices, cloud->vertices);
+	MeshLibrary::LoadFromFile(cloud->mesh.meshFilename, cloud->mesh, cloud->indices, cloud->vertices);
 	CreateVertexBuffer(cloud->vertices, vertex_buffers.clouds);
 	CreateIndexBuffer(cloud->indices, index_buffers.clouds);
 	clouds.emplace_back(std::move(cloud));
@@ -2011,14 +2005,6 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 	CreateVertexBuffer(skybox->vertices, vertex_buffers.skybox);
 	CreateIndexBuffer(skybox->indices, index_buffers.skybox);
 	skyboxes.emplace_back(std::move(skybox));
-}
-
-void Scene::CreateSelectionIndicator() {
-	Actor::LoadFromFile("puffinEngine/assets/models/selectionCoinSmallB.obj", selectionIndicatorMesh, selectIndicatorIndices, selectIndicatorVertices);
-	selectionIndicatorMesh.GetAABB(selectIndicatorVertices);
-	
-	CreateVertexBuffer(selectIndicatorVertices, vertex_buffers.selectionIndicator);
-	CreateIndexBuffer(selectIndicatorIndices, index_buffers.selectionIndicator);
 }
 
 // ------------------ Buffers ---------------------- //
@@ -2315,22 +2301,18 @@ void Scene::DeInitDepthResources() {
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
-	index_buffers.mainCharacter.Destroy();
-	vertex_buffers.mainCharacter.Destroy();
+	index_buffers.meshLibraryObjects.Destroy();
+	vertex_buffers.meshLibraryObjects.Destroy();
 	index_buffers.ocean.Destroy();
 	vertex_buffers.ocean.Destroy();
 	index_buffers.skybox.Destroy();
 	vertex_buffers.skybox.Destroy();
 	index_buffers.clouds.Destroy();
 	vertex_buffers.clouds.Destroy();
-	index_buffers.objects.Destroy();
-	vertex_buffers.objects.Destroy();
 	index_buffers.selectRay.Destroy();
 	vertex_buffers.selectRay.Destroy();
 	index_buffers.aabb.Destroy();
 	vertex_buffers.aabb.Destroy();
-	index_buffers.selectionIndicator.Destroy();
-	vertex_buffers.selectionIndicator.Destroy();
 }
 
 void Scene::DeInitScene() {
@@ -2357,6 +2339,7 @@ void Scene::DeInitScene() {
 	delete characterMat;
 	
 	guiMainHub = nullptr;
+	meshLibrary = nullptr;
 	logicalDevice = nullptr;
 
 	rust = nullptr;

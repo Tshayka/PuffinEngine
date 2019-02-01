@@ -49,6 +49,7 @@ class PuffinEngine {
     void CreateMousePicker();
     void CreateScene();
     void CreateGuiMainHub();
+    void CreateMeshLibrary();
     void CreateSemaphores();
     void DrawFrame();
     void InitDefaultKeysBindings(std::map<int, FuncPair>& functions);
@@ -62,8 +63,9 @@ class PuffinEngine {
     std::map<int, FuncPair> functions;
 
     std::unique_ptr<Actor> mainCharacter;
-
+    
     Device* world_device = nullptr;
+    MeshLibrary* meshLibrary = nullptr;
     MousePicker* mousePicker = nullptr;
     Scene* scene_1 = nullptr;
 
@@ -86,6 +88,7 @@ class PuffinEngine {
     void CleanUpSwapChain();
     void DeInitSemaphores();
     void DestroyDevice();
+    void DestroyMeshLibrary();
     void DestroyMousePicker();
     void DestroyScene();
     void DestroyGUI();

@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "MeshLayout.cpp"
+#include "LoadTexture.cpp"
 
 enum class ActorType {
     Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea, Cloud, MainCharacter
@@ -28,7 +29,6 @@ public:
 	void CheckIfInTheDestination();
 	float DetectGroundLevel();
 	void Dolly(float);
-   	static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
 	void offManualControl();
 	void onManualControl();
 	void SaveToFile();
@@ -47,7 +47,10 @@ public:
 	
 	ActorState state;
 	
-	enginetool::ScenePart mesh;
+	enginetool::ScenePart mesh; // TODO remove me
+	enginetool::ScenePart* assignedMesh;
+	enginetool::SceneMaterial* assignedMaterial;
+
 	std::vector<uint32_t> indices;
 	std::vector<enginetool::VertexLayout> vertices;
 	
