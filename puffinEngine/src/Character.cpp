@@ -30,6 +30,7 @@ void Character::UpdatePosition(float dt) {
 	//if(movementGoal!=glm::vec3(0.0f,0.0f,0.0f) && !manualControl) Actor::CheckIfInTheDestination();
 
 	groundLevel = DetectGroundLevel();
+	CheckCollisions();
 	
 	movement.x = Approach(movementGoal.x, movement.x, dt * 1000);
 	movement.y = Approach(movementGoal.y, movement.y, dt * 1000);
