@@ -115,22 +115,16 @@ namespace enginetool {
     		aabb.max = max;
 		}
 
-		static bool Overlaps(const AABB& a, const AABB& b){
-			return 	(a.max.x > b.min.x) && 
-					(a.min.x < b.max.x) && 
-					(a.max.y > b.min.y) && 
-					(a.min.y < b.max.y)	&& 
-					(a.max.z > b.min.z) && 
-					(a.min.z < b.max.z);
+		static bool Overlaps(const AABB& a, const AABB& b) {
+			return  a.max.x >= b.min.x && a.min.x <= b.max.x &&
+					a.max.y >= b.min.y && a.min.y <= b.max.y &&
+					a.max.z >= b.min.z && a.min.z <= b.max.z;
 		}
 
 		static bool Contains(const AABB& a, const AABB& b) {
-			return  b.min.x >= a.min.x &&
-					b.max.x <= a.max.x &&
-					b.min.y >= a.min.y &&
-					b.max.y <= a.max.y &&
-					b.min.z >= a.min.z &&
-					b.max.z <= a.max.z;
+			return  a.min.x <= b.min.x && b.max.x <= a.max.x &&
+					a.min.y <= b.min.y && b.max.y <= a.max.y &&
+					a.min.z <= b.min.z && b.max.z <= a.max.z;
 		}
 
 		static bool RayIntersection(glm::vec3& hitPoint, const glm::vec3& dirFrac, const glm::vec3& rayOrg, const glm::vec3& rayDir, const AABB& bb) {
