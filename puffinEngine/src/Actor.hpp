@@ -10,7 +10,7 @@ enum class ActorType {
 };
 
 enum class ActorState {
-	Crouch, Fall, Idle, Jump, Lie, Run, WalkForward, WalkBackward, WalkLeft, WalkRight
+	Crouch, Fall, Idle, Jump, Lie, Run, WalkForward, WalkBackward, WalkLeft, WalkRight, Reflection
 };
 
 class Actor {
@@ -26,6 +26,7 @@ public:
 	float Approach(float, float, float);
 	virtual glm::vec3 CalculateSelectionIndicatorColor() = 0;
 	void ChangePosition();
+	void CheckCollisions();
 	void CheckIfInTheDestination();
 	float DetectGroundLevel();
 	void Dolly(float);
@@ -42,12 +43,12 @@ public:
 	virtual void UpdatePosition(float)=0;
 
 	bool visible = true;
+	bool collider = false;
 	bool manualControl = false;
 	bool inAir = false;
 	
 	ActorState state;
 	
-	enginetool::ScenePart mesh; // TODO remove me
 	enginetool::ScenePart* assignedMesh;
 	enginetool::SceneMaterial* assignedMaterial;
 
@@ -77,6 +78,7 @@ private:
 	void StartFall();
 	void StartIdle();
 	void StartJump();
+	void StartReflect();
 	void StartWalkBackward();
 	void StartWalkForward();
 	void StartWalkLeft();

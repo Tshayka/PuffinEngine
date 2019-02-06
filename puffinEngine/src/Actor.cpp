@@ -81,13 +81,23 @@ float Actor::DetectGroundLevel() {
 	std::vector<std::shared_ptr<Actor>>::iterator it;
 
 	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
-		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, position, rayDirection, it->get()->currentAabb) && it->get()!=this) {//TODO [1]
+		if(enginetool::ScenePart::RayIntersection(hitPoint, dirFrac, position, rayDirection, it->get()->currentAabb) && it->get()!=this) {
 			//std::cout << "Hit point: " << hitPoint.x << " " << hitPoint.y << " " << hitPoint.z << "\n";
 			if(hitPoint.y > groundLevel) groundLevel = hitPoint.y;
 		}
 	}
 	//std::cout << "Ground is at: " << groundLevel << std::endl;
 	return groundLevel;
+}
+
+void Actor::CheckCollisions() {
+	std::vector<std::shared_ptr<Actor>>::iterator it;
+	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
+		if(enginetool::ScenePart::Overlaps(this->currentAabb, it->get()->currentAabb) && it->get()!=this) {
+			std::cout << this->name << " collides with: " << it->get()->name << "\n";
+			SetState(ActorState::Reflection);		
+		}
+	}
 }
 
 void Actor::SaveToFile() {
@@ -127,13 +137,16 @@ void Actor::SetState(ActorState state) {
 			break;
 		case ActorState::Jump:
 			StartJump();
+			break;
+		case ActorState::Reflection:
+			StartReflect();
 			break;	
 	} 
 }
 
 void Actor::UpdateAABB(){
-	currentAabb.max = assignedMesh->aabb.min + position;
-	currentAabb.min = assignedMesh->aabb.max + position;
+	currentAabb.max = assignedMesh->aabb.max + position;
+	currentAabb.min = assignedMesh->aabb.min + position;
 }
 
 void Actor::offManualControl() {
@@ -179,6 +192,13 @@ void Actor::StartCrouch() {
 
 void Actor::StartFall() {
 	inAir = true;
+}
+
+void Actor::StartReflect() {
+	//R = V - 2 N (N.V) / (N.N)
+	
+	movementGoal.x *=(-1);
+	movementGoal.z *=(-1);
 }
 
 void Actor::StartWalkBackward() {
