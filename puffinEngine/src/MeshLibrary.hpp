@@ -15,7 +15,8 @@ public:
     static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
     void Load(enginetool::ScenePart& mesh);
     
-
+    std::vector<uint32_t> aabbIndices;
+	std::vector<enginetool::VertexLayout> aabbVertices;
     std::vector<uint32_t> indices;
 	std::vector<enginetool::VertexLayout> vertices;
 
@@ -23,5 +24,7 @@ public:
     std::string testValue = "I came from MeshLibrary";
 private:
     void FillLibrary();
+    void GetAABBDrawData();
+    void PrepeareAABBs();
     Device* logicalDevice;
 };

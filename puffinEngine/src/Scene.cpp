@@ -703,7 +703,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 			for (size_t k = 0; k < actors.size(); k++) {
-				if(actors[k]->visible) vkCmdDrawIndexed(command_buffers[i], aabbIndices.size(), 1, 0, k*8, 0);
+				if(actors[k]->visible) vkCmdDrawIndexed(command_buffers[i], meshLibrary->aabbIndices.size(), 1, 0, k*8, 0);
 			}
 		}
 
@@ -1027,6 +1027,7 @@ bool Scene::FindDestinationPosition(glm::vec3& destinationPoint) {
 }
 
 void Scene::DeSelect() {
+	//selectedActor->movementGoal = glm::vec3(0.0f, 0.0f, 0.0f);
 	selectedActor = nullptr;
 	std::cout << "Deselected" << std::endl;
 }
@@ -1558,8 +1559,6 @@ void Scene::CreateDescriptorSet() {
 		refractDescriptorWrites[7].dstSet = scene_material[i].refractDescriptorSet;
 
 		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(refractDescriptorWrites.size()), refractDescriptorWrites.data(), 0, nullptr);
-
-
 	}
 
 	// SkyBox descriptor set
@@ -1833,16 +1832,19 @@ void Scene::CreateSelectRay() {
 	CreateMappedIndexBuffer(rayIndices, index_buffers.selectRay);
 }
 
-void Scene::CreateAABBBuffers() {
-	CreateMappedVertexBuffer(aabbVertices, vertex_buffers.aabb);
-	CreateIndexBuffer(aabbIndices, index_buffers.aabb);
+void Scene::CreateActorsBuffers() {
+	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
+	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
+	
+	CreateMappedVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
+	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
 }
 
 void Scene::UpdateAABBDrawData() {
 	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.aabb.mapped;
 
 	for (const auto& k : actors) {
-		aabbVertices = {
+		meshLibrary->aabbVertices = {
 			{{k->currentAabb.max.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 			{{k->currentAabb.min.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
 			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
@@ -1853,39 +1855,12 @@ void Scene::UpdateAABBDrawData() {
 			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 		};
 
-		memcpy(vtxDst, aabbVertices.data(), aabbVertices.size() * sizeof(enginetool::VertexLayout));
+		memcpy(vtxDst, meshLibrary->aabbVertices.data(), meshLibrary->aabbVertices.size() * sizeof(enginetool::VertexLayout));
 		vtxDst += 8;
 	}
 
 	vertex_buffers.aabb.Flush();
 }	
-
-void Scene::GetAABBDrawData() {
-
-	// aabbVertices = {
-	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
-	// };
-
-	for (uint32_t i = 0; i < actors.size(); i++) {
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.max.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.max.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
-		aabbVertices.push_back({{actors[i]->assignedMesh->aabb.min.x, actors[i]->assignedMesh->aabb.min.y, actors[i]->assignedMesh->aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
-	}
-	
-	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
-}
 
 void Scene::LoadAssets() {
 	InitMaterials();
@@ -1896,13 +1871,13 @@ void Scene::LoadAssets() {
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
-	CreateLandscape("Test object sphere", "I am simple sphere, hello!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"]);
+	CreateLandscape("Test object amelinium teapot", "You can't paint this!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"]);
 	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), meshLibrary->meshes["box"]);
 	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), meshLibrary->meshes["human"]);
 	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), meshLibrary->meshes["sphere"]);
 	
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object sphere", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f), meshLibrary->meshes["box"]);
+	CreateLandscape("Test object small green box ", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f), meshLibrary->meshes["box"]);
 	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f), meshLibrary->meshes["plane"]);
 	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f), meshLibrary->meshes["plane"]);
 	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f), meshLibrary->meshes["plane"]);
@@ -1922,12 +1897,8 @@ void Scene::LoadAssets() {
 	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f), meshLibrary->meshes["human"]);
 	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f), meshLibrary->meshes["human"]);
 	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f), meshLibrary->meshes["human"]);
-	
-	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
-	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
-		
-	GetAABBDrawData();
-	CreateAABBBuffers();
+			
+	CreateActorsBuffers();
 
 	// assign shaders to meshes
 	sceneCameras[0]->assignedMaterial = &scene_material[4]; //camera
@@ -1963,6 +1934,7 @@ void Scene::CreateCharacter(std::string name, std::string description, glm::vec3
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->assignedMesh = &mesh;
 	character->assignedMaterial = &scene_material[0];
+	character->collider=true;
 	actors.emplace_back(std::move(character));
 }
 
@@ -1992,8 +1964,8 @@ void Scene::CreateSea(std::string name, std::string description, glm::vec3 posit
 
 void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
 	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
-	cloud->mesh.meshFilename = meshFilename;
-	MeshLibrary::LoadFromFile(cloud->mesh.meshFilename, cloud->mesh, cloud->indices, cloud->vertices);
+	cloudMesh.meshFilename = meshFilename;
+	MeshLibrary::LoadFromFile(cloudMesh.meshFilename, cloudMesh, cloud->indices, cloud->vertices);
 	CreateVertexBuffer(cloud->vertices, vertex_buffers.clouds);
 	CreateIndexBuffer(cloud->indices, index_buffers.clouds);
 	clouds.emplace_back(std::move(cloud));

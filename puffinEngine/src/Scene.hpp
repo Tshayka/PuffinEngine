@@ -107,7 +107,7 @@ private:
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck); 
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
-	void CreateAABBBuffers();
+	void CreateActorsBuffers();
 	void CreateCommandPool(); // neccsesary to create command buffer
 	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
@@ -136,7 +136,6 @@ private:
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
-	void GetAABBDrawData();
 	bool HasStencilComponent(VkFormat);
 	void InitMaterials();
 	void InitSwapchainImageViews(); 
@@ -322,16 +321,14 @@ private:
 	std::vector<enginetool::SceneMaterial> scene_material;
 	
 	enginetool::ScenePart element;
-	enginetool::ScenePart cloud_mesh;
+	enginetool::ScenePart cloudMesh;
 	enginetool::ScenePart* selectionIndicatorMesh;
 
 	// std::vector<uint32_t> objects_indices;
 	// std::vector<enginetool::VertexLayout> objectsVertices;
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
-	std::vector<uint32_t> aabbIndices;
-	std::vector<enginetool::VertexLayout> aabbVertices;
-
+	
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;

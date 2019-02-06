@@ -28,7 +28,9 @@ MeshLibrary::~MeshLibrary() {
 void MeshLibrary::Init(Device* device) {
 	logicalDevice = device;
 
-    FillLibrary(); 
+    FillLibrary();
+	PrepeareAABBs();
+	GetAABBDrawData();  
 }
 
 void MeshLibrary::LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices){
@@ -113,11 +115,11 @@ void MeshLibrary::FillLibrary() {
         {"SmallCoinB", smallCoinB}
     };
 
-    for (auto& m : meshes) {
-        Load(m.second);
-        m.second.GetAABB(vertices);
-    }
-    
+    for (auto& m : meshes) Load(m.second);    
+}
+
+void MeshLibrary::PrepeareAABBs() {
+	for (auto& m : meshes) m.second.GetAABB(vertices);
 }
 
 void MeshLibrary::Load(enginetool::ScenePart& mesh){
@@ -179,6 +181,33 @@ void MeshLibrary::Load(enginetool::ScenePart& mesh){
 		}	
 		mesh.indexCount = index_offset;
 	}
+}
+
+void MeshLibrary::GetAABBDrawData() {
+
+	// aabbVertices = {
+	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.max.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.max.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
+	// 	{{mesh.aabb.min.x, mesh.aabb.min.y, mesh.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
+	// };
+
+	for (auto& m : meshes) {
+		aabbVertices.push_back({{m.second.aabb.max.x, m.second.aabb.max.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.max.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.min.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.max.x, m.second.aabb.min.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.max.x, m.second.aabb.min.y, m.second.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.max.x, m.second.aabb.max.y, m.second.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.max.y, m.second.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
+		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.min.y, m.second.aabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	}
+	
+	aabbIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
 }
 
 void MeshLibrary::DeInit() {
