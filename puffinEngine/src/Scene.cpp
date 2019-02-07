@@ -990,7 +990,7 @@ void Scene::UpdateScene(const float &dt, const float &time, float const &accumul
 	UpdateGUI((float)accumulator, (uint32_t)time);
 
 	UpdateDynamicUniformBuffer(time);
-	UpdateSkyboxUniformBuffer();
+	UpdateSkyboxUniformBuffer(time);
 	UpdateOceanUniformBuffer(time);
 	UpdateUBOParameters();
 	UpdateStaticUniformBuffer(time);
@@ -1086,6 +1086,7 @@ void Scene::UpdateStaticUniformBuffer(const float& time) {
 	UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;
+	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
@@ -1169,15 +1170,14 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 		vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange);
 }
 
-void Scene::UpdateSkyboxUniformBuffer() {
+void Scene::UpdateSkyboxUniformBuffer(const float& time) {
 	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSB.proj[1][1] *= -1;
 	UBOSB.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSB.view[3][0] *= 0;
 	UBOSB.view[3][1] *= 0;
 	UBOSB.view[3][2] *= 0;
-	UBOSB.exposure = 1.0f;
-	UBOSB.gamma = 1.0f;
+	UBOSB.time = time;
 	memcpy(uniform_buffers.skybox.mapped, &UBOSB, sizeof(UBOSB));
 	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBOSB, sizeof(UBOSB));
 
@@ -1281,14 +1281,21 @@ void Scene::CreateDescriptorSetLayout() {
 	SkyboxUBOLayoutBinding.pImmutableSamplers = nullptr;
 	SkyboxUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
+	VkDescriptorSetLayoutBinding SkyboxParamLayoutBinding = {};
+	SkyboxParamLayoutBinding.binding = 1;
+	SkyboxParamLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	SkyboxParamLayoutBinding.descriptorCount = 1;
+	SkyboxParamLayoutBinding.pImmutableSamplers = nullptr;
+	SkyboxParamLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
 	VkDescriptorSetLayoutBinding SkyboxImageLayoutBinding = {};
-	SkyboxImageLayoutBinding.binding = 1;
+	SkyboxImageLayoutBinding.binding = 2;
 	SkyboxImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	SkyboxImageLayoutBinding.descriptorCount = 1;
 	SkyboxImageLayoutBinding.pImmutableSamplers = nullptr;
 	SkyboxImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 2> skybox_bindings = { SkyboxUBOLayoutBinding, SkyboxImageLayoutBinding };
+	std::array<VkDescriptorSetLayoutBinding, 3> skybox_bindings = { SkyboxUBOLayoutBinding, SkyboxParamLayoutBinding, SkyboxImageLayoutBinding };
 
 	VkDescriptorSetLayoutCreateInfo SkyboxLayoutInfo = {};
 	SkyboxLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1426,7 +1433,7 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 11);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 10);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 11);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -1484,7 +1491,7 @@ void Scene::CreateDescriptorSet() {
 		BufferInfo.buffer = uniform_buffers.stillObjects.buffer;
 		BufferInfo.offset = 0;
 		BufferInfo.range = sizeof(UboStaticGeometry);
-
+		
 		VkDescriptorBufferInfo ObjectBufferParametersInfo = {};
 		ObjectBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
 		ObjectBufferParametersInfo.offset = 0;
@@ -1631,12 +1638,17 @@ void Scene::CreateDescriptorSet() {
 	SkyboxBufferInfo.offset = 0;
 	SkyboxBufferInfo.range = sizeof(UboSkybox);
 
+	VkDescriptorBufferInfo SkyboxBufferParametersInfo = {};
+	SkyboxBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	SkyboxBufferParametersInfo.offset = 0;
+	SkyboxBufferParametersInfo.range = sizeof(UboParam);
+
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 	ImageInfo.imageView = sky->skybox_texture.texture_image_view;
 	ImageInfo.sampler = sky->skybox_texture.texture_sampler;
 
-	std::array<VkWriteDescriptorSet, 2> skyboxDescriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 3> skyboxDescriptorWrites = {};
 
 	skyboxDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
 	skyboxDescriptorWrites[0].dstSet = skybox_descriptor_set;
@@ -1650,9 +1662,17 @@ void Scene::CreateDescriptorSet() {
 	skyboxDescriptorWrites[1].dstSet = skybox_descriptor_set;
 	skyboxDescriptorWrites[1].dstBinding = 1;
 	skyboxDescriptorWrites[1].dstArrayElement = 0;
-	skyboxDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	skyboxDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 	skyboxDescriptorWrites[1].descriptorCount = 1;
-	skyboxDescriptorWrites[1].pImageInfo = &ImageInfo;
+	skyboxDescriptorWrites[1].pBufferInfo = &SkyboxBufferParametersInfo;
+
+	skyboxDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	skyboxDescriptorWrites[2].dstSet = skybox_descriptor_set;
+	skyboxDescriptorWrites[2].dstBinding = 2;
+	skyboxDescriptorWrites[2].dstArrayElement = 0;
+	skyboxDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	skyboxDescriptorWrites[2].descriptorCount = 1;
+	skyboxDescriptorWrites[2].pImageInfo = &ImageInfo;
 
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(skyboxDescriptorWrites.size()), skyboxDescriptorWrites.data(), 0, nullptr);
 
@@ -1661,11 +1681,18 @@ void Scene::CreateDescriptorSet() {
 	skyboxReflectBufferInfo.offset = 0;
 	skyboxReflectBufferInfo.range = sizeof(UboSkybox);
 
-	std::array<VkWriteDescriptorSet, 2> skyboxReflectionDescriptorWrites = skyboxDescriptorWrites;
+	VkDescriptorBufferInfo skyboxReflectBufferParametersInfo = {};
+	skyboxReflectBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	skyboxReflectBufferParametersInfo.offset = 0;
+	skyboxReflectBufferParametersInfo.range = sizeof(UboParam);
+
+	std::array<VkWriteDescriptorSet, 3> skyboxReflectionDescriptorWrites = skyboxDescriptorWrites;
 
 	skyboxReflectionDescriptorWrites[0].dstSet = skyboxReflectionDescriptorSet;
 	skyboxReflectionDescriptorWrites[0].pBufferInfo = &skyboxReflectBufferInfo;
 	skyboxReflectionDescriptorWrites[1].dstSet = skyboxReflectionDescriptorSet;
+	skyboxReflectionDescriptorWrites[1].pBufferInfo = &skyboxReflectBufferParametersInfo;
+	skyboxReflectionDescriptorWrites[2].dstSet = skyboxReflectionDescriptorSet;
 	
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(skyboxReflectionDescriptorWrites.size()), skyboxReflectionDescriptorWrites.data(), 0, nullptr);
 
@@ -1674,11 +1701,18 @@ void Scene::CreateDescriptorSet() {
 	skyboxRefractionBufferInfo.offset = 0;
 	skyboxRefractionBufferInfo.range = sizeof(UboSkybox);
 
-	std::array<VkWriteDescriptorSet, 2> skyboxRefractionDescriptorWrites = skyboxDescriptorWrites;
+	VkDescriptorBufferInfo skyboxRefractionBufferParametersInfo = {};
+	skyboxRefractionBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	skyboxRefractionBufferParametersInfo.offset = 0;
+	skyboxRefractionBufferParametersInfo.range = sizeof(UboParam);
+
+	std::array<VkWriteDescriptorSet, 3> skyboxRefractionDescriptorWrites = skyboxDescriptorWrites;
 
 	skyboxRefractionDescriptorWrites[0].dstSet = skyboxRefractionDescriptorSet;
 	skyboxRefractionDescriptorWrites[0].pBufferInfo = &skyboxRefractionBufferInfo;
-	skyboxRefractionDescriptorWrites[1].dstSet = skyboxRefractionDescriptorSet;
+	skyboxRefractionDescriptorWrites[1].dstSet = skyboxReflectionDescriptorSet;
+	skyboxRefractionDescriptorWrites[1].pBufferInfo = &skyboxRefractionBufferParametersInfo;
+	skyboxRefractionDescriptorWrites[2].dstSet = skyboxRefractionDescriptorSet;
 	
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(skyboxRefractionDescriptorWrites.size()), skyboxRefractionDescriptorWrites.data(), 0, nullptr);
 	

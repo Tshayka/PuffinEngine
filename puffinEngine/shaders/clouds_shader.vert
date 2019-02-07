@@ -2,8 +2,8 @@
 #extension GL_ARB_separate_shader_objects : enable
 #extension GL_ARB_shading_language_420pack : enable
 
-layout(set = 2, binding = 0) uniform UboClouds
-{
+layout(set = 2, binding = 0) uniform UboClouds {
+	mat4 model;
 	mat4 proj;
     mat4 view;
 	vec3 cameraPos;

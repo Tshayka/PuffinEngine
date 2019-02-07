@@ -150,7 +150,7 @@ private:
 	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
 	void UpdateSelectionIndicatorUniformBuffer(const float& time);
-	void UpdateSkyboxUniformBuffer();
+	void UpdateSkyboxUniformBuffer(const float& time);
 	void UpdateStaticUniformBuffer(const float& time);
 	void UpdateUBOOffscreen(const float& time);
 	void UpdateUBOParameters();
@@ -169,7 +169,8 @@ private:
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 cameraPos; 
+		glm::vec3 cameraPos;
+		float time; 
 	} UBOSG;
 
 	struct UboSelectionIndicator {
@@ -184,7 +185,8 @@ private:
 		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
-		glm::vec3 cameraPos; 
+		glm::vec3 cameraPos;
+		float time; 
 	} UBOO;
 
 	// UBO Static parameters
@@ -196,10 +198,11 @@ private:
 	} UBOP;
 
 	struct UboSkybox {
-		glm::mat4 view;
+		glm::mat4 model;
 		glm::mat4 proj;
-		float exposure;
-		float gamma;
+		glm::mat4 view;
+		glm::vec3 cameraPos;
+		float time;
 	} UBOSB;
 
 	struct UboSea {
@@ -211,17 +214,12 @@ private:
 	} UBOSE;
 
 	struct UboClouds {
+		glm::mat4 model;
 		glm::mat4 proj;
 		glm::mat4 view;
 		glm::vec3 cameraPos;
 		float time;
 	} UBOC;
-
-	// struct UboLine {
-	// 	glm::mat4 proj;
-	// 	glm::mat4 view;
-	// 	glm::mat4 model;
-	// };
 
 	// UBO Dynamic that contains all clouds matrices
 	struct UboCloudsMatrices {
