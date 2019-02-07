@@ -91,6 +91,8 @@ namespace enginetool {
 
 		uint32_t indexBase = 0;
 		uint32_t indexCount = 0;
+		uint32_t indexBaseAabb = 0;
+		
 		std::string meshFilename;
 
 		void GetAABB(const std::vector<enginetool::VertexLayout>& vertices) {

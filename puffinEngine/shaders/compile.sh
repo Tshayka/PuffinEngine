@@ -21,3 +21,6 @@
 
 /home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/selectionCrystalShader.vert -o puffinEngine/shaders/selectionCrystalShader.vert.spv
 /home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/selectionCrystalShader.frag -o puffinEngine/shaders/selectionCrystalShader.frag.spv
+
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/aabbShader.vert -o puffinEngine/shaders/aabbShader.vert.spv
+/home/sandro/vulkan/1.1.85.0/x86_64/bin/glslangValidator -V puffinEngine/shaders/aabbShader.frag -o puffinEngine/shaders/aabbShader.frag.spv

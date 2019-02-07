@@ -146,7 +146,6 @@ private:
 	void PrepareOffscreen();
 	void RandomPositions();
 	void SelectActor(); 
-	void UpdateAABBDrawData();
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
@@ -329,6 +328,7 @@ private:
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
 	
+	VkDescriptorSet aabbDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
@@ -337,6 +337,7 @@ private:
 	VkDescriptorSet skyboxRefractionDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet selectionIndicatorDescriptorSet = VK_NULL_HANDLE;
 	
+	VkDescriptorSetLayout aabbDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout lineDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;

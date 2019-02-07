@@ -197,6 +197,7 @@ void MeshLibrary::GetAABBDrawData() {
 	// };
 
 	for (auto& m : meshes) {
+		m.second.indexBaseAabb = static_cast<uint32_t>(aabbVertices.size());
 		aabbVertices.push_back({{m.second.aabb.max.x, m.second.aabb.max.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.max.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
 		aabbVertices.push_back({{m.second.aabb.min.x, m.second.aabb.min.y, m.second.aabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});

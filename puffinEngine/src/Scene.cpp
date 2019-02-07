@@ -311,12 +311,14 @@ void Scene::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	VertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	std::array<VkDescriptorSetLayout, 6> layouts = { descriptor_set_layout, 
+	std::array<VkDescriptorSetLayout, 7> layouts = { descriptor_set_layout, 
 													skybox_descriptor_set_layout, 
 													clouds_descriptor_set_layout, 
 													oceanDescriptorSetLayout, 
 													lineDescriptorSetLayout,
-													selectionIndicatorDescriptorSetLayout };
+													selectionIndicatorDescriptorSetLayout,
+													aabbDescriptorSetLayout 
+													};
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -519,12 +521,43 @@ void Scene::CreateGraphicsPipeline() {
 	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
 	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &selectRayPipeline));
 	Rasterization.lineWidth = 1.0f;
-	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &aabbPipeline));
 	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
 
 	vkDestroyShaderModule(logicalDevice->device, fragLineShaderModule, nullptr);
 	vkDestroyShaderModule(logicalDevice->device, vertLineShaderModule, nullptr); 
+
+	// VI. Aabb pipeline
+
+	auto vertAabbShaderCode = enginetool::readFile("puffinEngine/shaders/aabbShader.vert.spv");
+	auto fragAabbShaderCode = enginetool::readFile("puffinEngine/shaders/aabbShader.frag.spv");
+
+	VkShaderModule vertAabbShaderModule = logicalDevice->CreateShaderModule(vertAabbShaderCode);
+	VkShaderModule fragAabbShaderModule = logicalDevice->CreateShaderModule(fragAabbShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertAabbShaderStageInfo = {};
+	vertAabbShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertAabbShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertAabbShaderStageInfo.module = vertAabbShaderModule;
+	vertAabbShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragAabbShaderStageInfo = {};
+	fragAabbShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragAabbShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragAabbShaderStageInfo.module = fragAabbShaderModule;
+	fragAabbShaderStageInfo.pName = "main";
+
+	shaderStages[0] = vertAabbShaderStageInfo;
+	shaderStages[1] = fragAabbShaderStageInfo;
+
+	Rasterization.polygonMode = VK_POLYGON_MODE_LINE; 
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &aabbPipeline));
+	InputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
+
+	vkDestroyShaderModule(logicalDevice->device, fragAabbShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->device, vertAabbShaderModule, nullptr); 
 
 	// VI. Clouds pipeline
 	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
@@ -697,13 +730,17 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if(displayAabb) {
-			UpdateAABBDrawData();
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
+			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 6, 1, &aabbDescriptorSet, 0, nullptr);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
-			for (size_t k = 0; k < actors.size(); k++) {
-				if(actors[k]->visible) vkCmdDrawIndexed(command_buffers[i], meshLibrary->aabbIndices.size(), 1, 0, k*8, 0);
+			for (const auto& a : actors) {
+				
+				if(a->visible) {
+					pushConstants.pos = a->position;
+					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+					vkCmdDrawIndexed(command_buffers[i], 24, 1, 0, a->assignedMesh->indexBaseAabb, 0);
+				}
 			}
 		}
 
@@ -1362,6 +1399,23 @@ void Scene::CreateDescriptorSetLayout() {
 	SelectionIndicatorLayoutInfo.pBindings = selectionIndicatorBindings.data();
 
 	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &SelectionIndicatorLayoutInfo, nullptr, &selectionIndicatorDescriptorSetLayout));
+
+	// Aabb
+	VkDescriptorSetLayoutBinding aabbUBOLayoutBinding = {};
+	aabbUBOLayoutBinding.binding = 0;
+	aabbUBOLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	aabbUBOLayoutBinding.descriptorCount = 1;
+	aabbUBOLayoutBinding.pImmutableSamplers = nullptr;
+	aabbUBOLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+	std::array<VkDescriptorSetLayoutBinding, 1> aabbBindings = { aabbUBOLayoutBinding };
+
+	VkDescriptorSetLayoutCreateInfo AabbLayoutInfo = {};
+	AabbLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	AabbLayoutInfo.bindingCount = static_cast<uint32_t>(aabbBindings.size());
+	AabbLayoutInfo.pBindings = aabbBindings.data();
+
+	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &AabbLayoutInfo, nullptr, &aabbDescriptorSetLayout));
 }
 
 void Scene::CreateDescriptorPool() {
@@ -1372,13 +1426,13 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 11);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 9);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 10);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 7); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 8); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
@@ -1796,6 +1850,32 @@ void Scene::CreateDescriptorSet() {
 	selectionIndicatorDescriptorWrites[1].pImageInfo = &SelectionIndicatorImageInfo;
 
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(selectionIndicatorDescriptorWrites.size()), selectionIndicatorDescriptorWrites.data(), 0, nullptr);
+
+	// Aabb descriptor set
+	VkDescriptorSetAllocateInfo AabbAllocInfo = {};
+	AabbAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	AabbAllocInfo.descriptorPool = descriptorPool;
+	AabbAllocInfo.descriptorSetCount = 1;
+	AabbAllocInfo.pSetLayouts = &aabbDescriptorSetLayout;
+
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AabbAllocInfo, &aabbDescriptorSet));
+
+	VkDescriptorBufferInfo AabbBufferInfo = {};
+	AabbBufferInfo.buffer = uniform_buffers.line.buffer;
+	AabbBufferInfo.offset = 0;
+	AabbBufferInfo.range = sizeof(UboStaticGeometry);
+
+	std::array<VkWriteDescriptorSet, 1> aabbDescriptorWrites = {};
+
+	aabbDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	aabbDescriptorWrites[0].dstSet = aabbDescriptorSet;
+	aabbDescriptorWrites[0].dstBinding = 0;
+	aabbDescriptorWrites[0].dstArrayElement = 0;
+	aabbDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	aabbDescriptorWrites[0].descriptorCount = 1;
+	aabbDescriptorWrites[0].pBufferInfo = &AabbBufferInfo;
+
+	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(aabbDescriptorWrites.size()), aabbDescriptorWrites.data(), 0, nullptr);
 }
 
 void Scene::Test() {
@@ -1836,31 +1916,9 @@ void Scene::CreateActorsBuffers() {
 	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
 	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
 	
-	CreateMappedVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
+	CreateVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
 	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
 }
-
-void Scene::UpdateAABBDrawData() {
-	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.aabb.mapped;
-
-	for (const auto& k : actors) {
-		meshLibrary->aabbVertices = {
-			{{k->currentAabb.max.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.min.x, k->currentAabb.max.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.max.x, k->currentAabb.min.y, k->currentAabb.max.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.max.x, k->currentAabb.min.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.max.x, k->currentAabb.max.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.min.x, k->currentAabb.max.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}},
-			{{k->currentAabb.min.x, k->currentAabb.min.y, k->currentAabb.min.z}, {1.0f, 1.0f, 1.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
-		};
-
-		memcpy(vtxDst, meshLibrary->aabbVertices.data(), meshLibrary->aabbVertices.size() * sizeof(enginetool::VertexLayout));
-		vtxDst += 8;
-	}
-
-	vertex_buffers.aabb.Flush();
-}	
 
 void Scene::LoadAssets() {
 	InitMaterials();
@@ -2291,6 +2349,7 @@ void Scene::DeInitScene() {
 	DeInitIndexAndVertexBuffer();
 	DeInitTextureImage();
 	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice->device, aabbDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, lineDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, oceanDescriptorSetLayout, nullptr);

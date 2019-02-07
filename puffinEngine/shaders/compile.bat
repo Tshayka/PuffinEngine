@@ -21,3 +21,6 @@ C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V line_stats.frag -o line_stats.
 
 C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V selectionCrystalShader.vert -o selectionCrystalShader.vert.spv
 C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V selectionCrystalShader.frag -o selectionCrystalShader.frag.spv
+
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V aabbShader.vert -o aabbShader.vert.spv
+C:/VulkanSDK/1.0.57.0/Bin/glslangValidator.exe -V aabbShader.frag -o aabbShader.frag.spv
