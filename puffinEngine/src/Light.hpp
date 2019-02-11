@@ -29,6 +29,8 @@ public:
 	virtual ~Skybox();
 
 	void CreateMesh();
+	std::vector<uint32_t> indices;// TODO remove in future
+	std::vector<enginetool::VertexLayout> vertices; // TODO remove in future
 
 	float horizon;
 };

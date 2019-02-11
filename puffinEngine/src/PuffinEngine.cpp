@@ -1,6 +1,7 @@
 #include <iostream>
 #include <memory>
 #include <string>
+#include <thread>
 
 #include "PuffinEngine.hpp"
 
@@ -46,6 +47,11 @@ void PuffinEngine::CreateDevice() {
 	world_device->InitDevice(window);
 }
 
+void PuffinEngine::GatherThreadInfo() {
+	numThreads = std::thread::hardware_concurrency();
+	std::cout << "numThreads = " << numThreads << std::endl;
+}
+
 void PuffinEngine::CreateImGuiMenu() {
 	console = new GuiElement();
 	console->InitMenu(world_device);
@@ -71,6 +77,11 @@ void PuffinEngine::CreateMousePicker() {
 	mousePicker->Init(world_device);
 }
 
+void PuffinEngine::CreateMaterialLibrary() {
+	materialLibrary = new MaterialLibrary();
+	materialLibrary->Init(world_device);
+}
+
 void PuffinEngine::CreateMeshLibrary() {
 	meshLibrary = new MeshLibrary();
 	meshLibrary->Init(world_device);
@@ -83,16 +94,18 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary);
+	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary, materialLibrary);
 }
 
 void PuffinEngine::InitVulkan() {
 	CreateDevice();
+	GatherThreadInfo();
 	CreateImGuiMenu();
 	CreateGuiTextOverlay();
 	CreateMainUi();
 	CreateGuiMainHub();
 	CreateMousePicker();
+	CreateMaterialLibrary();
 	CreateMeshLibrary();
 	CreateScene();
 	CreateSemaphores();
@@ -539,6 +552,7 @@ void PuffinEngine::CleanUp() {
 	DestroyMousePicker();
 	DestroyScene();
 	DestroyMeshLibrary();
+	DestroyMaterialLibrary();
 	DestroyGUI();
 	DestroyDevice();
 	glfwDestroyWindow(window);
@@ -566,6 +580,12 @@ void PuffinEngine::DestroyDevice() {
 	world_device = nullptr;
 }
 
+void PuffinEngine::DestroyMaterialLibrary() {
+	materialLibrary->DeInit();
+	delete materialLibrary;
+	materialLibrary = nullptr;
+}
+
 void PuffinEngine::DestroyMeshLibrary() {
 	meshLibrary->DeInit();
 	delete meshLibrary;
@@ -582,12 +602,15 @@ void PuffinEngine::DestroyGUI() {
 	mainUi->DeInit();
 	delete mainUi;
 	mainUi = nullptr;
+
 	guiStatistics->DeInit();
 	delete guiStatistics;
 	guiStatistics = nullptr;
+
 	console->DeInitMenu();
 	delete console;
 	console = nullptr;
+
 	guiMainHub->DeInit();
 	delete guiMainHub;
 	guiMainHub = nullptr;

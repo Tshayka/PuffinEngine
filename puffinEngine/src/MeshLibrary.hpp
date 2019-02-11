@@ -11,20 +11,18 @@ public:
 
     void DeInit();
     void Init(Device* device);
-    
-    static void LoadFromFile(const std::string &filename, enginetool::ScenePart& mesh, std::vector<uint32_t>& indices, std::vector<enginetool::VertexLayout>& vertices);
-    void Load(enginetool::ScenePart& mesh);
-    
+        
     std::vector<uint32_t> aabbIndices;
 	std::vector<enginetool::VertexLayout> aabbVertices;
     std::vector<uint32_t> indices;
 	std::vector<enginetool::VertexLayout> vertices;
 
     std::map<std::string, enginetool::ScenePart> meshes;
-    std::string testValue = "I came from MeshLibrary";
+
 private:
     void FillLibrary();
     void GetAABBDrawData();
+    void Load(enginetool::ScenePart& mesh);
     void PrepeareAABBs();
     Device* logicalDevice;
 };

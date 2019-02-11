@@ -13,6 +13,7 @@
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
 #include "MainCharacter.hpp"
+#include "MaterialLibrary.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
 #include "Texture.hpp"
@@ -33,7 +34,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -108,27 +109,27 @@ private:
 	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck); 
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateActorsBuffers();
+	void CreateBuffers();	
+	void CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
 	void CreateCommandPool(); // neccsesary to create command buffer
-	void CreateGUI(float, uint32_t);
 	void CreateDepthResources();
 	void CreateDescriptorPool();
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateFramebuffers();
 	void CreateGraphicsPipeline();
+	void CreateGUI(float, uint32_t);
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
+	void CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
 	void CreateSea(std::string name, std::string description, glm::vec3 position);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon);
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
-	void CreateUniformBuffer();	
-	void CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateSelectRay(); 
 	void CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename);
+	void CreateCloud(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
@@ -140,8 +141,6 @@ private:
 	void InitMaterials();
 	void InitSwapchainImageViews(); 
 	void LoadAssets();
-	void LoadSkyboxTexture(TextureLayout&);
-	void LoadTexture(std::string, TextureLayout&);
 	void PrepeareMainCharacter(enginetool::ScenePart &mesh);
 	void PrepareOffscreen();
 	void RandomPositions();
@@ -232,6 +231,7 @@ private:
 		glm::vec3 pos;
 		bool glow;
 		glm::vec3 color;
+		//alignas(16) glm::vec2
 	} pushConstants;
 
 	struct {
@@ -255,7 +255,6 @@ private:
 		enginetool::Buffer meshLibraryObjects;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
-		enginetool::Buffer clouds;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
 	} vertex_buffers;
@@ -264,7 +263,6 @@ private:
 		enginetool::Buffer meshLibraryObjects;
 		enginetool::Buffer skybox;
 		enginetool::Buffer ocean;
-		enginetool::Buffer clouds;
 		enginetool::Buffer selectRay;
 		enginetool::Buffer aabb;
 	} index_buffers;
@@ -306,23 +304,11 @@ private:
 	VkPipeline skyboxReflectionPipeline;
 	VkPipeline selectionIndicatorPipeline;
 	
-	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *defaultMaterial = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *rust = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *chrome = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *plastic = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *lightbulbMat = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *cameraMat = new enginetool::SceneMaterial(logicalDevice);
-	enginetool::SceneMaterial *characterMat = new enginetool::SceneMaterial(logicalDevice);
-
-	std::vector<enginetool::SceneMaterial> scene_material;
+	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial();
 	
 	enginetool::ScenePart element;
-	enginetool::ScenePart cloudMesh;
 	enginetool::ScenePart* selectionIndicatorMesh;
 
-	// std::vector<uint32_t> objects_indices;
-	// std::vector<enginetool::VertexLayout> objectsVertices;
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
 	
@@ -330,7 +316,7 @@ private:
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet oceanDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skybox_descriptor_set = VK_NULL_HANDLE;
-	VkDescriptorSet clouds_descriptor_set = VK_NULL_HANDLE;
+	VkDescriptorSet cloudDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxReflectionDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet skyboxRefractionDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet selectionIndicatorDescriptorSet = VK_NULL_HANDLE;
@@ -340,7 +326,7 @@ private:
 	VkDescriptorSetLayout descriptor_set_layout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout oceanDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout skybox_descriptor_set_layout = VK_NULL_HANDLE;
-	VkDescriptorSetLayout clouds_descriptor_set_layout = VK_NULL_HANDLE;
+	VkDescriptorSetLayout cloudDescriptorSetLayout = VK_NULL_HANDLE;
 	VkDescriptorSetLayout selectionIndicatorDescriptorSetLayout;
 
 	VkCommandPool commandPool;
@@ -352,6 +338,7 @@ private:
 	VkViewport viewport = {};
 
 	Device* logicalDevice = nullptr;
+	MaterialLibrary* materialLibrary = nullptr;
 	MeshLibrary* meshLibrary = nullptr;
 	MousePicker* mousePicker = nullptr;	
 };

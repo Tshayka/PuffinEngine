@@ -51,9 +51,6 @@ public:
 	
 	enginetool::ScenePart* assignedMesh;
 	enginetool::SceneMaterial* assignedMaterial;
-
-	std::vector<uint32_t> indices;// TODO remove
-	std::vector<enginetool::VertexLayout> vertices; // TODO remove
 	
 	enginetool::ScenePart::AABB currentAabb;
 	

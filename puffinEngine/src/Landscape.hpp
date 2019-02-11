@@ -27,6 +27,8 @@ public:
 	virtual ~Sea();
 
 	void CreateMesh();
+	std::vector<uint32_t> indices;// TODO remove in future
+	std::vector<enginetool::VertexLayout> vertices; // TODO remove in future
 
 private:
 

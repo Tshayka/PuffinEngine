@@ -1,9 +1,7 @@
 #include <algorithm> // "max" and "min" in VkExtent2D
 #include <fstream>
-#include <gli/gli.hpp>
 #include <iostream>
 #include <random>
-#include <stb_image.h>
 
 #include "LoadFile.cpp"
 #include "ErrorCheck.hpp"
@@ -51,13 +49,14 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
-	this->meshLibrary = meshLibrary; 
+	this->meshLibrary = meshLibrary;
+	this->materialLibrary = materialLibrary;  
 
-	this->meshLibrary->meshes.empty();
+	//this->meshLibrary->meshes.empty();
 	selectionIndicatorMesh = &meshLibrary->meshes["SmallCoinB"];
 
 	InitSwapchainImageViews();
@@ -66,7 +65,7 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 	PrepareOffscreen();
 	CreateFramebuffers();
 	LoadAssets();
-	CreateUniformBuffer();
+	CreateBuffers();
 	CreateDescriptorPool();
 	CreateDescriptorSetLayout();
 	CreateDescriptorSet();
@@ -313,7 +312,7 @@ void Scene::CreateGraphicsPipeline() {
 
 	std::array<VkDescriptorSetLayout, 7> layouts = { descriptor_set_layout, 
 													skybox_descriptor_set_layout, 
-													clouds_descriptor_set_layout, 
+													cloudDescriptorSetLayout, 
 													oceanDescriptorSetLayout, 
 													lineDescriptorSetLayout,
 													selectionIndicatorDescriptorSetLayout,
@@ -666,16 +665,16 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displayMainCharacter) {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 			std::array<VkDescriptorSet, 1> descriptorSets;
-			descriptorSets[0] = mainCharacter->assignedMaterial->descriptor_set;
+			descriptorSets[0] = mainCharacter->assignedMaterial->descriptorSet;
 			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->assignedMaterial->assigned_pipeline));
+			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->assignedMaterial->assignedPipeline));
 			pushConstants.pos = mainCharacter->position;
 			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
@@ -687,7 +686,7 @@ void Scene::CreateCommandBuffers() {
 			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
 			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(seas[0]->indices.size()), 1, 0, 0, 0);
+			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Sea>(seas[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displaySceneGeometry) {
@@ -697,9 +696,9 @@ void Scene::CreateCommandBuffers() {
 			for (const auto& a : actors) {
 				if(a->visible) {
 					std::array<VkDescriptorSet, 1> descriptorSets;
-					descriptorSets[0] = a->assignedMaterial->descriptor_set;
+					descriptorSets[0] = a->assignedMaterial->descriptorSet;
 					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*a->assignedMaterial->assigned_pipeline));
+					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*a->assignedMaterial->assignedPipeline));
 					pushConstants.pos = a->position;
 					pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
 					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
@@ -709,14 +708,14 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if (displayClouds)	{
+			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (cloudsWireframePipeline) : (cloudsPipeline));
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.clouds.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.clouds.buffer, 0, VK_INDEX_TYPE_UINT32);
-
+			
 			for (uint32_t k = 0; k < DYNAMIC_UB_OBJECTS; k++) {
 				uint32_t dynamic_offset = k * static_cast<uint32_t>(dynamicAlignment);
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &clouds_descriptor_set, 1, &dynamic_offset);
-				vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(clouds[0]->indices.size()), 1, 0, 0, 0);
+				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &cloudDescriptorSet, 1, &dynamic_offset);
+				vkCmdDrawIndexed(command_buffers[i], clouds[0]->assignedMesh->indexCount, 1, 0, clouds[0]->assignedMesh->indexBase, 0);			
 			}
 		}
 
@@ -800,7 +799,7 @@ void Scene::CreateReflectionCommandBuffer() {
 		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxReflectionPipeline);
-		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
@@ -875,7 +874,7 @@ void Scene::CreateRefractionCommandBuffer() {
 		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
 		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxRefractionPipeline);
-		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(skyboxes[0]->indices.size()), 1, 0, 0, 0);
+		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
@@ -897,7 +896,15 @@ void Scene::CreateRefractionCommandBuffer() {
 	ErrorCheck(vkEndCommandBuffer(refractionCmdBuff));
 }
 
-void Scene::CreateUniformBuffer() {
+void Scene::CreateBuffers() {
+	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
+	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
+	
+	CreateVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
+	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
+
+
+
 	// Ocean Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
 	uniform_buffers.ocean.Map();
@@ -1326,7 +1333,7 @@ void Scene::CreateDescriptorSetLayout() {
 	CloudsLayoutInfo.bindingCount = static_cast<uint32_t>(clouds_bindings.size());
 	CloudsLayoutInfo.pBindings = clouds_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &CloudsLayoutInfo, nullptr, &clouds_descriptor_set_layout));
+	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &CloudsLayoutInfo, nullptr, &cloudDescriptorSetLayout));
 
 	// Ocean
 	VkDescriptorSetLayoutBinding oceanUBOLayoutBinding = {};
@@ -1431,51 +1438,51 @@ void Scene::CreateDescriptorPool() {
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
 	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[1].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 * 3 + 11);
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(materialLibrary->materials.size() * 6 * 3 + 11);
 	PoolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[2].descriptorCount = static_cast<uint32_t>(scene_material.size() * 6 + 11);
+	PoolSizes[2].descriptorCount = static_cast<uint32_t>(materialLibrary->materials.size() * 6 + 11);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = static_cast<uint32_t>(scene_material.size()*3 + 8); // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(materialLibrary->materials.size()*3 + 8); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
 
 void Scene::CreateDescriptorSet() {
 	// 3D object descriptor set
-	for (size_t i = 0; i < scene_material.size(); i++) {
+	for (auto& m : materialLibrary->materials) {
 		VkDescriptorImageInfo IrradianceMapImageInfo = {};
 		IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		IrradianceMapImageInfo.imageView = sky->skybox_texture.texture_image_view;
-		IrradianceMapImageInfo.sampler = sky->skybox_texture.texture_sampler;
+		IrradianceMapImageInfo.imageView = sky->skybox.texture_image_view;
+		IrradianceMapImageInfo.sampler = sky->skybox.texture_sampler;
 
 		VkDescriptorImageInfo AlbedoImageInfo = {};
 		AlbedoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		AlbedoImageInfo.imageView = scene_material[i].albedo.texture_image_view;
-		AlbedoImageInfo.sampler = scene_material[i].albedo.texture_sampler;
+		AlbedoImageInfo.imageView = m.second.albedo.texture_image_view;
+		AlbedoImageInfo.sampler = m.second.albedo.texture_sampler;
 
 		VkDescriptorImageInfo MettalicImageInfo = {};
 		MettalicImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		MettalicImageInfo.imageView = scene_material[i].metallic.texture_image_view;
-		MettalicImageInfo.sampler = scene_material[i].metallic.texture_sampler;
+		MettalicImageInfo.imageView = m.second.metallic.texture_image_view;
+		MettalicImageInfo.sampler = m.second.metallic.texture_sampler;
 
 		VkDescriptorImageInfo RoughnessImageInfo = {};
 		RoughnessImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		RoughnessImageInfo.imageView = scene_material[i].roughness.texture_image_view;
-		RoughnessImageInfo.sampler = scene_material[i].roughness.texture_sampler;
+		RoughnessImageInfo.imageView = m.second.roughness.texture_image_view;
+		RoughnessImageInfo.sampler = m.second.roughness.texture_sampler;
 
 		VkDescriptorImageInfo NormalImageInfo = {};
 		NormalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		NormalImageInfo.imageView = scene_material[i].normal_map.texture_image_view;
-		NormalImageInfo.sampler = scene_material[i].normal_map.texture_sampler;
+		NormalImageInfo.imageView = m.second.normal.texture_image_view;
+		NormalImageInfo.sampler = m.second.normal.texture_sampler;
 
 		VkDescriptorImageInfo AmbientOcclusionImageInfo = {};
 		AmbientOcclusionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		AmbientOcclusionImageInfo.imageView = scene_material[i].ambient_occlucion_map.texture_image_view;
-		AmbientOcclusionImageInfo.sampler = scene_material[i].ambient_occlucion_map.texture_sampler;
+		AmbientOcclusionImageInfo.imageView = m.second.ambientOcclucion.texture_image_view;
+		AmbientOcclusionImageInfo.sampler = m.second.ambientOcclucion.texture_sampler;
 
 		VkDescriptorSetAllocateInfo AllocInfo = {};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1483,9 +1490,9 @@ void Scene::CreateDescriptorSet() {
 		AllocInfo.descriptorSetCount = 1;
 		AllocInfo.pSetLayouts = &descriptor_set_layout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &scene_material[i].descriptor_set));
-		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &scene_material[i].reflectDescriptorSet));
-		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &scene_material[i].refractDescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &m.second.descriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &m.second.reflectDescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &m.second.refractDescriptorSet));
 
 		VkDescriptorBufferInfo BufferInfo = {};
 		BufferInfo.buffer = uniform_buffers.stillObjects.buffer;
@@ -1500,7 +1507,7 @@ void Scene::CreateDescriptorSet() {
 		std::array<VkWriteDescriptorSet, 8> objectDescriptorWrites = {};
 
 		objectDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[0].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[0].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[0].dstBinding = 0;
 		objectDescriptorWrites[0].dstArrayElement = 0;
 		objectDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1508,7 +1515,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[0].pBufferInfo = &BufferInfo;
 
 		objectDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[1].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[1].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[1].dstBinding = 1;
 		objectDescriptorWrites[1].dstArrayElement = 0;
 		objectDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1516,7 +1523,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[1].pBufferInfo = &ObjectBufferParametersInfo;
 
 		objectDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[2].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[2].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[2].dstBinding = 2;
 		objectDescriptorWrites[2].dstArrayElement = 0;
 		objectDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1524,7 +1531,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[2].pImageInfo = &IrradianceMapImageInfo;
 
 		objectDescriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[3].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[3].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[3].dstBinding = 3;
 		objectDescriptorWrites[3].dstArrayElement = 0;
 		objectDescriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1532,7 +1539,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[3].pImageInfo = &AlbedoImageInfo;
 
 		objectDescriptorWrites[4].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[4].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[4].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[4].dstBinding = 4;
 		objectDescriptorWrites[4].dstArrayElement = 0;
 		objectDescriptorWrites[4].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1540,7 +1547,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[4].pImageInfo = &MettalicImageInfo;
 
 		objectDescriptorWrites[5].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[5].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[5].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[5].dstBinding = 5;
 		objectDescriptorWrites[5].dstArrayElement = 0;
 		objectDescriptorWrites[5].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1548,7 +1555,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[5].pImageInfo = &RoughnessImageInfo;
 
 		objectDescriptorWrites[6].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[6].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[6].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[6].dstBinding = 6;
 		objectDescriptorWrites[6].dstArrayElement = 0;
 		objectDescriptorWrites[6].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1556,7 +1563,7 @@ void Scene::CreateDescriptorSet() {
 		objectDescriptorWrites[6].pImageInfo = &NormalImageInfo;
 
 		objectDescriptorWrites[7].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		objectDescriptorWrites[7].dstSet = scene_material[i].descriptor_set;
+		objectDescriptorWrites[7].dstSet = m.second.descriptorSet;
 		objectDescriptorWrites[7].dstBinding = 7;
 		objectDescriptorWrites[7].dstArrayElement = 0;
 		objectDescriptorWrites[7].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -1580,17 +1587,17 @@ void Scene::CreateDescriptorSet() {
 		std::array<VkWriteDescriptorSet, 8> reflectDescriptorWrites = objectDescriptorWrites;
 
 		reflectDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		reflectDescriptorWrites[0].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[0].dstSet = m.second.reflectDescriptorSet;
 		reflectDescriptorWrites[0].pBufferInfo = &reflectBufferInfo;
 		reflectDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		reflectDescriptorWrites[1].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[1].dstSet = m.second.reflectDescriptorSet;
 		reflectDescriptorWrites[1].pBufferInfo = &reflectParametersInfo;
-		reflectDescriptorWrites[2].dstSet = scene_material[i].reflectDescriptorSet;
-		reflectDescriptorWrites[3].dstSet = scene_material[i].reflectDescriptorSet;
-		reflectDescriptorWrites[4].dstSet = scene_material[i].reflectDescriptorSet;
-		reflectDescriptorWrites[5].dstSet = scene_material[i].reflectDescriptorSet;
-		reflectDescriptorWrites[6].dstSet = scene_material[i].reflectDescriptorSet;
-		reflectDescriptorWrites[7].dstSet = scene_material[i].reflectDescriptorSet;
+		reflectDescriptorWrites[2].dstSet = m.second.reflectDescriptorSet;
+		reflectDescriptorWrites[3].dstSet = m.second.reflectDescriptorSet;
+		reflectDescriptorWrites[4].dstSet = m.second.reflectDescriptorSet;
+		reflectDescriptorWrites[5].dstSet = m.second.reflectDescriptorSet;
+		reflectDescriptorWrites[6].dstSet = m.second.reflectDescriptorSet;
+		reflectDescriptorWrites[7].dstSet = m.second.reflectDescriptorSet;
 
 		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(reflectDescriptorWrites.size()), reflectDescriptorWrites.data(), 0, nullptr);
 
@@ -1607,17 +1614,17 @@ void Scene::CreateDescriptorSet() {
 		std::array<VkWriteDescriptorSet, 8> refractDescriptorWrites = objectDescriptorWrites;
 
 		refractDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		refractDescriptorWrites[0].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[0].dstSet = m.second.refractDescriptorSet;
 		refractDescriptorWrites[0].pBufferInfo = &refractBufferInfo;
 		refractDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		refractDescriptorWrites[1].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[1].dstSet = m.second.refractDescriptorSet;
 		refractDescriptorWrites[1].pBufferInfo = &refractParametersInfo;
-		refractDescriptorWrites[2].dstSet = scene_material[i].refractDescriptorSet;
-		refractDescriptorWrites[3].dstSet = scene_material[i].refractDescriptorSet;
-		refractDescriptorWrites[4].dstSet = scene_material[i].refractDescriptorSet;
-		refractDescriptorWrites[5].dstSet = scene_material[i].refractDescriptorSet;
-		refractDescriptorWrites[6].dstSet = scene_material[i].refractDescriptorSet;
-		refractDescriptorWrites[7].dstSet = scene_material[i].refractDescriptorSet;
+		refractDescriptorWrites[2].dstSet = m.second.refractDescriptorSet;
+		refractDescriptorWrites[3].dstSet = m.second.refractDescriptorSet;
+		refractDescriptorWrites[4].dstSet = m.second.refractDescriptorSet;
+		refractDescriptorWrites[5].dstSet = m.second.refractDescriptorSet;
+		refractDescriptorWrites[6].dstSet = m.second.refractDescriptorSet;
+		refractDescriptorWrites[7].dstSet = m.second.refractDescriptorSet;
 
 		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(refractDescriptorWrites.size()), refractDescriptorWrites.data(), 0, nullptr);
 	}
@@ -1645,8 +1652,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = sky->skybox_texture.texture_image_view;
-	ImageInfo.sampler = sky->skybox_texture.texture_sampler;
+	ImageInfo.imageView = sky->skybox.texture_image_view;
+	ImageInfo.sampler = sky->skybox.texture_sampler;
 
 	std::array<VkWriteDescriptorSet, 3> skyboxDescriptorWrites = {};
 
@@ -1721,9 +1728,9 @@ void Scene::CreateDescriptorSet() {
 	CloudsAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
 	CloudsAllocInfo.descriptorPool = descriptorPool;
 	CloudsAllocInfo.descriptorSetCount = 1;
-	CloudsAllocInfo.pSetLayouts = &clouds_descriptor_set_layout;
+	CloudsAllocInfo.pSetLayouts = &cloudDescriptorSetLayout;
 
-	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &CloudsAllocInfo, &clouds_descriptor_set));
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &CloudsAllocInfo, &cloudDescriptorSet));
 
 	VkDescriptorBufferInfo CloudsBufferInfo = {};
 	CloudsBufferInfo.buffer = uniform_buffers.clouds.buffer;
@@ -1738,7 +1745,7 @@ void Scene::CreateDescriptorSet() {
 	std::array<VkWriteDescriptorSet, 2> cloudsDescriptorWrites = {};
 
 	cloudsDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	cloudsDescriptorWrites[0].dstSet = clouds_descriptor_set;
+	cloudsDescriptorWrites[0].dstSet = cloudDescriptorSet;
 	cloudsDescriptorWrites[0].dstBinding = 0;
 	cloudsDescriptorWrites[0].dstArrayElement = 0;
 	cloudsDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
@@ -1746,7 +1753,7 @@ void Scene::CreateDescriptorSet() {
 	cloudsDescriptorWrites[0].pBufferInfo = &CloudsBufferInfo;
 
 	cloudsDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	cloudsDescriptorWrites[1].dstSet = clouds_descriptor_set;
+	cloudsDescriptorWrites[1].dstSet = cloudDescriptorSet;
 	cloudsDescriptorWrites[1].dstBinding = 1;
 	cloudsDescriptorWrites[1].dstArrayElement = 0;
 	cloudsDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC;
@@ -1771,8 +1778,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo IrradianceMapImageInfo = {};
 	IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	IrradianceMapImageInfo.imageView = sky->skybox_texture.texture_image_view;
-	IrradianceMapImageInfo.sampler = sky->skybox_texture.texture_sampler;
+	IrradianceMapImageInfo.imageView = sky->skybox.texture_image_view;
+	IrradianceMapImageInfo.sampler = sky->skybox.texture_sampler;
 
 	VkDescriptorImageInfo ReflectionImageInfo = {};
 	ReflectionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1862,8 +1869,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo SelectionIndicatorImageInfo = {};
 	SelectionIndicatorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	SelectionIndicatorImageInfo.imageView = sky->skybox_texture.texture_image_view;
-	SelectionIndicatorImageInfo.sampler = sky->skybox_texture.texture_sampler;
+	SelectionIndicatorImageInfo.imageView = sky->skybox.texture_image_view;
+	SelectionIndicatorImageInfo.sampler = sky->skybox.texture_sampler;
 	
 	std::array<VkWriteDescriptorSet, 2> selectionIndicatorDescriptorWrites = {};
 
@@ -1914,7 +1921,7 @@ void Scene::CreateDescriptorSet() {
 
 void Scene::Test() {
 	std::cout << "TEST" << std::endl;
-	CreateLandscape("Runtime creation test ", "Do you see box?", glm::vec3(500.0f, 0.0f, 500.0f), meshLibrary->meshes["box"]);
+	CreateLandscape("Runtime creation test ", "Do you see box?", glm::vec3(500.0f, 0.0f, 500.0f), meshLibrary->meshes["box"], materialLibrary->materials["plastic"]);
 }
 
 // ------------- Populate scene --------------------- //
@@ -1946,61 +1953,44 @@ void Scene::CreateSelectRay() {
 	CreateMappedIndexBuffer(rayIndices, index_buffers.selectRay);
 }
 
-void Scene::CreateActorsBuffers() {
-	CreateVertexBuffer(meshLibrary->vertices, vertex_buffers.meshLibraryObjects);
-	CreateIndexBuffer(meshLibrary->indices, index_buffers.meshLibraryObjects);
-	
-	CreateVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
-	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
-}
-
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
 	PrepeareMainCharacter(meshLibrary->meshes["human"]);
 	
 	// Scene objects/actors
-	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), "puffinEngine/assets/models/sphere.obj");
+	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), meshLibrary->meshes["sphere"]);
 	CreateSkybox("Test skybox", "Here must be green car, hello! Lorem Ipsum ;)", glm::vec3(0.0f, 0.0f, 0.0f), horizon);
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
-	CreateLandscape("Test object amelinium teapot", "You can't paint this!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"]);
-	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), meshLibrary->meshes["box"]);
+	CreateLandscape("Test object amelinium teapot", "You can't paint this!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"], materialLibrary->materials["chrome"]);
+	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), meshLibrary->meshes["box"], materialLibrary->materials["default"]);
 	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), meshLibrary->meshes["human"]);
 	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), meshLibrary->meshes["sphere"]);
 	
-	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object small green box ", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f), meshLibrary->meshes["box"]);
-	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object plane5", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object plane6", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f), meshLibrary->meshes["plane"]);
-	CreateLandscape("Test object plane7", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f), meshLibrary->meshes["plane"]);
+	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f), meshLibrary->meshes["plane"], materialLibrary->materials["rust"]);
+	CreateLandscape("Test object small green box ", "I am simple 10cm box, watch me", glm::vec3(15.0f, 7.0f, 2.0f), meshLibrary->meshes["box"], materialLibrary->materials["plastic"]);
+	CreateLandscape("Test object plane2", "I am simple plane, boring", glm::vec3(10.0f, -14.0f, 0.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
+	CreateLandscape("Test object plane3", "I am simple plane, boring", glm::vec3(10.0f, -12.0f, 40.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
+	CreateLandscape("Test object plane4", "I am simple plane, boring", glm::vec3(10.0f, -10.0f, 80.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
+	CreateLandscape("Test object plane5", "I am simple plane, boring", glm::vec3(10.0f, -5.0f, 120.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
+	CreateLandscape("Test object plane6", "I am simple plane, boring", glm::vec3(10.0f, -1.0f, 160.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
+	CreateLandscape("Test object plane7", "I am simple plane, boring", glm::vec3(10.0f, -4.0f, 200.0f), meshLibrary->meshes["plane"], materialLibrary->materials["default"]);
 
-	CreateLandscape("Visibility test post 1", "Do you see me?", glm::vec3(0.0f, 0.0f, 1000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 2", "Do you see me?", glm::vec3(0.0f, 0.0f, 2000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 3", "Do you see me?", glm::vec3(0.0f, 0.0f, 3000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 4", "Do you see me?", glm::vec3(0.0f, 0.0f, 4000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 5", "Do you see me?", glm::vec3(0.0f, 0.0f, 5000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 6", "Do you see me?", glm::vec3(0.0f, 0.0f, 6000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 7", "Do you see me?", glm::vec3(0.0f, 0.0f, 7000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 8", "Do you see me?", glm::vec3(0.0f, 0.0f, 8000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 9", "Do you see me?", glm::vec3(0.0f, 0.0f, 9000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f), meshLibrary->meshes["human"]);
-	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f), meshLibrary->meshes["human"]);
+	CreateLandscape("Visibility test post 1", "Do you see me?", glm::vec3(0.0f, 0.0f, 1000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 2", "Do you see me?", glm::vec3(0.0f, 0.0f, 2000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 3", "Do you see me?", glm::vec3(0.0f, 0.0f, 3000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 4", "Do you see me?", glm::vec3(0.0f, 0.0f, 4000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 5", "Do you see me?", glm::vec3(0.0f, 0.0f, 5000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 6", "Do you see me?", glm::vec3(0.0f, 0.0f, 6000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 7", "Do you see me?", glm::vec3(0.0f, 0.0f, 7000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 8", "Do you see me?", glm::vec3(0.0f, 0.0f, 8000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 9", "Do you see me?", glm::vec3(0.0f, 0.0f, 9000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 10", "Do you see me?", glm::vec3(0.0f, 0.0f, 10000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
+
+	CreateLandscape("coin", "lorem ipsum", glm::vec3(0.0f, 50.0f, 100.0f), meshLibrary->meshes["coin"], materialLibrary->materials["gold"]);
 			
-	CreateActorsBuffers();
-
-	// assign shaders to meshes
-	sceneCameras[0]->assignedMaterial = &scene_material[4]; //camera
-
-	actors[0]->assignedMaterial = &scene_material[2]; //green plastic sphere
-	actors[1]->assignedMaterial = &scene_material[6]; //character
-	actors[2]->assignedMaterial = &scene_material[4]; //lightbulb
-	actors[3]->assignedMaterial = &scene_material[1]; //rusty plane
-	actors[4]->assignedMaterial = &scene_material[3]; //chrome sphere  
-
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 }
@@ -2009,15 +1999,14 @@ void Scene::PrepeareMainCharacter(enginetool::ScenePart &mesh) {
 	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter, actors);
 	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 	mainCharacter->assignedMesh = &mesh;
-	mainCharacter->assignedMaterial = &scene_material[1];
-	//dynamic_cast<MainCharacter*>(mainCharacter.get())->mesh.GetAABB(mainCharacter->vertices);
+	mainCharacter->assignedMaterial = &materialLibrary->materials["default"];
 }
 
-void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
+void Scene::CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material) {
 	std::shared_ptr<Actor> camera = std::make_shared<Camera>(name, description, position, ActorType::Camera, actors);
 	std::dynamic_pointer_cast<Camera>(camera)->Init(0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 60.0f, 0.001f, 200000.0f, 3.14f, 0.0f);
 	camera->assignedMesh = &mesh;
-	camera->assignedMaterial = &scene_material[0];
+	camera->assignedMaterial = &material; 
 	sceneCameras.emplace_back(std::move(camera));
 }
 
@@ -2025,8 +2014,7 @@ void Scene::CreateCharacter(std::string name, std::string description, glm::vec3
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character, actors);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->assignedMesh = &mesh;
-	character->assignedMaterial = &scene_material[0];
-	character->collider=true;
+	character->assignedMaterial = &materialLibrary->materials["default"];
 	actors.emplace_back(std::move(character));
 }
 
@@ -2034,40 +2022,37 @@ void Scene::CreateSphereLight(std::string name, std::string description, glm::ve
 	std::shared_ptr<Actor> light = std::make_shared<SphereLight>(name, description, position, ActorType::SphereLight, actors);
 	std::dynamic_pointer_cast<SphereLight>(light)->SetLightColor(glm::vec3(255.0f, 197.0f, 143.0f));  //2600K 100W
 	light->assignedMesh = &mesh;
-	light->assignedMaterial = &scene_material[0];
+	light->assignedMaterial = &materialLibrary->materials["default"];
 	actors.emplace_back(std::move(light));
 }
 
-void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
+void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material) {
 	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape, actors);
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
 	stillObject->assignedMesh = &mesh;
-	stillObject->assignedMaterial = &scene_material[0];
+	stillObject->assignedMaterial = &material;
 	actors.emplace_back(std::move(stillObject));
+}
+
+void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
+	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
+	cloud->assignedMesh = &mesh;
+	clouds.emplace_back(std::move(cloud));
 }
 
 void Scene::CreateSea(std::string name, std::string description, glm::vec3 position) {
 	std::shared_ptr<Actor> sea = std::make_shared<Sea>(name, description, position, ActorType::Sea, actors);
 	std::dynamic_pointer_cast<Sea>(sea)->CreateMesh();
-	CreateVertexBuffer(sea->vertices, vertex_buffers.ocean);
-	CreateIndexBuffer(sea->indices, index_buffers.ocean);
+	CreateVertexBuffer(std::dynamic_pointer_cast<Sea>(sea)->vertices, vertex_buffers.ocean);
+	CreateIndexBuffer(std::dynamic_pointer_cast<Sea>(sea)->indices, index_buffers.ocean);
 	seas.emplace_back(std::move(sea));
-}
-
-void Scene::CreateCloud(std::string name, std::string description, glm::vec3 position, std::string meshFilename) {
-	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
-	cloudMesh.meshFilename = meshFilename;
-	MeshLibrary::LoadFromFile(cloudMesh.meshFilename, cloudMesh, cloud->indices, cloud->vertices);
-	CreateVertexBuffer(cloud->vertices, vertex_buffers.clouds);
-	CreateIndexBuffer(cloud->indices, index_buffers.clouds);
-	clouds.emplace_back(std::move(cloud));
 }
 
 void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon) {
 	std::shared_ptr<Actor> skybox = std::make_shared<Skybox>(name, description, position, ActorType::Skybox, actors, horizon);
 	std::dynamic_pointer_cast<Skybox>(skybox)->CreateMesh();
-	CreateVertexBuffer(skybox->vertices, vertex_buffers.skybox);
-	CreateIndexBuffer(skybox->indices, index_buffers.skybox);
+	CreateVertexBuffer(std::dynamic_pointer_cast<Skybox>(skybox)->vertices, vertex_buffers.skybox);
+	CreateIndexBuffer(std::dynamic_pointer_cast<Skybox>(skybox)->indices, index_buffers.skybox);
 	skyboxes.emplace_back(std::move(skybox));
 }
 
@@ -2110,71 +2095,12 @@ void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::
 
 void Scene::InitMaterials() {
 	sky->name = "Sky_materal";
-	LoadSkyboxTexture(sky->skybox_texture);
-	sky->assigned_pipeline = &skyboxPipeline;
+	materialLibrary->LoadSkyboxTexture(sky->skybox);
+	sky->assignedPipeline = &skyboxPipeline;
 
-	defaultMaterial->name = "Default";
-	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->albedo);
-	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->metallic);
-	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->roughness);
-	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->normal_map);
-	LoadTexture("puffinEngine/assets/textures/albedo.jpg", defaultMaterial->ambient_occlucion_map);
-	defaultMaterial->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*defaultMaterial);
-	
-	rust->name = "Rust";
-	LoadTexture("puffinEngine/assets/textures/rustAlbedo.jpg", rust->albedo);
-	LoadTexture("puffinEngine/assets/textures/rustMetallic.jpg", rust->metallic);
-	LoadTexture("puffinEngine/assets/textures/rustRoughness.jpg", rust->roughness);
-	LoadTexture("puffinEngine/assets/textures/rustNormal.jpg", rust->normal_map);
-	LoadTexture("puffinEngine/assets/textures/rustAo.jpg", rust->ambient_occlucion_map);
-	rust->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*rust);
-
-	chrome->name = "Chrome";
-	LoadTexture("puffinEngine/assets/textures/chromeAlbedo.jpg", chrome->albedo);
-	LoadTexture("puffinEngine/assets/textures/chromeMetallic.jpg", chrome->metallic);
-	LoadTexture("puffinEngine/assets/textures/chromeRoughness.jpg", chrome->roughness);
-	LoadTexture("puffinEngine/assets/textures/chromeNormal.jpg", chrome->normal_map);
-	LoadTexture("puffinEngine/assets/textures/chromeAo.jpg", chrome->ambient_occlucion_map);
-	chrome->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*chrome);
-
-	plastic->name = "Plastic";
-	LoadTexture("puffinEngine/assets/textures/plasticAlbedo.jpg", plastic->albedo);
-	LoadTexture("puffinEngine/assets/textures/plasticMetallic.jpg", plastic->metallic);
-	LoadTexture("puffinEngine/assets/textures/plasticRoughness.jpg", plastic->roughness);
-	LoadTexture("puffinEngine/assets/textures/plasticNormal.jpg", plastic->normal_map);
-	LoadTexture("puffinEngine/assets/textures/plasticAo.jpg", plastic->ambient_occlucion_map);
-	plastic->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*plastic);
-
-	lightbulbMat->name = "Lightbulb material";
-	LoadTexture("puffinEngine/assets/textures/icons/lightbulbIcon.jpg", lightbulbMat->albedo);
-	LoadTexture("puffinEngine/assets/textures/metallic.jpg", lightbulbMat->metallic);
-	LoadTexture("puffinEngine/assets/textures/roughness.jpg", lightbulbMat->roughness);
-	LoadTexture("puffinEngine/assets/textures/normal.jpg", lightbulbMat->normal_map);
-	LoadTexture("puffinEngine/assets/textures/ao.jpg", lightbulbMat->ambient_occlucion_map);
-	lightbulbMat->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*lightbulbMat);
-
-	cameraMat->name = "Camera material";
-	LoadTexture("puffinEngine/assets/textures/icons/cameraIcon.jpg", cameraMat->albedo);
-	LoadTexture("puffinEngine/assets/textures/metallic.jpg", cameraMat->metallic);
-	LoadTexture("puffinEngine/assets/textures/roughness.jpg", cameraMat->roughness);
-	LoadTexture("puffinEngine/assets/textures/normal.jpg", cameraMat->normal_map);
-	LoadTexture("puffinEngine/assets/textures/ao.jpg", cameraMat->ambient_occlucion_map);
-	cameraMat->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*cameraMat);
-
-	characterMat->name = "Character material";
-	LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg", characterMat->albedo);
-	LoadTexture("puffinEngine/assets/textures/metallic.jpg", characterMat->metallic);
-	LoadTexture("puffinEngine/assets/textures/roughness.jpg", characterMat->roughness);
-	LoadTexture("puffinEngine/assets/textures/normal.jpg", characterMat->normal_map);
-	LoadTexture("puffinEngine/assets/textures/ao.jpg", characterMat->ambient_occlucion_map);
-	characterMat->assigned_pipeline = &pbrPipeline;
-	scene_material.emplace_back(*characterMat);
+	for (auto& m : materialLibrary->materials) {
+		m.second.assignedPipeline = &pbrPipeline;
+	}
 }
 
 // ------------------ Textures ---------------------- //
@@ -2231,80 +2157,6 @@ void Scene::PrepareOffscreen() {
 	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	offscreenPass.refractionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
-}
-
-void Scene::LoadTexture(std::string texture, TextureLayout& layer) {
-	stbi_uc* pixels = stbi_load(texture.c_str(), (int*)&layer.texWidth, (int*)&layer.texHeight, &layer.texChannels, STBI_rgb_alpha);
-
-	if (!pixels) {
-		assert(0 && "Vulkan ERROR: failed to load texture image!");
-		std::exit(-1);
-	}
-
-	VkDeviceSize imageSize = layer.texWidth * layer.texHeight * 4;
-	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, pixels);
-
-	stbi_image_free(pixels);
-	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	layer.baseMipLevel = 0;
-	layer.mipLevels = 1;
-	layer.layers = 1;
-	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	layer.CopyBufferToImage(stagingBuffer.buffer);
-	stagingBuffer.Destroy();
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-}
-
-void Scene::LoadSkyboxTexture(TextureLayout& layer) {
-	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
-	gli::texture_cube texCube(gli::load(texture));
-	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	layer.texWidth = texCube.extent().x;
-	layer.texHeight = texCube.extent().y;
-	layer.mipLevels = texCube.levels();
-	layer.baseMipLevel = 0;
-	layer.layers = 6;
-	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
-	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
-	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-	VkDeviceSize imageSize = texCube.size();
-	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, texCube.data());
-
-	VkCommandBuffer command_buffer = layer.BeginSingleTimeCommands();
-	uint32_t offset = 0;
-
-	for (uint32_t face = 0; face < layer.layers; face++) {
-		for (uint32_t level = 0; level < layer.mipLevels; level++)	{
-			VkBufferImageCopy Region = {};
-			Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			Region.imageSubresource.mipLevel = level;
-			Region.imageSubresource.baseArrayLayer = face;
-			Region.imageSubresource.layerCount = 1;
-			Region.imageExtent.width = texCube[face][level].extent().x;
-			Region.imageExtent.height = texCube[face][level].extent().y;
-			Region.imageExtent.depth = 1;
-			Region.bufferOffset = offset;
-
-			layer.bufferCopyRegions.emplace_back(Region);
-
-			offset += static_cast<uint32_t>(texCube[face][level].size());
-		}
-	}
-
-	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.buffer, layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
-	layer.EndSingleTimeCommands(command_buffer);
-	stagingBuffer.Destroy();
-
-	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
 // ---------------- Scene navigation ---------------- //
@@ -2371,8 +2223,6 @@ void Scene::DeInitIndexAndVertexBuffer() {
 	vertex_buffers.ocean.Destroy();
 	index_buffers.skybox.Destroy();
 	vertex_buffers.skybox.Destroy();
-	index_buffers.clouds.Destroy();
-	vertex_buffers.clouds.Destroy();
 	index_buffers.selectRay.Destroy();
 	vertex_buffers.selectRay.Destroy();
 	index_buffers.aabb.Destroy();
@@ -2388,45 +2238,22 @@ void Scene::DeInitScene() {
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptor_set_layout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, oceanDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, skybox_descriptor_set_layout, nullptr);
-	vkDestroyDescriptorSetLayout(logicalDevice->device, clouds_descriptor_set_layout, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice->device, cloudDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, selectionIndicatorDescriptorSetLayout, nullptr);
 
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
 	DeInitUniformBuffer();
 	
-	delete rust;
-	delete defaultMaterial;
 	delete sky;
-	delete chrome;
-	delete plastic;
-	delete lightbulbMat;
-	delete cameraMat;
-	delete characterMat;
+	sky = nullptr;
 	
 	guiMainHub = nullptr;
 	meshLibrary = nullptr;
 	logicalDevice = nullptr;
-
-	rust = nullptr;
-	defaultMaterial = nullptr;
-	sky = nullptr;
-	chrome = nullptr;
-	plastic = nullptr;
-	lightbulbMat = nullptr;
-	cameraMat = nullptr;
-	characterMat = nullptr;
 }
 
 void Scene::DeInitTextureImage() {
-	sky->skybox_texture.DeInit();
-
-	for (size_t i = 0; i < scene_material.size(); i++) {
-		scene_material[i].albedo.DeInit();
-		scene_material[i].metallic.DeInit();
-		scene_material[i].roughness.DeInit();
-		scene_material[i].normal_map.DeInit();
-		scene_material[i].ambient_occlucion_map.DeInit();
-	}
+	sky->skybox.DeInit();
 
 	offscreenPass.reflectionImage.DeInit();
 	offscreenPass.refractionImage.DeInit();

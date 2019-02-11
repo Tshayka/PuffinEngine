@@ -49,9 +49,11 @@ class PuffinEngine {
     void CreateMousePicker();
     void CreateScene();
     void CreateGuiMainHub();
+    void CreateMaterialLibrary();
     void CreateMeshLibrary();
     void CreateSemaphores();
     void DrawFrame();
+    void GatherThreadInfo();
     void InitDefaultKeysBindings(std::map<int, FuncPair>& functions);
     void InitVulkan();
     void InitWindow();
@@ -65,6 +67,7 @@ class PuffinEngine {
     std::unique_ptr<Actor> mainCharacter;
     
     Device* world_device = nullptr;
+    MaterialLibrary* materialLibrary = nullptr;
     MeshLibrary* meshLibrary = nullptr;
     MousePicker* mousePicker = nullptr;
     Scene* scene_1 = nullptr;
@@ -79,6 +82,7 @@ class PuffinEngine {
     VkSemaphore reflectRenderSemaphore;
     VkSemaphore refractRenderSemaphore;
 
+    uint32_t numThreads;
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.
 
@@ -88,6 +92,7 @@ class PuffinEngine {
     void CleanUpSwapChain();
     void DeInitSemaphores();
     void DestroyDevice();
+    void DestroyMaterialLibrary();
     void DestroyMeshLibrary();
     void DestroyMousePicker();
     void DestroyScene();

@@ -4,24 +4,24 @@
 namespace enginetool {
 	class SceneMaterial {
 	public:
-		SceneMaterial(Device* device) {
-			logicalDevice = device;
-		};
+		// SceneMaterial(Device* device) {
+		// 	logicalDevice = device;
+		// };
 
 		std::string name;
-		TextureLayout skybox_texture;
-		TextureLayout irradiance_map;
+		TextureLayout skybox;
+		TextureLayout irradiance;
 		TextureLayout albedo;
 		TextureLayout metallic;
 		TextureLayout roughness;
-		TextureLayout normal_map;
-		TextureLayout ambient_occlucion_map;
-		VkDescriptorSet descriptor_set;
+		TextureLayout normal;
+		TextureLayout ambientOcclucion;
+		VkDescriptorSet descriptorSet;
 		VkDescriptorSet reflectDescriptorSet;
 		VkDescriptorSet refractDescriptorSet;
-		VkPipeline *assigned_pipeline;
+		VkPipeline *assignedPipeline;
 
-	private:
-		Device* logicalDevice;
+	// private:
+	// 	Device* logicalDevice;
 	};
 }
