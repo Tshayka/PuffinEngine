@@ -43,12 +43,9 @@ void GuiTextOverlay::LoadImage() {
 	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
 
-	font.Init(logical_device, VK_FORMAT_R8_UNORM);
+	font.Init(logical_device, VK_FORMAT_R8_UNORM, 0, 1, 1);
 	font.texWidth = STB_FONT_WIDTH;
 	font.texHeight = STB_FONT_HEIGHT;
-	font.baseMipLevel = 0;
-	font.mipLevels = 1;
-	font.layers = 1; 
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -115,8 +112,8 @@ void GuiTextOverlay::CreateDescriptorSet() {
 
 		VkDescriptorImageInfo ImageInfo = {};
 		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		ImageInfo.imageView = font.texture_image_view;
-		ImageInfo.sampler = font.texture_sampler;
+		ImageInfo.imageView = font.view;
+		ImageInfo.sampler = font.sampler;
 
 		std::array<VkWriteDescriptorSet, 1> descriptorWrites = {};
 

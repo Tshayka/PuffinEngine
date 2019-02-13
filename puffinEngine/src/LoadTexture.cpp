@@ -2,12 +2,7 @@
 #include "Texture.hpp"
 
 namespace enginetool {
-	class SceneMaterial {
-	public:
-		// SceneMaterial(Device* device) {
-		// 	logicalDevice = device;
-		// };
-
+	struct SceneMaterial {
 		std::string name;
 		TextureLayout skybox;
 		TextureLayout irradiance;
@@ -20,8 +15,5 @@ namespace enginetool {
 		VkDescriptorSet reflectDescriptorSet;
 		VkDescriptorSet refractDescriptorSet;
 		VkPipeline *assignedPipeline;
-
-	// private:
-	// 	Device* logicalDevice;
 	};
 }

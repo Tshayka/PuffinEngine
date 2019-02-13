@@ -106,7 +106,8 @@ private:
 	// ---------------- Main functions ------------------ //
 
 	VkCommandBuffer BeginSingleTimeCommands();
-	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck); 
+	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck);
+	void CleanUpDepthResources(); 
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateActorsBuffers();
 	void CreateBuffers();	
@@ -267,13 +268,12 @@ private:
 		enginetool::Buffer aabb;
 	} index_buffers;
 
-	struct OffscreenPass {
-		int32_t width, height;
-		TextureLayout reflectionImage;
-		TextureLayout reflectionDepthImage;
-		TextureLayout refractionImage;
-		TextureLayout refractionDepthImage;
-	} offscreenPass;
+	TextureLayout reflectionImage;
+	TextureLayout refractionImage;
+
+	TextureLayout* screenDepthImage = new TextureLayout();
+	TextureLayout* reflectionDepthImage = new TextureLayout();
+	TextureLayout* refractionDepthImage = new TextureLayout();
 
 	bool displayWireframe = false;
 	bool displaySceneGeometry = true;
@@ -285,9 +285,7 @@ private:
 	bool displayMainCharacter = true;
 
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
-
-	TextureLayout depthImage;
-
+	
 	VkPipeline aabbPipeline;
 	VkPipeline selectRayPipeline;
 	VkPipeline pbrWireframePipeline;

@@ -56,7 +56,6 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 	this->meshLibrary = meshLibrary;
 	this->materialLibrary = materialLibrary;  
 
-	//this->meshLibrary->meshes.empty();
 	selectionIndicatorMesh = &meshLibrary->meshes["SmallCoinB"];
 
 	InitSwapchainImageViews();
@@ -77,7 +76,7 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 }
 
 void Scene::CleanUpForSwapchain() {
-	DeInitDepthResources();
+	CleanUpDepthResources();
 	DeInitFramebuffer();
 	FreeCommandBuffers();
 	DestroyPipeline();
@@ -133,7 +132,7 @@ VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspect
 
 void Scene::CreateFramebuffers() {
 	// Reflection frambuffer
-	std::array<VkImageView, 2> reflectionAttachments = {offscreenPass.reflectionImage.texture_image_view, offscreenPass.reflectionDepthImage.texture_image_view};
+	std::array<VkImageView, 2> reflectionAttachments = {reflectionImage.view, reflectionDepthImage->view};
 	
 	VkFramebufferCreateInfo reflectionFramebufferInfo = {};
 	reflectionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -147,7 +146,7 @@ void Scene::CreateFramebuffers() {
 	ErrorCheck(vkCreateFramebuffer(logicalDevice->device, &reflectionFramebufferInfo, nullptr, &logicalDevice->reflectionFramebuffer));
 
 	// Refraction frambuffer
-	std::array<VkImageView, 2> refractionAttachments = {offscreenPass.refractionImage.texture_image_view, offscreenPass.refractionDepthImage.texture_image_view};
+	std::array<VkImageView, 2> refractionAttachments = {refractionImage.view, refractionDepthImage->view};
 	
 	VkFramebufferCreateInfo refractionFramebufferInfo = {};
 	refractionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -164,7 +163,7 @@ void Scene::CreateFramebuffers() {
 	logicalDevice->swap_chain_framebuffers.resize(logicalDevice->swapchainImageViews.size());
 
 	for (size_t i = 0; i < logicalDevice->swapchainImageViews.size(); i++) {
-		std::array<VkImageView, 2> attachments = { logicalDevice->swapchainImageViews[i], depthImage.texture_image_view };
+		std::array<VkImageView, 2> attachments = { logicalDevice->swapchainImageViews[i], screenDepthImage->view };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -1456,33 +1455,33 @@ void Scene::CreateDescriptorSet() {
 	for (auto& m : materialLibrary->materials) {
 		VkDescriptorImageInfo IrradianceMapImageInfo = {};
 		IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		IrradianceMapImageInfo.imageView = sky->skybox.texture_image_view;
-		IrradianceMapImageInfo.sampler = sky->skybox.texture_sampler;
+		IrradianceMapImageInfo.imageView = sky->skybox.view;
+		IrradianceMapImageInfo.sampler = sky->skybox.sampler;
 
 		VkDescriptorImageInfo AlbedoImageInfo = {};
 		AlbedoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		AlbedoImageInfo.imageView = m.second.albedo.texture_image_view;
-		AlbedoImageInfo.sampler = m.second.albedo.texture_sampler;
+		AlbedoImageInfo.imageView = m.second.albedo.view;
+		AlbedoImageInfo.sampler = m.second.albedo.sampler;
 
 		VkDescriptorImageInfo MettalicImageInfo = {};
 		MettalicImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		MettalicImageInfo.imageView = m.second.metallic.texture_image_view;
-		MettalicImageInfo.sampler = m.second.metallic.texture_sampler;
+		MettalicImageInfo.imageView = m.second.metallic.view;
+		MettalicImageInfo.sampler = m.second.metallic.sampler;
 
 		VkDescriptorImageInfo RoughnessImageInfo = {};
 		RoughnessImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		RoughnessImageInfo.imageView = m.second.roughness.texture_image_view;
-		RoughnessImageInfo.sampler = m.second.roughness.texture_sampler;
+		RoughnessImageInfo.imageView = m.second.roughness.view;
+		RoughnessImageInfo.sampler = m.second.roughness.sampler;
 
 		VkDescriptorImageInfo NormalImageInfo = {};
 		NormalImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		NormalImageInfo.imageView = m.second.normal.texture_image_view;
-		NormalImageInfo.sampler = m.second.normal.texture_sampler;
+		NormalImageInfo.imageView = m.second.normal.view;
+		NormalImageInfo.sampler = m.second.normal.sampler;
 
 		VkDescriptorImageInfo AmbientOcclusionImageInfo = {};
 		AmbientOcclusionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		AmbientOcclusionImageInfo.imageView = m.second.ambientOcclucion.texture_image_view;
-		AmbientOcclusionImageInfo.sampler = m.second.ambientOcclucion.texture_sampler;
+		AmbientOcclusionImageInfo.imageView = m.second.ambientOcclucion.view;
+		AmbientOcclusionImageInfo.sampler = m.second.ambientOcclucion.sampler;
 
 		VkDescriptorSetAllocateInfo AllocInfo = {};
 		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -1652,8 +1651,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = sky->skybox.texture_image_view;
-	ImageInfo.sampler = sky->skybox.texture_sampler;
+	ImageInfo.imageView = sky->skybox.view;
+	ImageInfo.sampler = sky->skybox.sampler;
 
 	std::array<VkWriteDescriptorSet, 3> skyboxDescriptorWrites = {};
 
@@ -1778,18 +1777,18 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo IrradianceMapImageInfo = {};
 	IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	IrradianceMapImageInfo.imageView = sky->skybox.texture_image_view;
-	IrradianceMapImageInfo.sampler = sky->skybox.texture_sampler;
+	IrradianceMapImageInfo.imageView = sky->skybox.view;
+	IrradianceMapImageInfo.sampler = sky->skybox.sampler;
 
 	VkDescriptorImageInfo ReflectionImageInfo = {};
 	ReflectionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ReflectionImageInfo.imageView = offscreenPass.reflectionImage.texture_image_view;
-	ReflectionImageInfo.sampler = offscreenPass.reflectionImage.texture_sampler;
+	ReflectionImageInfo.imageView = reflectionImage.view;
+	ReflectionImageInfo.sampler = reflectionImage.sampler;
 
 	VkDescriptorImageInfo RefractionImageInfo = {};
 	RefractionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	RefractionImageInfo.imageView = offscreenPass.refractionImage.texture_image_view;
-	RefractionImageInfo.sampler = offscreenPass.refractionImage.texture_sampler;
+	RefractionImageInfo.imageView = refractionImage.view;
+	RefractionImageInfo.sampler = refractionImage.sampler;
 
 	std::array<VkWriteDescriptorSet, 4> oceanDescriptorWrites = {};
 
@@ -1869,8 +1868,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo SelectionIndicatorImageInfo = {};
 	SelectionIndicatorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	SelectionIndicatorImageInfo.imageView = sky->skybox.texture_image_view;
-	SelectionIndicatorImageInfo.sampler = sky->skybox.texture_sampler;
+	SelectionIndicatorImageInfo.imageView = sky->skybox.view;
+	SelectionIndicatorImageInfo.sampler = sky->skybox.sampler;
 	
 	std::array<VkWriteDescriptorSet, 2> selectionIndicatorDescriptorWrites = {};
 
@@ -2106,57 +2105,42 @@ void Scene::InitMaterials() {
 // ------------------ Textures ---------------------- //
 
 void Scene::CreateDepthResources() {
-	depthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	depthImage.texWidth = logicalDevice->swapchain_extent.width; 
-	depthImage.texHeight = logicalDevice->swapchain_extent.height;
-	depthImage.baseMipLevel = 0;
-	depthImage.mipLevels = 1;  
-	depthImage.layers = 1;   
-	depthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	depthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	depthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	screenDepthImage->Init(logicalDevice, logicalDevice->FindDepthFormat(), 0, 1, 1);
+	screenDepthImage->texWidth = logicalDevice->swapchain_extent.width; 
+	screenDepthImage->texHeight = logicalDevice->swapchain_extent.height;
+	screenDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	screenDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	screenDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 void Scene::PrepareOffscreen() {
-	offscreenPass.reflectionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	offscreenPass.reflectionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
-	offscreenPass.reflectionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.reflectionImage.baseMipLevel = 0;
-	offscreenPass.reflectionImage.mipLevels = 1;  
-	offscreenPass.reflectionImage.layers = 1; 
-	offscreenPass.reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	offscreenPass.reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	offscreenPass.reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	reflectionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	reflectionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
+	reflectionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	reflectionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	reflectionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	reflectionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	offscreenPass.reflectionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	offscreenPass.reflectionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
-	offscreenPass.reflectionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.reflectionDepthImage.baseMipLevel = 0;
-	offscreenPass.reflectionDepthImage.mipLevels = 1;  
-	offscreenPass.reflectionDepthImage.layers = 1;   
-	offscreenPass.reflectionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	offscreenPass.reflectionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	offscreenPass.reflectionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	reflectionDepthImage->Init(logicalDevice, logicalDevice->FindDepthFormat(), 0, 1, 1);
+	reflectionDepthImage->texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
+	reflectionDepthImage->texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	reflectionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	reflectionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	reflectionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-	offscreenPass.refractionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	offscreenPass.refractionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
-	offscreenPass.refractionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.refractionImage.baseMipLevel = 0;
-	offscreenPass.refractionImage.mipLevels = 1; 
-	offscreenPass.refractionImage.layers = 1;  
-	offscreenPass.refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	offscreenPass.refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	offscreenPass.refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	refractionImage.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	refractionImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width;
+	refractionImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	refractionImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	refractionImage.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	refractionImage.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	offscreenPass.refractionDepthImage.Init(logicalDevice, logicalDevice->FindDepthFormat());
-	offscreenPass.refractionDepthImage.texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
-	offscreenPass.refractionDepthImage.texHeight = (int32_t)logicalDevice->swapchain_extent.height;
-	offscreenPass.refractionDepthImage.baseMipLevel = 0;
-	offscreenPass.refractionDepthImage.mipLevels = 1; 
-	offscreenPass.refractionDepthImage.layers = 1;  
-	offscreenPass.refractionDepthImage.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	offscreenPass.refractionDepthImage.CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	offscreenPass.refractionDepthImage.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
+	refractionDepthImage->Init(logicalDevice, logicalDevice->FindDepthFormat(), 0, 1, 1);
+	refractionDepthImage->texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
+	refractionDepthImage->texHeight = (int32_t)logicalDevice->swapchain_extent.height;
+	refractionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	refractionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	refractionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 }
 
 // ---------------- Scene navigation ---------------- //
@@ -2210,10 +2194,24 @@ void Scene::DeInitFramebuffer() {
 	vkDestroyFramebuffer(logicalDevice->device, logicalDevice->refractionFramebuffer, nullptr);
 }
 
+void Scene::CleanUpDepthResources() {
+	vkDestroyImageView(logicalDevice->device, screenDepthImage->view, nullptr);
+	vkDestroyImage(logicalDevice->device, screenDepthImage->texture, nullptr);
+	vkFreeMemory(logicalDevice->device, screenDepthImage->memory, nullptr);
+
+	vkDestroyImageView(logicalDevice->device, reflectionDepthImage->view, nullptr);
+	vkDestroyImage(logicalDevice->device, reflectionDepthImage->texture, nullptr);
+	vkFreeMemory(logicalDevice->device, reflectionDepthImage->memory, nullptr);
+
+	vkDestroyImageView(logicalDevice->device, refractionDepthImage->view, nullptr);
+	vkDestroyImage(logicalDevice->device, refractionDepthImage->texture, nullptr);
+	vkFreeMemory(logicalDevice->device, refractionDepthImage->memory, nullptr);	
+}
+
 void Scene::DeInitDepthResources() {
-	depthImage.DeInit();
-	offscreenPass.reflectionDepthImage.DeInit();
-	offscreenPass.refractionDepthImage.DeInit();
+	vkDestroyCommandPool(logicalDevice->device, screenDepthImage->commandPool, nullptr);
+	vkDestroyCommandPool(logicalDevice->device, reflectionDepthImage->commandPool, nullptr);
+	vkDestroyCommandPool(logicalDevice->device, refractionDepthImage->commandPool, nullptr);
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
@@ -2243,9 +2241,17 @@ void Scene::DeInitScene() {
 
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
 	DeInitUniformBuffer();
-	
+
+	DeInitDepthResources();
+
 	delete sky;
 	sky = nullptr;
+	delete screenDepthImage;
+	screenDepthImage = nullptr;
+	delete reflectionDepthImage;
+	reflectionDepthImage = nullptr;
+	delete refractionDepthImage;
+	refractionDepthImage = nullptr;
 	
 	guiMainHub = nullptr;
 	meshLibrary = nullptr;
@@ -2255,8 +2261,8 @@ void Scene::DeInitScene() {
 void Scene::DeInitTextureImage() {
 	sky->skybox.DeInit();
 
-	offscreenPass.reflectionImage.DeInit();
-	offscreenPass.refractionImage.DeInit();
+	reflectionImage.DeInit();
+	refractionImage.DeInit();
 }
 
 void Scene::DeInitUniformBuffer() {

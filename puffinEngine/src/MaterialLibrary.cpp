@@ -64,10 +64,7 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 
 	stbi_image_free(pixels);
 	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
-	layer.baseMipLevel = 0;
-	layer.mipLevels = 1;
-	layer.layers = 1;
+	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -81,12 +78,9 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
 	gli::texture_cube texCube(gli::load(texture));
 	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM);
+	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, texCube.levels(), 6);
 	layer.texWidth = texCube.extent().x;
 	layer.texHeight = texCube.extent().y;
-	layer.mipLevels = texCube.levels();
-	layer.baseMipLevel = 0;
-	layer.layers = 6;
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);

@@ -94,7 +94,7 @@ void Actor::CheckCollisions() {
 	std::vector<std::shared_ptr<Actor>>::iterator it;
 	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
 		if(enginetool::ScenePart::Overlaps(this->currentAabb, it->get()->currentAabb) && it->get()!=this) {
-			std::cout << this->name << " collides with: " << it->get()->name << "\n";
+			//std::cout << this->name << " collides with: " << it->get()->name << "\n";
 			SetState(ActorState::Reflection);		
 		}
 	}

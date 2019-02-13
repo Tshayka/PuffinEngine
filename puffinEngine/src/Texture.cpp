@@ -1,9 +1,12 @@
 #include "ErrorCheck.hpp"
 #include "Texture.hpp"
 
-void TextureLayout::Init(Device* device, VkFormat format) {
+void TextureLayout::Init(Device* device, VkFormat format, uint32_t baseMipLevel, uint32_t mipLevels, uint32_t layers) {
 	logicalDevice = device;
 	this->format = format;
+	this->baseMipLevel = baseMipLevel;
+	this->mipLevels = mipLevels;
+    this->layers = layers;  
 	CreateCommandPool();
 };
 
@@ -34,12 +37,12 @@ void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, V
 	allocInfo.allocationSize = memory_requirements.size;
 	allocInfo.memoryTypeIndex = logicalDevice->FindMemoryType(memory_requirements.memoryTypeBits, properties);
 
-	if (vkAllocateMemory(logicalDevice->device, &allocInfo, nullptr, &texture_image_memory) != VK_SUCCESS) {
+	if (vkAllocateMemory(logicalDevice->device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
 		std::exit(-1);
 	}
 
-	ErrorCheck(vkBindImageMemory(logicalDevice->device, texture, texture_image_memory, 0));
+	ErrorCheck(vkBindImageMemory(logicalDevice->device, texture, memory, 0));
 }
 
 void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageViewType type) {
@@ -58,7 +61,7 @@ void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageView
 	ViewInfo.subresourceRange.baseArrayLayer = 0;
 	ViewInfo.subresourceRange.layerCount = 1;
 
-	if (vkCreateImageView(logicalDevice->device, &ViewInfo, nullptr, &texture_image_view) != VK_SUCCESS) {
+	if (vkCreateImageView(logicalDevice->device, &ViewInfo, nullptr, &view) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture image view!");
 		std::exit(-1);
 	}
@@ -82,7 +85,7 @@ void TextureLayout::CreateTextureSampler(enum VkSamplerAddressMode mode) {
 	SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-	if (vkCreateSampler(logicalDevice->device, &SamplerInfo, nullptr, &texture_sampler) != VK_SUCCESS) {
+	if (vkCreateSampler(logicalDevice->device, &SamplerInfo, nullptr, &sampler) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture sampler!");
 		std::exit(-1);
 	}
@@ -227,9 +230,9 @@ void TextureLayout::CreateCommandPool() {
 }
 
 void TextureLayout::DeInit() {
-	vkDestroySampler(logicalDevice->device, texture_sampler, nullptr);
-	vkDestroyImageView(logicalDevice->device, texture_image_view, nullptr);
+	vkDestroySampler(logicalDevice->device, sampler, nullptr);
+	vkDestroyImageView(logicalDevice->device, view, nullptr);
 	vkDestroyImage(logicalDevice->device, texture, nullptr);
-	vkFreeMemory(logicalDevice->device, texture_image_memory, nullptr);
+	vkFreeMemory(logicalDevice->device, memory, nullptr);
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
 };
