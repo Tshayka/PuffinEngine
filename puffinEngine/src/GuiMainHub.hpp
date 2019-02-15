@@ -33,10 +33,9 @@ private:
     void CreateCommandPool();
 	void CreateRenderPass();
 
-	uint32_t buffer_index;
-	VkRenderPass render_pass;
-	VkCommandPool command_pool;
-
+	uint32_t bufferIndex;
+	VkRenderPass renderPass;
+	VkCommandPool commandPool;
 
 	VkRect2D scissor = {};
 	VkViewport viewport = {}; 
@@ -44,5 +43,5 @@ private:
 	GuiMainUi* mainUi = nullptr;
 	GuiElement* console = nullptr;
 	GuiTextOverlay* textOverlay = nullptr;
-	Device* logical_device = nullptr;
+	Device* logicalDevice = nullptr;
 };

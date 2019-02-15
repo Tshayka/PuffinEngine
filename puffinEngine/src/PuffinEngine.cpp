@@ -54,17 +54,14 @@ void PuffinEngine::GatherThreadInfo() {
 
 void PuffinEngine::CreateImGuiMenu() {
 	console = new GuiElement();
-	console->InitMenu(world_device);
 }
 
 void PuffinEngine::CreateGuiTextOverlay() {
 	guiStatistics = new GuiTextOverlay();
-	guiStatistics->Init(world_device);
 }
 
 void PuffinEngine::CreateMainUi() {
 	mainUi = new GuiMainUi();
-	mainUi->Init(world_device);
 }
 
 void PuffinEngine::CreateGuiMainHub() {
@@ -607,7 +604,7 @@ void PuffinEngine::DestroyGUI() {
 	delete guiStatistics;
 	guiStatistics = nullptr;
 
-	console->DeInitMenu();
+	console->DeInit();
 	delete console;
 	console = nullptr;
 

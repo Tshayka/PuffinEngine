@@ -107,7 +107,8 @@ private:
 
 	VkCommandBuffer BeginSingleTimeCommands();
 	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck);
-	void CleanUpDepthResources(); 
+	void CleanUpDepthResources();
+	void CleanUpOffscreenImage(); 
 	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
 	void CreateActorsBuffers();
 	void CreateBuffers();	
@@ -143,9 +144,10 @@ private:
 	void InitSwapchainImageViews(); 
 	void LoadAssets();
 	void PrepeareMainCharacter(enginetool::ScenePart &mesh);
-	void PrepareOffscreen();
+	void PrepareOffscreenImage();
 	void RandomPositions();
 	void SelectActor(); 
+	void UpdateDescriptorSet();
 	void UpdateDynamicUniformBuffer(const float& time);
 	void UpdateSelectRayDrawData();
 	void UpdateOceanUniformBuffer(const float& time); 
@@ -158,7 +160,6 @@ private:
 	// ---------------- Deinitialisation ---------------- //
 
 	void DeInitFramebuffer();
-	void DeInitDepthResources();
 	void DeInitIndexAndVertexBuffer();
 	void DeInitTextureImage();
 	void DeInitUniformBuffer();
@@ -268,12 +269,12 @@ private:
 		enginetool::Buffer aabb;
 	} index_buffers;
 
-	TextureLayout reflectionImage;
-	TextureLayout refractionImage;
+	std::unique_ptr<TextureLayout> reflectionImage = std::make_unique<TextureLayout>();
+	std::unique_ptr<TextureLayout> refractionImage = std::make_unique<TextureLayout>();
 
-	TextureLayout* screenDepthImage = new TextureLayout();
-	TextureLayout* reflectionDepthImage = new TextureLayout();
-	TextureLayout* refractionDepthImage = new TextureLayout();
+	std::unique_ptr<TextureLayout> screenDepthImage = std::make_unique<TextureLayout>();
+	std::unique_ptr<TextureLayout> reflectionDepthImage = std::make_unique<TextureLayout>();
+	std::unique_ptr<TextureLayout> refractionDepthImage = std::make_unique<TextureLayout>();
 
 	bool displayWireframe = false;
 	bool displaySceneGeometry = true;

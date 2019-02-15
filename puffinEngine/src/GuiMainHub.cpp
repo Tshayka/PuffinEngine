@@ -33,10 +33,14 @@ void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textO
 	this->mainUi = mainUi;
 	this->console = console;
 	this->textOverlay = textOverlay;
-	logical_device = device; 
+	logicalDevice = device; 
 	
 	CreateRenderPass();
 	CreateCommandPool();
+
+	console->Init(logicalDevice, commandPool);
+	textOverlay->Init(logicalDevice, commandPool);
+	mainUi->Init(logicalDevice, commandPool);
 }
 
 void GuiMainHub::CleanUpForSwapchain() {}
@@ -59,7 +63,7 @@ void GuiMainHub::Submit(VkQueue queue, uint32_t bufferindex) {
 
 void GuiMainHub::CreateRenderPass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = logical_device->swapchainImageFormat;
+	color_attachment.format = logicalDevice->swapchainImageFormat;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // Don't clear the framebuffer!
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -69,7 +73,7 @@ void GuiMainHub::CreateRenderPass() {
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = logical_device->depthFormat;
+	depth_attachment.format = logicalDevice->depthFormat;
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -119,28 +123,28 @@ void GuiMainHub::CreateRenderPass() {
 		
 	std::array<VkAttachmentDescription, 2> attachments = { color_attachment, depth_attachment };
 
-	VkRenderPassCreateInfo render_pass_info = {};
-	render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-	render_pass_info.pNext = nullptr;
-	render_pass_info.attachmentCount = static_cast<uint32_t>(attachments.size());
-	render_pass_info.pAttachments = attachments.data();
-	render_pass_info.subpassCount = 1;
-	render_pass_info.pSubpasses = &SubpassDescription;
-	render_pass_info.dependencyCount = 2;
-	render_pass_info.pDependencies = SubpassDependencies;
+	VkRenderPassCreateInfo renderPass_info = {};
+	renderPass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPass_info.pNext = nullptr;
+	renderPass_info.attachmentCount = static_cast<uint32_t>(attachments.size());
+	renderPass_info.pAttachments = attachments.data();
+	renderPass_info.subpassCount = 1;
+	renderPass_info.pSubpasses = &SubpassDescription;
+	renderPass_info.dependencyCount = 2;
+	renderPass_info.pDependencies = SubpassDependencies;
 
-	ErrorCheck(vkCreateRenderPass(logical_device->device, &render_pass_info, nullptr, &render_pass));
+	ErrorCheck(vkCreateRenderPass(logicalDevice->device, &renderPass_info, nullptr, &renderPass));
 }
 
 void GuiMainHub::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = logical_device->FindQueueFamilies(logical_device->gpu);
+	QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
-	ErrorCheck(vkCreateCommandPool(logical_device->device, &poolInfo, nullptr, &command_pool));
+	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
 }
 
 void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
@@ -173,26 +177,26 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 	
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = render_pass;
+	renderPassInfo.renderPass = renderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = logical_device->swapchain_extent;
+	renderPassInfo.renderArea.extent = logicalDevice->swapchain_extent;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	command_buffers.resize(logical_device->swap_chain_framebuffers.size());
+	command_buffers.resize(logicalDevice->swap_chain_framebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = command_pool;
+	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(logical_device->device, &allocInfo, command_buffers.data()));
+	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, command_buffers.data()));
 	
 	// starting command buffer recording
 	for (size_t i = 0; i < command_buffers.size(); i++) {
 		// Set target frame buffer
-		renderPassInfo.framebuffer = logical_device->swap_chain_framebuffers[i];
+		renderPassInfo.framebuffer = logicalDevice->swap_chain_framebuffers[i];
 		vkBeginCommandBuffer(command_buffers[i], &beginInfo);
 		vkCmdBeginRenderPass(command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -214,6 +218,6 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 }
 
 void GuiMainHub::DeInit() {
-	vkDestroyCommandPool(logical_device->device, command_pool, nullptr);
-	vkDestroyRenderPass(logical_device->device, render_pass, nullptr);
+	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
+	vkDestroyRenderPass(logicalDevice->device, renderPass, nullptr);
 }

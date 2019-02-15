@@ -20,8 +20,9 @@ GuiElement::~GuiElement() {
 #endif
 }
 
-void GuiElement::InitMenu(Device* device) {
+void GuiElement::Init(Device* device, VkCommandPool& commandPool) {
 	logicalDevice = device;
+	this->commandPool = &commandPool; 
 
 	SetUp();
 	LoadImage();
@@ -104,7 +105,7 @@ void GuiElement::LoadImage() {
 	enginetool::Buffer stagingBuffer;
 	logicalDevice->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, fontData);
 	
-	font.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -543,7 +544,7 @@ void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	}
 }
 
-void GuiElement::DeInitMenu() {
+void GuiElement::DeInit() {
 	indexBuffer.Destroy();
 	vertexBuffer.Destroy();
 	font.DeInit();
@@ -552,4 +553,7 @@ void GuiElement::DeInitMenu() {
 	vkDestroyPipelineLayout(logicalDevice->device, pipelineLayout, nullptr);
 	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptorSetLayout, nullptr);
+
+	logicalDevice = nullptr;
+	commandPool = nullptr; 
 }

@@ -1,13 +1,34 @@
+#include <iostream>
 #include "ErrorCheck.hpp"
 #include "Texture.hpp"
 
-void TextureLayout::Init(Device* device, VkFormat format, uint32_t baseMipLevel, uint32_t mipLevels, uint32_t layers) {
+//---------- Constructors and dectructors ---------- //
+
+TextureLayout::TextureLayout() {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Texture created\n";
+#endif 
+}
+
+TextureLayout::~TextureLayout() {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Texture destroyed\n";
+#endif
+}
+
+// --------------- Setters and getters -------------- //
+
+
+
+// ---------------- Main functions ------------------ //
+
+void TextureLayout::Init(Device* device, VkCommandPool& commandPool, VkFormat format, uint32_t baseMipLevel, uint32_t mipLevels, uint32_t layers) {
 	logicalDevice = device;
 	this->format = format;
 	this->baseMipLevel = baseMipLevel;
 	this->mipLevels = mipLevels;
-    this->layers = layers;  
-	CreateCommandPool();
+    this->layers = layers;
+	this->commandPool = &commandPool;
 };
 
 void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImageCreateFlags flag) {
@@ -189,7 +210,7 @@ VkCommandBuffer TextureLayout::BeginSingleTimeCommands() {
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-	AllocInfo.commandPool = commandPool;
+	AllocInfo.commandPool = *commandPool;
 	AllocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
@@ -215,24 +236,12 @@ void TextureLayout::EndSingleTimeCommands(VkCommandBuffer commandBuffer) {
 	vkQueueSubmit(logicalDevice->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(logicalDevice->queue);
 
-	vkFreeCommandBuffers(logicalDevice->device, commandPool, 1, &commandBuffer);
-}
-
-void TextureLayout::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
-
-	VkCommandPoolCreateInfo poolInfo = {};
-	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
-
-	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+	vkFreeCommandBuffers(logicalDevice->device, *commandPool, 1, &commandBuffer);
 }
 
 void TextureLayout::DeInit() {
-	vkDestroySampler(logicalDevice->device, sampler, nullptr);
+	if(sampler) vkDestroySampler(logicalDevice->device, sampler, nullptr);
 	vkDestroyImageView(logicalDevice->device, view, nullptr);
 	vkDestroyImage(logicalDevice->device, texture, nullptr);
 	vkFreeMemory(logicalDevice->device, memory, nullptr);
-	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
 };

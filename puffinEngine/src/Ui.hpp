@@ -14,8 +14,8 @@ public:
 	~GuiElement();
 
 	void CreateUniformBuffer(VkCommandBuffer);
-	void DeInitMenu();
-	void InitMenu(Device*);
+	void DeInit();
+	void Init(Device* logiclDevice, VkCommandPool& commandPool);
 	void LoadImage();
 	void NewFrame();
 	void RenderDrawData();
@@ -53,5 +53,6 @@ private:
 	VkViewport viewport = {};
 	VkRect2D scissor = {};
 
-	Device* logicalDevice;
+	Device* logicalDevice = nullptr;
+	VkCommandPool* commandPool = nullptr; 
 };

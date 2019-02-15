@@ -25,8 +25,9 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiTextOverlay::Init(Device* device) {
-	logical_device = device; 
+void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
+	logical_device = device;
+	this->commandPool = &commandPool; 
 	
 	SetUp();
 	LoadImage();
@@ -43,7 +44,7 @@ void GuiTextOverlay::LoadImage() {
 	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
 
-	font.Init(logical_device, VK_FORMAT_R8_UNORM, 0, 1, 1);
+	font.Init(logical_device, *commandPool, VK_FORMAT_R8_UNORM, 0, 1, 1);
 	font.texWidth = STB_FONT_WIDTH;
 	font.texHeight = STB_FONT_HEIGHT;
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -385,4 +386,6 @@ void GuiTextOverlay::DeInit() {
     vkDestroyDescriptorSetLayout(logical_device->device, descriptorSetLayout, nullptr);
 
 	mapped = nullptr;
+	logical_device = nullptr;
+	commandPool = nullptr;
 }

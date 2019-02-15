@@ -25,19 +25,34 @@ MaterialLibrary::~MaterialLibrary() {
 void MaterialLibrary::Init(Device* device) {
 	logicalDevice = device;
 
-    FillLibrary();  
+	CreateCommandPool();
+  FillLibrary();  
 }
 
+void MaterialLibrary::CreateCommandPool() {
+		QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
+
+		VkCommandPoolCreateInfo poolInfo = {};
+		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
+	
+		ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+}
 
 void MaterialLibrary::FillLibrary() {
-    enginetool::SceneMaterial defaultGray, rust, chrome, plastic, gold; 
+    enginetool::SceneMaterial defaultGray;
+		enginetool::SceneMaterial rust;
+		enginetool::SceneMaterial chrome;
+		enginetool::SceneMaterial plastic;
+		enginetool::SceneMaterial gold; 
 
     materials = {
-		{"default", defaultGray},
-		{"gold", gold},
-		{"plastic", plastic},
-		{"rust", rust},
-		{"chrome", chrome}
+			{"default", defaultGray},
+			{"gold", gold},
+			{"plastic", plastic},
+			{"rust", rust},
+			{"chrome", chrome}
     };
 
     for (auto& m : materials) {
@@ -64,7 +79,7 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 
 	stbi_image_free(pixels);
 	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	layer.Init(logicalDevice, commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -78,7 +93,7 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
 	gli::texture_cube texCube(gli::load(texture));
 	
-	layer.Init(logicalDevice, VK_FORMAT_R8G8B8A8_UNORM, 0, texCube.levels(), 6);
+	layer.Init(logicalDevice, commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, texCube.levels(), 6);
 	layer.texWidth = texCube.extent().x;
 	layer.texHeight = texCube.extent().y;
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
@@ -127,5 +142,7 @@ void MaterialLibrary::DeInit() {
 		m.second.ambientOcclucion.DeInit();
 	}
 
+	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
+	
 	logicalDevice = nullptr;
 }

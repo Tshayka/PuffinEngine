@@ -15,7 +15,7 @@ public:
 
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInit();
-	void Init(Device*);
+	void Init(Device* device, VkCommandPool& commandPool);
 	void LoadImage();
 	void NewFrame();
 	void SetUp();
@@ -85,5 +85,6 @@ private:
 	VkViewport viewport = {};
 	VkRect2D scissor = {};
 
-	Device* logicalDevice;
+	Device* logicalDevice = nullptr;
+	VkCommandPool* commandPool = nullptr;
 };

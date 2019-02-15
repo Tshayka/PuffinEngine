@@ -18,7 +18,10 @@ public:
     std::map<std::string, enginetool::SceneMaterial> materials;    
 
 private:
+    void CreateCommandPool();
     void FillLibrary();
+
+    VkCommandPool commandPool;
     
     Device* logicalDevice;
 };
