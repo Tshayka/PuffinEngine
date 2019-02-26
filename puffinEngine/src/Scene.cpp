@@ -2021,7 +2021,7 @@ void Scene::LoadAssets() {
 	CreateSea("Test sea", "I am part of terrain, hello!", glm::vec3(0.0f, 0.0f, 0.0f));
 	CreateLandscape("Test object amelinium teapot", "You can't paint this!", glm::vec3(-7.0f, 0.0f, 20.0f), meshLibrary->meshes["teapot"], materialLibrary->materials["chrome"]);
 	CreateCamera("Test Camera", "Temporary object created for testing purpose", glm::vec3(30.0f, 40.0f, 3.0f), meshLibrary->meshes["box"], materialLibrary->materials["default"]);
-	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), meshLibrary->meshes["human"]);
+	CreateCharacter("Test Character", "Temporary object created for testing purpose", glm::vec3(20.0f, 20.0f,/*1968.5f*/ 10.0f), meshLibrary->meshes["human"], materialLibrary->materials["character"]);
 	CreateSphereLight("Test Light", "Lorem ipsum light", glm::vec3(0.0f, 6.0f, 17.0f), meshLibrary->meshes["sphere"]);
 	
 	CreateLandscape("Test object plane", "I am simple plane, boring", glm::vec3(10.0f, -16.0f, -20.0f), meshLibrary->meshes["plane"], materialLibrary->materials["rust"]);
@@ -2067,11 +2067,11 @@ void Scene::CreateCamera(std::string name, std::string description, glm::vec3 po
 	sceneCameras.emplace_back(std::move(camera));
 }
 
-void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh) {
+void Scene::CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material) {
 	std::shared_ptr<Actor> character = std::make_shared<Character>(name, description, position, ActorType::Character, actors);
 	std::dynamic_pointer_cast<Character>(character)->Init(1000, 1000, 100);
 	character->assignedMesh = &mesh;
-	character->assignedMaterial = &materialLibrary->materials["default"];
+	character->assignedMaterial = &material;
 	actors.emplace_back(std::move(character));
 }
 

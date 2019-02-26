@@ -69,7 +69,7 @@ void GuiMainHub::CreateRenderPass() {
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	color_attachment.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depth_attachment = {};

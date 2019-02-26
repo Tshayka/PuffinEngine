@@ -130,7 +130,7 @@ private:
 	void CreateTextureImageView(TextureLayout&);
 	void CreateTextureSampler(TextureLayout&);
 	void CreateSelectRay(); 
-	void CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
+	void CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
 	void CreateCloud(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);

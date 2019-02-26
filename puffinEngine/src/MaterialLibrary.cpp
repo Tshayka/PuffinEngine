@@ -63,6 +63,15 @@ void MaterialLibrary::FillLibrary() {
         LoadTexture("puffinEngine/assets/textures/" + m.first + "Normal.jpg", m.second.normal); 
         LoadTexture("puffinEngine/assets/textures/" + m.first + "Ao.jpg", m.second.ambientOcclucion);     
     }
+
+		enginetool::SceneMaterial character; 
+		LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg",  character.albedo);
+		LoadTexture("puffinEngine/assets/textures/defaultMetallic.jpg", character.metallic); 
+    LoadTexture("puffinEngine/assets/textures/defaultRoughness.jpg", character.roughness); 
+    LoadTexture("puffinEngine/assets/textures/defaultNormal.jpg", character.normal); 
+    LoadTexture("puffinEngine/assets/textures/defaultAo.jpg", character.ambientOcclucion);
+
+		materials.insert(std::make_pair("character", character));   
 }
 
 void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {

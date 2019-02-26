@@ -77,10 +77,10 @@ void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageView
 	ViewInfo.components.b = VK_COMPONENT_SWIZZLE_B;
 	ViewInfo.components.r = VK_COMPONENT_SWIZZLE_R;
 	ViewInfo.subresourceRange.aspectMask = aspect_flags;
-	ViewInfo.subresourceRange.baseMipLevel = 0;
-	ViewInfo.subresourceRange.levelCount = 1;
+	ViewInfo.subresourceRange.baseMipLevel = baseMipLevel;
+	ViewInfo.subresourceRange.levelCount = mipLevels;
 	ViewInfo.subresourceRange.baseArrayLayer = 0;
-	ViewInfo.subresourceRange.layerCount = 1;
+	ViewInfo.subresourceRange.layerCount = layers;
 
 	if (vkCreateImageView(logicalDevice->device, &ViewInfo, nullptr, &view) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture image view!");
@@ -121,8 +121,8 @@ void TextureLayout::CopyBufferToImage(VkBuffer buffer) {
 		for (uint32_t level = 0; level < mipLevels; level++) {
 			VkBufferImageCopy Region = {};
 			Region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			Region.imageSubresource.mipLevel = baseMipLevel;
-			Region.imageSubresource.baseArrayLayer = 0;
+			Region.imageSubresource.mipLevel = level;
+			Region.imageSubresource.baseArrayLayer = face;
 			Region.imageSubresource.layerCount = 1;
 			Region.imageExtent.width = texWidth; 
 			Region.imageExtent.height = texHeight;
