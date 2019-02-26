@@ -16,12 +16,10 @@ layout(location = 2) in vec3 inTexCoord;
 layout(location = 3) in vec3 inNormals;
 
 layout(location = 0) out vec3 fragTexCoord;
-layout(location = 1) out float outGamma;
 
 out gl_PerVertex {
     vec4 gl_Position;
 };
-
 
 void main() {
 	fragTexCoord = inPosition;
