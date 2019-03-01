@@ -18,6 +18,7 @@
 #include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
+#include "WorldClock.hpp"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -25,8 +26,7 @@ const float horizon = 9832.0f; //0.5km
 static float cloudsPos = 0.0f;
 const float cloudsVisibDist = 50.0f;
 
-class Scene
-{
+class Scene {
 public:
 	Scene();
 	~Scene();
@@ -34,14 +34,14 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
 	void CreateReflectionCommandBuffer();
 	void CreateRefractionCommandBuffer();
-	void UpdateGUI(float frameTimer, uint32_t elapsedTime);
-	void UpdateScene(const float &dt, const float &time, float const &accumulator);
+	void UpdateGUI();
+	void UpdateScene();
 
 	// ------------ Scene navigation functions ------------- //
 
@@ -106,6 +106,7 @@ private:
 	// ---------------- Main functions ------------------ //
 
 	VkCommandBuffer BeginSingleTimeCommands();
+	void CheckActorsVisibility();
 	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck);
 	void CleanUpDepthResources();
 	void CleanUpOffscreenImage(); 
@@ -148,13 +149,13 @@ private:
 	void RandomPositions();
 	void SelectActor(); 
 	void UpdateDescriptorSet();
-	void UpdateDynamicUniformBuffer(const float& time);
+	void UpdateDynamicUniformBuffer();
 	void UpdateSelectRayDrawData();
-	void UpdateOceanUniformBuffer(const float& time); 
-	void UpdateSelectionIndicatorUniformBuffer(const float& time);
-	void UpdateSkyboxUniformBuffer(const float& time);
-	void UpdateStaticUniformBuffer(const float& time);
-	void UpdateUBOOffscreen(const float& time);
+	void UpdateOceanUniformBuffer(); 
+	void UpdateSelectionIndicatorUniformBuffer();
+	void UpdateSkyboxUniformBuffer();
+	void UpdateStaticUniformBuffer();
+	void UpdateUBOOffscreen();
 	void UpdateUBOParameters();
 	
 	// ---------------- Deinitialisation ---------------- //
@@ -339,5 +340,6 @@ private:
 	Device* logicalDevice = nullptr;
 	MaterialLibrary* materialLibrary = nullptr;
 	MeshLibrary* meshLibrary = nullptr;
-	MousePicker* mousePicker = nullptr;	
+	MousePicker* mousePicker = nullptr;
+	WorldClock* mainClock = nullptr;	
 };

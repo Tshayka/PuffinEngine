@@ -24,6 +24,7 @@ class PuffinEngine {
 	int height = 600; // relative to the monitor and/or the window and are given in artificial units that do not necessarily correspond to real screen pixels
 
     private:
+
     // ----------- Callbacks of ImGui and GLFW ------------------- //
     GLFWwindow* window;
     static void CursorPositionCallback(GLFWwindow*, double, double);
@@ -52,6 +53,7 @@ class PuffinEngine {
     void CreateMaterialLibrary();
     void CreateMeshLibrary();
     void CreateSemaphores();
+    void CreateWorldClock();
     void DrawFrame();
     void GatherThreadInfo();
     void InitDefaultKeysBindings(std::map<int, FuncPair>& functions);
@@ -71,6 +73,7 @@ class PuffinEngine {
     MeshLibrary* meshLibrary = nullptr;
     MousePicker* mousePicker = nullptr;
     Scene* scene_1 = nullptr;
+    WorldClock* mainClock = nullptr;
 
     GuiMainHub* guiMainHub = nullptr;
     GuiElement* console = nullptr;
@@ -83,6 +86,8 @@ class PuffinEngine {
     VkSemaphore refractRenderSemaphore;
 
     uint32_t numThreads;
+    enginetool::ThreadPool threadPool;
+
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.
 
@@ -90,11 +95,12 @@ class PuffinEngine {
 
     void CleanUp();
     void CleanUpSwapChain();
+    void DestroyGUI();
     void DeInitSemaphores();
     void DestroyDevice();
     void DestroyMaterialLibrary();
     void DestroyMeshLibrary();
     void DestroyMousePicker();
     void DestroyScene();
-    void DestroyGUI();
+    void DestroyWorldClock();
 };

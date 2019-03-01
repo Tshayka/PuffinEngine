@@ -49,13 +49,14 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
 	this->meshLibrary = meshLibrary;
-	this->materialLibrary = materialLibrary;  
-
+	this->materialLibrary = materialLibrary;
+	this->mainClock = mainClock;
+	    
 	selectionIndicatorMesh = &meshLibrary->meshes["SmallCoinB"];
 
 	InitSwapchainImageViews();
@@ -69,8 +70,30 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 	CreateDescriptorSetLayout();
 	CreateDescriptorSet();
 	CreateGraphicsPipeline();
-	UpdateGUI(0.0f, 0);
+	UpdateGUI();
 	CreateCommandBuffers();
+	CreateReflectionCommandBuffer();
+	CreateRefractionCommandBuffer();
+}
+
+void Scene::UpdateScene() {
+	UpdateGUI();
+
+	UpdateDynamicUniformBuffer();
+	UpdateSkyboxUniformBuffer();
+	UpdateOceanUniformBuffer();
+	UpdateUBOParameters();
+	UpdateStaticUniformBuffer();
+	UpdateSelectionIndicatorUniformBuffer();
+	UpdateUBOOffscreen();
+
+	for(const auto& a : actors) a->UpdatePosition((float)mainClock->fixedTimeValue);
+	for(const auto& c : sceneCameras) c->UpdatePosition((float)mainClock->fixedTimeValue);
+	mainCharacter->UpdatePosition((float)mainClock->fixedTimeValue);
+
+	CheckActorsVisibility();
+	
+	CreateCommandBuffers(); 
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 }
@@ -991,28 +1014,6 @@ void Scene::RandomPositions() {
 	}
 }
 
-void Scene::UpdateScene(const float &dt, const float &time, float const &accumulator) {
-	UpdateGUI((float)accumulator, (uint32_t)time);
-
-	UpdateDynamicUniformBuffer(time);
-	UpdateSkyboxUniformBuffer(time);
-	UpdateOceanUniformBuffer(time);
-	UpdateUBOParameters();
-	UpdateStaticUniformBuffer(time);
-	UpdateSelectionIndicatorUniformBuffer(time);
-	UpdateUBOOffscreen(time);
-
-	for(const auto& a : actors) a->UpdatePosition(dt);
-	for(const auto& c : sceneCameras) c->UpdatePosition(dt);
-	mainCharacter->UpdatePosition(dt);
-
-	for(auto& a : actors) CheckIfItIsVisible(a);
-	
-	CreateCommandBuffers(); 
-	CreateReflectionCommandBuffer();
-	CreateRefractionCommandBuffer();
-}
-
 void Scene::HandleMouseClick() {
 	if(selectedActor == nullptr) {
 		SelectActor();
@@ -1026,6 +1027,10 @@ void Scene::HandleMouseClick() {
 			std::cout << "Position changed"<< std::endl;
 		}
 	}
+}
+
+void Scene::CheckActorsVisibility(){
+	for(auto& a : actors) CheckIfItIsVisible(a);
 }
 
 void Scene::CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck) {
@@ -1074,7 +1079,7 @@ void Scene::DeSelect() {
 	std::cout << "Deselected" << std::endl;
 }
 
-void Scene::UpdateStaticUniformBuffer(const float& time) {
+void Scene::UpdateStaticUniformBuffer() {
 	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSG.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBOSG.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
@@ -1087,7 +1092,7 @@ void Scene::UpdateStaticUniformBuffer(const float& time) {
 	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBOC.time = time;
+	UBOC.time = (float)mainClock->totalTime;
 	UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;
@@ -1096,17 +1101,17 @@ void Scene::UpdateStaticUniformBuffer(const float& time) {
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
 }
 
-void Scene::UpdateSelectionIndicatorUniformBuffer(const float& time) {
+void Scene::UpdateSelectionIndicatorUniformBuffer() {
 	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSI.proj[1][1] *= -1; 
 	UBOSI.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBOSI.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), currentCamera->up);
+	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalTime * glm::radians(90.0f), currentCamera->up);
 	UBOSI.cameraPos = glm::vec3(currentCamera->position);
-	UBOSI.time = time;
+	UBOSI.time = (float)mainClock->totalTime;
 	memcpy(uniform_buffers.selectionIndicator.mapped, &UBOSI, sizeof(UBOSI));
 }
 
-void Scene::UpdateUBOOffscreen(const float& time) {
+void Scene::UpdateUBOOffscreen() {
 	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOO.proj[1][1] *= -1; 
 	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
@@ -1131,7 +1136,7 @@ void Scene::UpdateUBOParameters() {
 	memcpy(uniform_buffers.reflectionParameters.mapped, &UBOP, sizeof(UBOP));
 }
 
-void Scene::UpdateDynamicUniformBuffer(const float& time) {
+void Scene::UpdateDynamicUniformBuffer() {
 	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
 	glm::vec3 offset(cloudsVisibDist, cloudsVisibDist/10, cloudsVisibDist);
 	cloudsPos+=0.01f;
@@ -1175,14 +1180,14 @@ void Scene::UpdateDynamicUniformBuffer(const float& time) {
 		vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange);
 }
 
-void Scene::UpdateSkyboxUniformBuffer(const float& time) {
+void Scene::UpdateSkyboxUniformBuffer() {
 	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSB.proj[1][1] *= -1;
 	UBOSB.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSB.view[3][0] *= 0;
 	UBOSB.view[3][1] *= 0;
 	UBOSB.view[3][2] *= 0;
-	UBOSB.time = time;
+	UBOSB.time = (float)mainClock->totalTime;
 	memcpy(uniform_buffers.skybox.mapped, &UBOSB, sizeof(UBOSB));
 	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBOSB, sizeof(UBOSB));
 
@@ -1192,20 +1197,20 @@ void Scene::UpdateSkyboxUniformBuffer(const float& time) {
 	memcpy(uniform_buffers.skyboxReflection.mapped, &UBOSB, sizeof(UBOSB));
 }
 
-void Scene::UpdateOceanUniformBuffer(const float& time) {
+void Scene::UpdateOceanUniformBuffer() {
 	UBOSE.model = glm::mat4(1.0f);
 	UBOSE.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSE.proj[1][1] *= -1;
 	UBOSE.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSE.cameraPos = currentCamera->position;
-	UBOSE.time = time;
+	UBOSE.time = (float)mainClock->totalTime;
 	memcpy(uniform_buffers.ocean.mapped, &UBOSE, sizeof(UBOSE));
 }
 
 // ------ Text overlay - performance statistics ----- //
 
-void Scene::UpdateGUI(float frameTimer, uint32_t elapsedTime) {
-	guiMainHub->UpdateCommandBuffers(frameTimer, elapsedTime);
+void Scene::UpdateGUI() {
+	guiMainHub->UpdateCommandBuffers((float)mainClock->accumulator, (uint32_t)mainClock->totalTime);
 }
 
 // ------------------ Descriptors ------------------- //

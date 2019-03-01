@@ -47,9 +47,14 @@ void PuffinEngine::CreateDevice() {
 	world_device->InitDevice(window);
 }
 
+void PuffinEngine::CreateWorldClock() {
+	mainClock = new WorldClock();
+}
+
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
 	std::cout << "numThreads = " << numThreads << std::endl;
+	threadPool.SetThreadCount(numThreads);
 }
 
 void PuffinEngine::CreateImGuiMenu() {
@@ -91,11 +96,12 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary, materialLibrary);
+	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary, materialLibrary, mainClock);
 }
 
 void PuffinEngine::InitVulkan() {
 	CreateDevice();
+	CreateWorldClock();
 	GatherThreadInfo();
 	CreateImGuiMenu();
 	CreateGuiTextOverlay();
@@ -109,24 +115,19 @@ void PuffinEngine::InitVulkan() {
 }
 
 void PuffinEngine::MainLoop() {
-	double totalTime = 0.0;
-	const double fixedTimeValue = 0.016666;
-
-	double currentTime = glfwGetTime();
-	double accumulator = 0.0;
-
-	const double MAX_ACCUMULATED_TIME = 1.0
-;
+	mainClock->currentTime = glfwGetTime();
+	
+	const double MAX_ACCUMULATED_TIME = 1.0;
 
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
-		double frameTime = newTime - currentTime;
+		double frameTime = newTime - mainClock->currentTime;
 		if (frameTime > 0.15)
 			frameTime = 0.15;
-		currentTime = newTime;
+		mainClock->currentTime = newTime;
 		
-		accumulator += frameTime;
-		accumulator = clamp(accumulator, 0.0, MAX_ACCUMULATED_TIME);
+		mainClock->accumulator += frameTime;
+		mainClock->accumulator = clamp(mainClock->accumulator, 0.0, MAX_ACCUMULATED_TIME);
 
 		glfwPollEvents();
 		glfwGetCursorPos(window, &xpos, &ypos);
@@ -138,10 +139,10 @@ void PuffinEngine::MainLoop() {
 		io.DisplayFramebufferScale = ImVec2(width > 0 ? ((float)fb_width / width) : 0, height > 0 ? ((float)fb_height / height) : 0);
 		io.DeltaTime = (float)frameTime;	
 
-		while (accumulator >= fixedTimeValue) {
-			scene_1->UpdateScene((float)fixedTimeValue, (float)totalTime, (float)accumulator);
-			totalTime += fixedTimeValue;
-			accumulator -= fixedTimeValue;
+		while (mainClock->accumulator >= mainClock->fixedTimeValue) {
+			scene_1->UpdateScene();
+			mainClock->totalTime += mainClock->fixedTimeValue;
+			mainClock->accumulator -= mainClock->fixedTimeValue;
 		}
 		
 		DrawFrame();	
@@ -551,6 +552,7 @@ void PuffinEngine::CleanUp() {
 	DestroyMeshLibrary();
 	DestroyMaterialLibrary();
 	DestroyGUI();
+	DestroyWorldClock();
 	DestroyDevice();
 	glfwDestroyWindow(window);
 	glfwTerminate();
@@ -575,6 +577,11 @@ void PuffinEngine::DestroyDevice() {
 	world_device->DeInitDevice();
 	delete world_device;
 	world_device = nullptr;
+}
+
+void PuffinEngine::DestroyWorldClock() {
+	delete mainClock;
+	mainClock = nullptr;
 }
 
 void PuffinEngine::DestroyMaterialLibrary() {

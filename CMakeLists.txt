@@ -28,7 +28,9 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/PuffinEngine.cpp"
                                 "puffinEngine/src/Scene.cpp"
                                 "puffinEngine/src/Texture.cpp"
+                                "puffinEngine/src/Threads.cpp"
                                 "puffinEngine/src/Ui.cpp"
+                                "puffinEngine/src/WorldClock.cpp"
                                 "main.cpp")
 
 find_package(Vulkan)
@@ -36,7 +38,6 @@ if (Vulkan_FOUND)
     target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
 endif (Vulkan_FOUND)
-
 
 add_subdirectory(puffinEngine/imgui)
 target_link_libraries(${PROJECT_NAME} imgui)
@@ -127,7 +128,6 @@ ExternalProject_Add(BOOST
 
 set(BOOST_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost)
 target_include_directories(${PROJECT_NAME} PUBLIC ${BOOST_INCLUDE_DIR})
-
 
 #[[----Include GTest in project.----]]
 
