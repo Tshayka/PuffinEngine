@@ -62,13 +62,13 @@ class PuffinEngine {
     void MainLoop();
     void PressKey(int key);
 	void RecreateSwapChain();
-    void Update(float);
+    void UpdateGui();
    
     std::map<int, FuncPair> functions;
 
     std::unique_ptr<Actor> mainCharacter;
     
-    Device* world_device = nullptr;
+    Device* worldDevice = nullptr;
     MaterialLibrary* materialLibrary = nullptr;
     MeshLibrary* meshLibrary = nullptr;
     MousePicker* mousePicker = nullptr;

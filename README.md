@@ -53,6 +53,10 @@ You must add them inside working directory, because they won't be global:
 - $ make
 - $ ./cube
 
+## Multithread
+If you want use multithreaded command buffer, you must turn off validation layers in "ErrorCheck.cpp" file, 
+by "BUILD_ENABLE_VULKAN_DEBUG" value to '0'.
+
 ## Building
 - $ cmake -H. -Bbuild
 - $ cmake --build build -- -j4

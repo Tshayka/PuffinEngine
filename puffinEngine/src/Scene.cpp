@@ -49,12 +49,13 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock) {
+void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
 	logicalDevice = device;
 	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
 	this->meshLibrary = meshLibrary;
 	this->materialLibrary = materialLibrary;
+	this->threadPool = &threadPool;
 	this->mainClock = mainClock;
 	    
 	selectionIndicatorMesh = &meshLibrary->meshes["SmallCoinB"];
@@ -77,25 +78,19 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 }
 
 void Scene::UpdateScene() {
-	UpdateGUI();
+	UpdatePositions();
 
-	UpdateDynamicUniformBuffer();
-	UpdateSkyboxUniformBuffer();
-	UpdateOceanUniformBuffer();
-	UpdateUBOParameters();
-	UpdateStaticUniformBuffer();
-	UpdateSelectionIndicatorUniformBuffer();
-	UpdateUBOOffscreen();
+	std::vector<std::function<void()>> stageOne = {task1, task3, task4, task5, task6, task7, task8, task9, task10};
+	ProcesTasksMultithreaded(threadPool, stageOne);
 
-	for(const auto& a : actors) a->UpdatePosition((float)mainClock->fixedTimeValue);
-	for(const auto& c : sceneCameras) c->UpdatePosition((float)mainClock->fixedTimeValue);
-	mainCharacter->UpdatePosition((float)mainClock->fixedTimeValue);
-
-	CheckActorsVisibility();
-	
-	CreateCommandBuffers(); 
+#if BUILD_ENABLE_VULKAN_DEBUG
+	CreateCommandBuffers();
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
+#else
+	std::vector<std::function<void()>> stageTwo = {task11, task12, task13};
+	ProcesTasksMultithreaded(threadPool, stageTwo); 
+#endif 
 }
 
 void Scene::CleanUpForSwapchain() {
@@ -219,9 +214,11 @@ void Scene::CreateCommandPool() {
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
 	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &refractionCommandPool));
+	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &reflectionCommandPool));
 }
 
-VkCommandBuffer Scene::BeginSingleTimeCommands() {
+VkCommandBuffer Scene::BeginSingleTimeCommands() {//TODO
 	VkCommandBufferAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	AllocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -268,9 +265,10 @@ void Scene::CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, con
 
 void Scene::CreateGraphicsPipeline() {
 	VkPushConstantRange PushConstantRange = {};
-	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	PushConstantRange.offset = 0;
 	PushConstantRange.size = sizeof(Constants);
+	assert(sizeof(Constants) <= logicalDevice->gpu_properties.limits.maxPushConstantsSize);
 
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -620,13 +618,26 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertCloudsShaderModule, nullptr);
 }
 
+void Scene::ProcesTasksMultithreaded(enginetool::ThreadPool* threadPool, std::vector<std::function<void()>>& tasks){
+	while(!tasks.empty()){
+		size_t i = 0;		
+		while (i < threadPool->threads.size()-1 && !tasks.empty()) {
+			threadPool->threads[i]->AddJob(tasks.back());
+			tasks.pop_back();
+			++i;
+		}		
+	}
+
+	threadPool->Hold();
+}
+
 void Scene::CreateCommandBuffers() {
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { 0.2f, 0.2f, 0.2f, 1.0f };
+	clearValues[0].color = {  0.0f, 0.0f, 0.0f, 0.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -637,23 +648,23 @@ void Scene::CreateCommandBuffers() {
 	renderPassInfo.renderArea.extent.height = logicalDevice->swapchain_extent.height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
-
-	command_buffers.resize(logicalDevice->swap_chain_framebuffers.size());
+	
+	commandBuffers.resize(logicalDevice->swap_chain_framebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
 	allocInfo.commandPool = commandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
-	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
+	allocInfo.commandBufferCount = (uint32_t)commandBuffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, command_buffers.data()));
+	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, commandBuffers.data()));
 
 	// starting command buffer recording
-	for (size_t i = 0; i < command_buffers.size(); i++)	{
+	for (size_t i = 0; i < commandBuffers.size(); i++)	{
 		// Set target frame buffer
 		renderPassInfo.framebuffer = logicalDevice->swap_chain_framebuffers[i];
-		vkBeginCommandBuffer(command_buffers[i], &beginInfo);
-		vkCmdBeginRenderPass(command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
@@ -661,113 +672,112 @@ void Scene::CreateCommandBuffers() {
 		viewport.height = (float)logicalDevice->swapchain_extent.height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
-		vkCmdSetViewport(command_buffers[i], 0, 1, &viewport);
+		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 
 		scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
 		scissor.extent = logicalDevice->swapchain_extent;
-		vkCmdSetScissor(command_buffers[i], 0, 1, &scissor);
+		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
 		VkDeviceSize offsets[1] = { 0 };
 
 		if(displaySelectionIndicator && selectedActor!=nullptr) {
 			float pointerOffset = selectedActor->position.y + abs(selectedActor->assignedMesh->aabb.max.y)+abs(selectionIndicatorMesh->aabb.max.y)+0.25f;
-			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-			pushConstants.color = selectedActor->CalculateSelectionIndicatorColor();
-			pushConstants.pos = glm::vec3(selectedActor->position.x, pointerOffset, selectedActor->position.z);
-			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+			pushConstants[0].renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+			pushConstants[0].color = selectedActor->CalculateSelectionIndicatorColor();
+			pushConstants[0].pos = glm::vec3(selectedActor->position.x, pointerOffset, selectedActor->position.z);
+			vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[0]);
 			
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
-			vkCmdDrawIndexed(command_buffers[i], selectionIndicatorMesh->indexCount, 1, 0,  selectionIndicatorMesh->indexBase, 0);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
+			vkCmdDrawIndexed(commandBuffers[i], selectionIndicatorMesh->indexCount, 1, 0,  selectionIndicatorMesh->indexBase, 0);
 		}
 
 		if (displaySkybox) {
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displayMainCharacter) {
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 			std::array<VkDescriptorSet, 1> descriptorSets;
 			descriptorSets[0] = mainCharacter->assignedMaterial->descriptorSet;
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->assignedMaterial->assignedPipeline));
-			pushConstants.pos = mainCharacter->position;
-			pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-			vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-			vkCmdDrawIndexed(command_buffers[i], mainCharacter->assignedMesh->indexCount, 1, 0, mainCharacter->assignedMesh->indexBase, 0);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*mainCharacter->assignedMaterial->assignedPipeline));
+			pushConstants[0].pos = mainCharacter->position;
+			pushConstants[0].renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon);
+			vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[0]);
+			vkCmdDrawIndexed(commandBuffers[i], mainCharacter->assignedMesh->indexCount, 1, 0, mainCharacter->assignedMesh->indexBase, 0);
 		}
 
 		if (displayOcean) {
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, &oceanDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
-			vkCmdDrawIndexed(command_buffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Sea>(seas[0])->indices.size()), 1, 0, 0, 0);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, &oceanDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
+			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Sea>(seas[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displaySceneGeometry) {
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
 
 			for (const auto& a : actors) {
 				if(a->visible) {
 					std::array<VkDescriptorSet, 1> descriptorSets;
 					descriptorSets[0] = a->assignedMaterial->descriptorSet;
-					vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
-					vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*a->assignedMaterial->assignedPipeline));
-					pushConstants.pos = a->position;
-					pushConstants.renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
-					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-					vkCmdDrawIndexed(command_buffers[i], a->assignedMesh->indexCount, 1, 0, a->assignedMesh->indexBase, 0);
+					vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
+					vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (pbrWireframePipeline) : (*a->assignedMaterial->assignedPipeline));
+					pushConstants[0].pos = a->position;
+					pushConstants[0].renderLimitPlane = glm::vec4(0.0f, 0.0f, 0.0f, horizon );
+					vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[0]);
+					vkCmdDrawIndexed(commandBuffers[i], a->assignedMesh->indexCount, 1, 0, a->assignedMesh->indexBase, 0);
 				}
 			}
 		}
 
 		if (displayClouds)	{
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (cloudsWireframePipeline) : (cloudsPipeline));
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (cloudsWireframePipeline) : (cloudsPipeline));
 			
 			for (uint32_t k = 0; k < DYNAMIC_UB_OBJECTS; k++) {
 				uint32_t dynamic_offset = k * static_cast<uint32_t>(dynamicAlignment);
-				vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &cloudDescriptorSet, 1, &dynamic_offset);
-				vkCmdDrawIndexed(command_buffers[i], clouds[0]->assignedMesh->indexCount, 1, 0, clouds[0]->assignedMesh->indexBase, 0);			
+				vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 2, 1, &cloudDescriptorSet, 1, &dynamic_offset);
+				vkCmdDrawIndexed(commandBuffers[i], clouds[0]->assignedMesh->indexCount, 1, 0, clouds[0]->assignedMesh->indexBase, 0);			
 			}
 		}
 
 		if(displayWireframe) {
 			UpdateSelectRayDrawData();
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
-			vkCmdDrawIndexed(command_buffers[i], 2, 1, 0, 0, 0);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
+			vkCmdDrawIndexed(commandBuffers[i], 2, 1, 0, 0, 0);
 		}
 
 		if(displayAabb) {
-			vkCmdBindVertexBuffers(command_buffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
-			vkCmdBindIndexBuffer(command_buffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
-			vkCmdBindDescriptorSets(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 6, 1, &aabbDescriptorSet, 0, nullptr);
-			vkCmdBindPipeline(command_buffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 6, 1, &aabbDescriptorSet, 0, nullptr);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 			for (const auto& a : actors) {
-				
 				if(a->visible) {
-					pushConstants.pos = a->position;
-					vkCmdPushConstants(command_buffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
-					vkCmdDrawIndexed(command_buffers[i], 24, 1, 0, a->assignedMesh->indexBaseAabb, 0);
+					pushConstants[0].pos = a->position;
+					vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[0]);
+					vkCmdDrawIndexed(commandBuffers[i], 24, 1, 0, a->assignedMesh->indexBaseAabb, 0);
 				}
 			}
 		}
 
-		vkCmdEndRenderPass(command_buffers[i]);
-		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
+		vkCmdEndRenderPass(commandBuffers[i]);
+		ErrorCheck(vkEndCommandBuffer(commandBuffers[i]));
 	}
 }
 
@@ -777,7 +787,7 @@ void Scene::CreateReflectionCommandBuffer() {
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -792,7 +802,7 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = reflectionCommandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = 1;
 
@@ -835,10 +845,10 @@ void Scene::CreateReflectionCommandBuffer() {
 		descriptorSets[0] = actors[j]->assignedMaterial->reflectDescriptorSet;
 		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrReflectionPipeline);
-		pushConstants.pos = actors[j]->position;
-		pushConstants.renderLimitPlane = (currentCamera->position.y<0) ? (glm::vec4(0.0f, -1.0f, 0.0f, -0.0f)) : (glm::vec4(0.0f, 1.0f, 0.0f, -0.0f));
-
-		vkCmdPushConstants(reflectionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		
+		pushConstants[1].pos = actors[j]->position;
+		pushConstants[1].renderLimitPlane = (currentCamera->position.y<0) ? (glm::vec4(0.0f, -1.0f, 0.0f, -0.0f)) : (glm::vec4(0.0f, 1.0f, 0.0f, -0.0f));
+		vkCmdPushConstants(reflectionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[1]);
 		vkCmdDrawIndexed(reflectionCmdBuff, actors[j]->assignedMesh->indexCount, 1, 0, actors[j]->assignedMesh->indexBase, 0);
 	}
 
@@ -852,7 +862,7 @@ void Scene::CreateRefractionCommandBuffer() {
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
 
 	std::array<VkClearValue, 2> clearValues = {};
-	clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 0.0f } };
+	clearValues[0].color = { 0.0f, 0.0f, 0.0f, 0.0f };
 	clearValues[1].depthStencil = { 1.0f, 0 };
 
 	VkRenderPassBeginInfo renderPassInfo = {};
@@ -867,7 +877,7 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = refractionCommandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = 1;
 
@@ -909,9 +919,10 @@ void Scene::CreateRefractionCommandBuffer() {
 		descriptorSets[0] = actors[j]->assignedMaterial->refractDescriptorSet;
 		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pbrRefractionPipeline);
-		pushConstants.pos = actors[j]->position;
-		pushConstants.renderLimitPlane = glm::vec4(0.0f, -1.0f, 0.0f, 0.0f );
-		vkCmdPushConstants(refractionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Constants), &pushConstants);
+		
+		pushConstants[2].pos = actors[j]->position;
+		pushConstants[2].renderLimitPlane = glm::vec4(0.0f, -1.0f, 0.0f, 0.0f );
+		vkCmdPushConstants(refractionCmdBuff, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[2]);
 		vkCmdDrawIndexed(refractionCmdBuff, actors[j]->assignedMesh->indexCount, 1, 0, actors[j]->assignedMesh->indexBase, 0);
 	}
 
@@ -1014,6 +1025,12 @@ void Scene::RandomPositions() {
 	}
 }
 
+void Scene::UpdatePositions() {
+	for(const auto& a : actors) a->UpdatePosition((float)mainClock->fixedTimeValue);
+	for(const auto& c : sceneCameras) c->UpdatePosition((float)mainClock->fixedTimeValue);
+	mainCharacter->UpdatePosition((float)mainClock->fixedTimeValue);
+}
+
 void Scene::HandleMouseClick() {
 	if(selectedActor == nullptr) {
 		SelectActor();
@@ -1089,6 +1106,9 @@ void Scene::UpdateStaticUniformBuffer() {
 	memcpy(uniform_buffers.line.mapped, &UBOSG, sizeof(UBOSG));
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 
+}
+
+void Scene::UpdateCloudsUniformBuffer() {
 	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
@@ -1099,7 +1119,7 @@ void Scene::UpdateStaticUniformBuffer() {
 	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
 	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
-}
+} 
 
 void Scene::UpdateSelectionIndicatorUniformBuffer() {
 	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
@@ -1111,7 +1131,7 @@ void Scene::UpdateSelectionIndicatorUniformBuffer() {
 	memcpy(uniform_buffers.selectionIndicator.mapped, &UBOSI, sizeof(UBOSI));
 }
 
-void Scene::UpdateUBOOffscreen() {
+void Scene::UpdateOffscreenUniformBuffer() {
 	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOO.proj[1][1] *= -1; 
 	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
@@ -1125,7 +1145,7 @@ void Scene::UpdateUBOOffscreen() {
 	memcpy(uniform_buffers.reflection.mapped, &UBOO, sizeof(UBOO));
 }
 
-void Scene::UpdateUBOParameters() {
+void Scene::UpdateUniformBufferParameters() {
 	UBOP.light_col = std::dynamic_pointer_cast<SphereLight>(actors[2])->GetLightColor();
 	UBOP.exposure = 2.5f;
 	UBOP.light_pos[0] = actors[2]->position;
@@ -1210,7 +1230,7 @@ void Scene::UpdateOceanUniformBuffer() {
 // ------ Text overlay - performance statistics ----- //
 
 void Scene::UpdateGUI() {
-	guiMainHub->UpdateCommandBuffers((float)mainClock->accumulator, (uint32_t)mainClock->totalTime);
+	guiMainHub->UpdateGui();
 }
 
 // ------------------ Descriptors ------------------- //
@@ -2175,14 +2195,14 @@ void Scene::CreateDepthResources() {
 	screenDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	screenDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-	reflectionDepthImage->Init(logicalDevice, commandPool, logicalDevice->FindDepthFormat(), 0, 1, 1);
+	reflectionDepthImage->Init(logicalDevice, reflectionCommandPool, logicalDevice->FindDepthFormat(), 0, 1, 1);
 	reflectionDepthImage->texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
 	reflectionDepthImage->texHeight = (int32_t)logicalDevice->swapchain_extent.height;
 	reflectionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
-	refractionDepthImage->Init(logicalDevice, commandPool, logicalDevice->FindDepthFormat(), 0, 1, 1);
+	refractionDepthImage->Init(logicalDevice, refractionCommandPool, logicalDevice->FindDepthFormat(), 0, 1, 1);
 	refractionDepthImage->texWidth = (int32_t)logicalDevice->swapchain_extent.width; 
 	refractionDepthImage->texHeight = (int32_t)logicalDevice->swapchain_extent.height;
 	refractionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -2191,14 +2211,14 @@ void Scene::CreateDepthResources() {
 }
 
 void Scene::PrepareOffscreenImage() {
-	reflectionImage->Init(logicalDevice, commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	reflectionImage->Init(logicalDevice, reflectionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	reflectionImage->texWidth = logicalDevice->swapchain_extent.width;
 	reflectionImage->texHeight = logicalDevice->swapchain_extent.height;
 	reflectionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
-	refractionImage->Init(logicalDevice, commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	refractionImage->Init(logicalDevice, refractionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	refractionImage->texWidth = logicalDevice->swapchain_extent.width;
 	refractionImage->texHeight = logicalDevice->swapchain_extent.height;
 	refractionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -2296,6 +2316,8 @@ void Scene::DeInitScene() {
 	//CleanUpOffscreenImage();
 
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
+	vkDestroyCommandPool(logicalDevice->device, reflectionCommandPool, nullptr);
+	vkDestroyCommandPool(logicalDevice->device, refractionCommandPool, nullptr);
 	DeInitUniformBuffer();
 
 	delete sky;
@@ -2352,7 +2374,7 @@ void Scene::DestroyPipeline() {
 }
 
 void Scene::FreeCommandBuffers() {
-	vkFreeCommandBuffers(logicalDevice->device, commandPool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
-	vkFreeCommandBuffers(logicalDevice->device, commandPool, 1, &reflectionCmdBuff);
-	vkFreeCommandBuffers(logicalDevice->device, commandPool, 1, &refractionCmdBuff);
+	vkFreeCommandBuffers(logicalDevice->device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	vkFreeCommandBuffers(logicalDevice->device, reflectionCommandPool, 1, &reflectionCmdBuff);
+	vkFreeCommandBuffers(logicalDevice->device, refractionCommandPool, 1, &refractionCmdBuff);
 }

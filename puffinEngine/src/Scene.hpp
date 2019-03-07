@@ -18,7 +18,6 @@
 #include "MousePicker.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
-#include "WorldClock.hpp"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -34,7 +33,7 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock);
+	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
@@ -98,7 +97,7 @@ public:
 		
 	GuiMainHub *guiMainHub = nullptr;
 	
-	std::vector<VkCommandBuffer> command_buffers;
+	std::vector<VkCommandBuffer> commandBuffers;
 	VkCommandBuffer reflectionCmdBuff;
 	VkCommandBuffer refractionCmdBuff;
 
@@ -146,17 +145,34 @@ private:
 	void LoadAssets();
 	void PrepeareMainCharacter(enginetool::ScenePart &mesh);
 	void PrepareOffscreenImage();
+	void ProcesTasksMultithreaded(enginetool::ThreadPool* threadPool, std::vector<std::function<void()>>& tasks);
 	void RandomPositions();
-	void SelectActor(); 
+	void SelectActor();
+	void UpdateCloudsUniformBuffer(); 
 	void UpdateDescriptorSet();
 	void UpdateDynamicUniformBuffer();
 	void UpdateSelectRayDrawData();
-	void UpdateOceanUniformBuffer(); 
+	void UpdateOceanUniformBuffer();
+	void UpdatePositions(); 
 	void UpdateSelectionIndicatorUniformBuffer();
 	void UpdateSkyboxUniformBuffer();
 	void UpdateStaticUniformBuffer();
-	void UpdateUBOOffscreen();
-	void UpdateUBOParameters();
+	void UpdateOffscreenUniformBuffer();
+	void UpdateUniformBufferParameters();
+	
+	std::function<void()> task1 = std::bind(&Scene::CheckActorsVisibility, this);
+	std::function<void()> task2 = std::bind(&Scene::UpdatePositions, this);
+	std::function<void()> task3 = std::bind(&Scene::UpdateSkyboxUniformBuffer, this);
+	std::function<void()> task4 = std::bind(&Scene::UpdateUniformBufferParameters, this);
+	std::function<void()> task5 = std::bind(&Scene::UpdateStaticUniformBuffer, this);
+	std::function<void()> task6 = std::bind(&Scene::UpdateSelectionIndicatorUniformBuffer, this);
+	std::function<void()> task7 = std::bind(&Scene::UpdateOffscreenUniformBuffer, this);
+	std::function<void()> task8 = std::bind(&Scene::UpdateDynamicUniformBuffer, this);
+	std::function<void()> task9 = std::bind(&Scene::UpdateOceanUniformBuffer, this);
+	std::function<void()> task10 = std::bind(&Scene::UpdateCloudsUniformBuffer, this); 
+	std::function<void()> task11 = std::bind(&Scene::CreateCommandBuffers, this);
+	std::function<void()> task12 = std::bind(&Scene::CreateReflectionCommandBuffer, this);
+	std::function<void()> task13 = std::bind(&Scene::CreateRefractionCommandBuffer, this);
 	
 	// ---------------- Deinitialisation ---------------- //
 
@@ -235,7 +251,7 @@ private:
 		bool glow;
 		glm::vec3 color;
 		//alignas(16) glm::vec2
-	} pushConstants;
+	};
 
 	struct {
 		enginetool::Buffer line;
@@ -330,6 +346,11 @@ private:
 	VkDescriptorSetLayout selectionIndicatorDescriptorSetLayout;
 
 	VkCommandPool commandPool;
+	VkCommandPool reflectionCommandPool;
+	VkCommandPool refractionCommandPool;
+
+	std::array<Constants, 3> pushConstants;
+
 	size_t dynamicAlignment;
 	VkDescriptorPool descriptorPool;
 	VkPipelineLayout pipelineLayout;
@@ -341,5 +362,6 @@ private:
 	MaterialLibrary* materialLibrary = nullptr;
 	MeshLibrary* meshLibrary = nullptr;
 	MousePicker* mousePicker = nullptr;
+	enginetool::ThreadPool* threadPool = nullptr;
 	WorldClock* mainClock = nullptr;	
 };

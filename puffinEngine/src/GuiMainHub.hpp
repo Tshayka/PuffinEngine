@@ -22,16 +22,17 @@ public:
 	bool guiOverlayVisible = true;
 	void CleanUpForSwapchain();
 	void DeInit();
-	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi);
+	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
 	void RecreateForSwapchain();
 	void Submit(VkQueue, uint32_t);
-	void UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime);
-
+	void UpdateGui(); 
+	
 	std::vector<VkCommandBuffer> command_buffers;
 
 private:
     void CreateCommandPool();
 	void CreateRenderPass();
+	void UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime);
 
 	uint32_t bufferIndex;
 	VkRenderPass renderPass;
@@ -44,4 +45,6 @@ private:
 	GuiElement* console = nullptr;
 	GuiTextOverlay* textOverlay = nullptr;
 	Device* logicalDevice = nullptr;
+	enginetool::ThreadPool* threadPool = nullptr;
+	WorldClock* mainClock = nullptr;	
 };

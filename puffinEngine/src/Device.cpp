@@ -260,7 +260,7 @@ void Device::CreateInstance()
 	createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 	createInfo.ppEnabledLayerNames = validationLayers.data();
 #else 
-	create_info.enabledLayerCount = 0;
+	createInfo.enabledLayerCount = 0;
 #endif // BUILD_ENABLE_VULKAN_DEBUG
 
 	ErrorCheck(vkCreateInstance(&createInfo, VK_NULL_HANDLE, &instance)); 
@@ -791,14 +791,6 @@ void Device::InitDebug()
 	//	vkCreateDebugReportCallbackEXT( _instance, nullptr, nullptr, nullptr );
 }
 
-void Device::DestroyRenderPass() {
-	vkDestroyRenderPass(device, renderPass, nullptr);
-}
-
-void Device::DestroyOffscreenRenderPass() {
-	vkDestroyRenderPass(device, offscreenRenderPass, nullptr);
-}
-
 void Device::DeInitDebug() {
 	DestroyDebugReportCallback(instance, callback, VK_NULL_HANDLE);
 	callback = VK_NULL_HANDLE;
@@ -811,3 +803,11 @@ void Device::InitDebug() {};
 void Device::DeInitDebug() {};
 
 #endif // BUILD_ENABLE_VULKAN_DEBUG
+
+void Device::DestroyRenderPass() {
+	vkDestroyRenderPass(device, renderPass, nullptr);
+}
+
+void Device::DestroyOffscreenRenderPass() {
+	vkDestroyRenderPass(device, offscreenRenderPass, nullptr);
+}

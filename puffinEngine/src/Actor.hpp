@@ -53,6 +53,7 @@ public:
 	enginetool::SceneMaterial* assignedMaterial;
 	
 	enginetool::ScenePart::AABB currentAabb;
+	std::vector<std::shared_ptr<Actor>>* interactActors;
 	
 	std::string name;
 	
@@ -80,8 +81,6 @@ private:
 	void StartWalkForward();
 	void StartWalkLeft();
 	void StartWalkRight();
-
-	std::vector<std::shared_ptr<Actor>>* interactActors;
 
 	std::string description;
 	std::string id;

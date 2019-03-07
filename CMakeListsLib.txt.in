@@ -22,7 +22,7 @@ ExternalProject_Add(glm
 )
 
 ExternalProject_Add(gli
-	PREFIX glm
+	PREFIX gli
 	GIT_REPOSITORY  https://github.com/g-truc/gli.git
 	GIT_TAG         master
 	CMAKE_ARGS      "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli"

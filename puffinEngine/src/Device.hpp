@@ -7,6 +7,8 @@
 #include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
 
 #include "Buffer.cpp"
+#include "Threads.cpp"
+#include "WorldClock.hpp"
 
 struct QueueFamilyIndices
 {

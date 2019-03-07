@@ -43,8 +43,8 @@ void PuffinEngine::Run() {
 }
 
 void PuffinEngine::CreateDevice() {
-	world_device = new Device();
-	world_device->InitDevice(window);
+	worldDevice = new Device();
+	worldDevice->InitDevice(window);
 }
 
 void PuffinEngine::CreateWorldClock() {
@@ -54,7 +54,7 @@ void PuffinEngine::CreateWorldClock() {
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
 	std::cout << "numThreads = " << numThreads << std::endl;
-	threadPool.SetThreadCount(numThreads);
+	threadPool.SetThreadCount(numThreads);		
 }
 
 void PuffinEngine::CreateImGuiMenu() {
@@ -69,24 +69,19 @@ void PuffinEngine::CreateMainUi() {
 	mainUi = new GuiMainUi();
 }
 
-void PuffinEngine::CreateGuiMainHub() {
-	guiMainHub = new GuiMainHub();
-	guiMainHub->Init(world_device, console, guiStatistics, mainUi);
-}
-
 void PuffinEngine::CreateMousePicker() {
 	mousePicker = new MousePicker();
-	mousePicker->Init(world_device);
+	mousePicker->Init(worldDevice);
 }
 
 void PuffinEngine::CreateMaterialLibrary() {
 	materialLibrary = new MaterialLibrary();
-	materialLibrary->Init(world_device);
+	materialLibrary->Init(worldDevice);
 }
 
 void PuffinEngine::CreateMeshLibrary() {
 	meshLibrary = new MeshLibrary();
-	meshLibrary->Init(world_device);
+	meshLibrary->Init(worldDevice);
 }
 
 void PuffinEngine::CreateMainCharacter() {
@@ -94,9 +89,14 @@ void PuffinEngine::CreateMainCharacter() {
 	//dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 }
 
+void PuffinEngine::CreateGuiMainHub() {
+	guiMainHub = new GuiMainHub();
+	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool);
+}
+
 void PuffinEngine::CreateScene() {
 	scene_1 = new Scene();
-	scene_1->InitScene(world_device, guiMainHub, mousePicker, meshLibrary, materialLibrary, mainClock);
+	scene_1->InitScene(worldDevice, guiMainHub, mousePicker, meshLibrary, materialLibrary, mainClock, threadPool);
 }
 
 void PuffinEngine::InitVulkan() {
@@ -140,6 +140,7 @@ void PuffinEngine::MainLoop() {
 		io.DeltaTime = (float)frameTime;	
 
 		while (mainClock->accumulator >= mainClock->fixedTimeValue) {
+			threadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
 			scene_1->UpdateScene();
 			mainClock->totalTime += mainClock->fixedTimeValue;
 			mainClock->accumulator -= mainClock->fixedTimeValue;
@@ -148,22 +149,26 @@ void PuffinEngine::MainLoop() {
 		DrawFrame();	
 	}
 
-	vkDeviceWaitIdle(world_device->device);
+	vkDeviceWaitIdle(worldDevice->device);
+}
+
+void PuffinEngine::UpdateGui(){
+	guiMainHub->UpdateGui();
 }
 
 void PuffinEngine::CreateSemaphores() {
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &imageAvailableSemaphore));
-	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &renderFinishedSemaphore));
-	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &reflectRenderSemaphore));
-	ErrorCheck(vkCreateSemaphore(world_device->device, &semaphore_info, nullptr, &refractRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &imageAvailableSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &renderFinishedSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &reflectRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &refractRenderSemaphore));
 }
 
 void PuffinEngine::DrawFrame() {
-	uint32_t image_index;
-	VkResult result = vkAcquireNextImageKHR(world_device->device, world_device->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &image_index);
+	uint32_t imageIndex;
+	VkResult result = vkAcquireNextImageKHR(worldDevice->device, worldDevice->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)	{
 		RecreateSwapChain();
@@ -186,56 +191,54 @@ void PuffinEngine::DrawFrame() {
 	submit_info.pCommandBuffers = &scene_1->reflectionCmdBuff;
 	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
 	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
 
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1->refractionCmdBuff;
 	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
 	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
 	
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->command_buffers[image_index];
+	submit_info.pCommandBuffers = &scene_1->commandBuffers[imageIndex];
 	submit_info.pWaitSemaphores = &refractRenderSemaphore;
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(world_device->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	guiMainHub->Submit(world_device->queue, image_index);
+	guiMainHub->Submit(worldDevice->queue, imageIndex);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores = &renderFinishedSemaphore;
 
-	VkSwapchainKHR swap_chains[] = { world_device->swapchain };
+	VkSwapchainKHR swapChains[] = { worldDevice->swapchain };
 	present_info.swapchainCount = 1;
-	present_info.pSwapchains = swap_chains;
-	present_info.pImageIndices = &image_index;
+	present_info.pSwapchains = swapChains;
+	present_info.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(world_device->present_queue, &present_info);
+	result = vkQueuePresentKHR(worldDevice->present_queue, &present_info);
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
-	{
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		RecreateSwapChain();
 	}
-	else if (result != VK_SUCCESS)
-	{
+	else if (result != VK_SUCCESS) {
 		assert(0 && "Failed to present swap chain image!");
 		std::exit(-1);
 	}
 
-	vkQueueWaitIdle(world_device->present_queue);
+	vkQueueWaitIdle(worldDevice->present_queue);
 }
 
 void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
 	if (width == 0 || height == 0) return;
 
-	vkDeviceWaitIdle(world_device->device);
+	vkDeviceWaitIdle(worldDevice->device);
 
 	CleanUpSwapChain();
 
-	world_device->InitSwapChain();
+	worldDevice->InitSwapChain();
 	scene_1->RecreateForSwapchain();
 	guiMainHub->RecreateForSwapchain();
 }
@@ -562,21 +565,21 @@ void PuffinEngine::CleanUp() {
 void PuffinEngine::CleanUpSwapChain() {
 	scene_1->CleanUpForSwapchain();
 	guiMainHub->CleanUpForSwapchain();
-	world_device->DeInitSwapchainImageViews();
-	world_device->DestroySwapchainKHR();
+	worldDevice->DeInitSwapchainImageViews();
+	worldDevice->DestroySwapchainKHR();
 }
 
 void PuffinEngine::DeInitSemaphores() {
-	vkDestroySemaphore(world_device->device, renderFinishedSemaphore, nullptr);
-	vkDestroySemaphore(world_device->device, imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(world_device->device, reflectRenderSemaphore, nullptr);
-	vkDestroySemaphore(world_device->device, refractRenderSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->device, renderFinishedSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->device, imageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->device, reflectRenderSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->device, refractRenderSemaphore, nullptr);
 }
 
 void PuffinEngine::DestroyDevice() {
-	world_device->DeInitDevice();
-	delete world_device;
-	world_device = nullptr;
+	worldDevice->DeInitDevice();
+	delete worldDevice;
+	worldDevice = nullptr;
 }
 
 void PuffinEngine::DestroyWorldClock() {
