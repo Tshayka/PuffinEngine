@@ -16,7 +16,6 @@
 #include "MaterialLibrary.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
-#include "Texture.hpp"
 #include "Ui.hpp"
 
 const int WIDTH = 800;
@@ -320,10 +319,10 @@ private:
 	VkPipeline skyboxReflectionPipeline;
 	VkPipeline selectionIndicatorPipeline;
 	
-	enginetool::SceneMaterial *sky = new enginetool::SceneMaterial();
+	enginetool::SceneMaterial sky;
 	
 	enginetool::ScenePart element;
-	enginetool::ScenePart* selectionIndicatorMesh;
+	enginetool::ScenePart* selectionIndicatorMesh = nullptr;
 
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;

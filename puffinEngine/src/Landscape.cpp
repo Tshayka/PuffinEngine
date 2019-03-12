@@ -113,8 +113,10 @@ void Sea::CreateMesh() {
 				vertices[index].normals.z = 0.0f;
             }
         }
-     
+
+#if BUILD_ENABLE_VULKAN_DEBUG
 		std::cout << "Ocean vertices size: " << vertices.size() << std::endl;
+#endif
 
 		for(int z = 0; z < vSize-1; ++z) {
 			for(int x = 0; x < vSize-1; ++x) {

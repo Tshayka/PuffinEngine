@@ -103,7 +103,7 @@ void GuiElement::LoadImage() {
 	
 	VkDeviceSize uploadSize = font.texWidth * font.texHeight * 4 * sizeof(char);
 	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, fontData);
+	stagingBuffer.CreateBuffer(logicalDevice, uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -449,28 +449,23 @@ void GuiElement::RenderDrawData() {
 	VkDeviceSize indexBufferSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 
 	// Update buffers only if vertex or index count has been changed compared to current buffer size
-
-	// Vertex buffer
 	if ((vertexBuffer.buffer == VK_NULL_HANDLE) || (vertexCount != draw_data->TotalVtxCount)) {
 		vertexBuffer.Unmap();
 		vertexBuffer.Destroy();
 
-		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
-		vertexBuffer.device = logicalDevice->device;
+		vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 		vertexCount = draw_data->TotalVtxCount;
 		vertexBuffer.Unmap();
 		vertexBuffer.Map();
 	}
 
-	// Index buffer
-	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < draw_data->TotalIdxCount)) {
 		indexBuffer.Unmap();
 		indexBuffer.Destroy();
 
-		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
-		indexBuffer.device = logicalDevice->device;
+		indexBuffer.CreateBuffer(logicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 		indexCount = draw_data->TotalIdxCount;
+		indexBuffer.Unmap();
 		indexBuffer.Map();
 	}
 

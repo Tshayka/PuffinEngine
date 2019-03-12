@@ -18,8 +18,6 @@ class PuffinEngine {
 
     void Run();
 
-    std::string isUppercase(char l);
-
     int width = 800;
 	int height = 600; // relative to the monitor and/or the window and are given in artificial units that do not necessarily correspond to real screen pixels
 

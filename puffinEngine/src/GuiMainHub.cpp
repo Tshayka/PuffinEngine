@@ -6,7 +6,6 @@
 #include "MeshLayout.cpp"
 #include "GuiMainHub.hpp"
 
-
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
 
 //---------- Constructors and dectructors ---------- //
@@ -226,4 +225,11 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 void GuiMainHub::DeInit() {
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
 	vkDestroyRenderPass(logicalDevice->device, renderPass, nullptr);
+
+	mainUi = nullptr;
+	console = nullptr;
+	textOverlay = nullptr;
+	logicalDevice = nullptr;
+	threadPool = nullptr;
+	mainClock = nullptr;
 }

@@ -10,6 +10,7 @@
 #include <boost/lexical_cast.hpp>
 
 #include "Actor.hpp"
+#include "ErrorCheck.hpp"
 
 Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors) : state(ActorState::Idle) {
 	this->name = name;
@@ -20,12 +21,17 @@ Actor::Actor(std::string name, std::string description, glm::vec3 position, Acto
 	initPosition = position;
 	groundLevel = position.y;
 	id = CreateId();
-	// create save file
+	// here create save file
+
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Actor created\n";
+#endif 
 }
 
 Actor::~Actor() {
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Actor destroyed\n";
+#endif 
 }
 
 // --------------- Setters and getters -------------- //

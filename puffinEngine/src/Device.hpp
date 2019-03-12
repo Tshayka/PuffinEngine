@@ -6,12 +6,10 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
 
-#include "Buffer.cpp"
 #include "Threads.cpp"
 #include "WorldClock.hpp"
 
-struct QueueFamilyIndices
-{
+struct QueueFamilyIndices {
 	int graphicsFamily = -1;
 	int presentFamily = -1;
 
@@ -32,20 +30,18 @@ public:
 	~Device();
 
 	void DeInitDevice();
-	void CreateOffscreenRenderPass(VkFormat format);
-	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void CreateStagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*, void*);
-	void CreateUnstagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*);
-	void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&);
-	uint32_t FindMemoryType(uint32_t, VkMemoryPropertyFlags);
-	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice);
+	void CreateOffscreenRenderPass(const VkFormat& format);
+	VkShaderModule CreateShaderModule(const std::vector<char>& code);
+	//void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*, void*);
+	uint32_t FindMemoryType(const uint32_t& typeFilter, const VkMemoryPropertyFlags& properties);
+	QueueFamilyIndices FindQueueFamilies(const VkPhysicalDevice& device);
 	void InitDevice(GLFWwindow*);
 	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
 	void DeInitSwapchainImageViews();
 	void DestroyOffscreenRenderPass();
 	void DestroyRenderPass();
 	void DestroySwapchainKHR();
-	VkFormat FindDepthFormat();
+	VkFormat FindDepthFormat() const;
 
 	VkDevice device = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
@@ -60,10 +56,10 @@ public:
 
 	/*SWAPCHAIN*/
 	// Functions that retrive INFO needed to create swapchain
-	SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice); // populate "SwapChainSupportDetails" struct
-	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&); // find the right settings for the best possible swap chain - Surface format (color depth)
-	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>); // represents the actual conditions for showing images to the screen (4 possible modes)
-	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR&); // swap extent is the resolution of the swap chain images, it's almost always exactly equal to the resolution of the window that we're drawing to
+	SwapChainSupportDetails QuerySwapChainSupport(const VkPhysicalDevice& device); // populate "SwapChainSupportDetails" struct
+	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats) const; // find the right settings for the best possible swap chain - Surface format (color depth)
+	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) const; // represents the actual conditions for showing images to the screen (4 possible modes)
+	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities); // swap extent is the resolution of the swap chain images, it's almost always exactly equal to the resolution of the window that we're drawing to
 	
 	VkSwapchainKHR swapchain;
 	VkFormat swapchainImageFormat;
@@ -76,13 +72,13 @@ public:
 
 private:
 	GLFWwindow* window;	
-	bool CheckDeviceExtensionSupport(VkPhysicalDevice);
+	bool CheckDeviceExtensionSupport(const VkPhysicalDevice& device);
 	void CreateInstance();
 	void CreateLogicalDevice();
 	void CreateRenderPass();
 	void CreateSurface();
 	void DeInitDebug();
-	VkFormat FindSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, const VkImageTiling& tiling, const VkFormatFeatureFlags& features) const;
 	void InitDebug();
 	bool IsDeviceSuitable(VkPhysicalDevice);
 	void PickPhysicalDevice();

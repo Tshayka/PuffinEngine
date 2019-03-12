@@ -3,7 +3,6 @@
 #include <glm/gtc/matrix_transform.hpp> 
 
 #include "ErrorCheck.hpp"
-#include "Device.hpp"
 #include "Texture.hpp"
 
 // Defines for the STB font used
@@ -36,14 +35,13 @@ private:
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
+	void CreateVertexBuffer();
 	void LoadImage();
 
-	glm::vec4 *mapped = nullptr;
 	stb_fontchar stbFontData[STB_NUM_CHARS];
 	uint32_t num_letters;
 
-	VkBuffer vertexBuffer; // mapping the vertex data
-	VkDeviceMemory memory;
+	enginetool::Buffer vertexBuffer; // mapping the vertex data
 
 	TextureLayout font;
 	VkDescriptorPool descriptorPool;
@@ -56,6 +54,6 @@ private:
 	VkRect2D scissor = {};
 	VkViewport viewport = {}; 
 
-	Device* logical_device = nullptr;
+	Device* logicalDevice = nullptr;
 	VkCommandPool* commandPool = nullptr;
 };

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Device.hpp"
+#include "Buffer.cpp"
 
 class TextureLayout {
     public:

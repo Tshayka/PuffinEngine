@@ -8,11 +8,15 @@
 Character::Character(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
 : Actor(name, description, position, type, actors) {
 	// create save file
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Character created\n";
+#endif
 }
 
 Character::~Character() {
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "Character destroyed\n";
+#endif
 }
 
 void Character::Init(unsigned int maxHealth, int currentHealth, unsigned int gold) {

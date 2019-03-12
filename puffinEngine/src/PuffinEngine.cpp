@@ -9,27 +9,26 @@
 
 PuffinEngine::PuffinEngine() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Engine object created\n";
+	std::cout << "Puffin Engine created\n";
 #endif 
 }
 
 PuffinEngine::~PuffinEngine() {
 #if BUILD_ENABLE_VULKAN_DEBUG
-	std::cout << "Engine object destroyed\n";
+	std::cout << "Puffin Engine destroyed\n";
 #endif
 }
 
-std::string PuffinEngine::isUppercase(char l)
-{
-if(l & 0b00100000)
-    return "This letter is lowercase!";
-else
-    return "This letter is uppercase!";
-}
+// std::string PuffinEngine::isUppercase(char l){
+// if(l & 0b00100000)
+//     return "This letter is lowercase!";
+// else
+//     return "This letter is uppercase!";
+// }
 
 template<typename T>
 T clamp(const T& what, const T& a, const T& b) {
-return std::min(b, std::max(what, a)); 
+	return std::min(b, std::max(what, a)); 
 }
 
 // ---------------- Main functions ------------------ //
@@ -53,7 +52,9 @@ void PuffinEngine::CreateWorldClock() {
 
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
+#if BUILD_ENABLE_VULKAN_DEBUG 
 	std::cout << "numThreads = " << numThreads << std::endl;
+#endif 
 	threadPool.SetThreadCount(numThreads);		
 }
 
@@ -559,7 +560,6 @@ void PuffinEngine::CleanUp() {
 	DestroyDevice();
 	glfwDestroyWindow(window);
 	glfwTerminate();
-	
 }
 
 void PuffinEngine::CleanUpSwapChain() {

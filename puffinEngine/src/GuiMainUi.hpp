@@ -3,7 +3,6 @@
 #include <glm/glm.hpp>
 
 #include "../imgui/imgui.h"
-#include "Device.hpp"
 #include "ErrorCheck.hpp"
 #include "Texture.hpp"
 

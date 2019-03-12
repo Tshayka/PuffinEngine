@@ -44,7 +44,7 @@ void GuiMainUi::LoadImage() {
 	
 	VkDeviceSize imageSize = font.texWidth * font.texHeight * 4 * sizeof(char);
 	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, fontData);
+	stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -275,17 +275,15 @@ void GuiMainUi::NewFrame() {
 }
 
 void GuiMainUi::GetDrawData() {
-     
 	UiComponent rectangle;
-
 
     rectangle.position = glm::vec2(100.0f, 100.0f);
 
     rectangle.vertices = {
-    {{-0.25f, -0.25f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.5f}},
-    {{0.25f, -0.25f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.5f}},
-    {{0.25f, 0.25f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}},
-    {{-0.25f, 0.25f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.5f}}
+		{{-0.25f, -0.25f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.5f}},
+		{{0.25f, -0.25f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.5f}},
+		{{0.25f, 0.25f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}},
+		{{-0.25f, 0.25f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.5f}}
     };
 
     rectangle.indices = { 0, 1, 2, 2, 3, 0 };
@@ -297,15 +295,13 @@ void GuiMainUi::GetDrawData() {
 
     drawData.componentsToDraw.push_back(rectangle);
 
-	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++)
-    {
+	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
         drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
         drawData.totalIndicesCount += drawData.componentsToDraw[i].indices.size();
     }
 }
 
 void GuiMainUi::UpdateDrawData() {
-
 	if (drawData.totalVerticesCount == 0)
 		return;
 	
@@ -320,21 +316,17 @@ void GuiMainUi::UpdateDrawData() {
 		vertexBuffer.Unmap();
 		vertexBuffer.Destroy();
 
-		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
-		vertexBuffer.device = logicalDevice->device;
+		vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 		vertexCount = drawData.totalVerticesCount;
-		vertexBuffer.Unmap();
 		vertexBuffer.Map();
 	}
 
 	// Index buffer
-	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < drawData.totalIndicesCount)) {
 		indexBuffer.Unmap();
 		indexBuffer.Destroy();
 
-		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
-		indexBuffer.device = logicalDevice->device;
+		indexBuffer.CreateBuffer(logicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 		indexCount = drawData.totalIndicesCount;
 		indexBuffer.Map();
 	}

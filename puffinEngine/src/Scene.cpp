@@ -938,7 +938,7 @@ void Scene::CreateBuffers() {
 	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
 
 	// Ocean Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
+	uniform_buffers.ocean.CreateBuffer(logicalDevice, sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.ocean.Map();
 	
 	// Clouds Uniform buffers memory -> dynamic
@@ -959,57 +959,59 @@ void Scene::CreateBuffers() {
 		std::exit(-1);
 	}
 
+#if BUILD_ENABLE_VULKAN_DEBUG
 	std::cout << "minUniformBufferOffsetAlignment = " << minUboAlignment << std::endl;
 	std::cout << "dynamicAlignment = " << dynamicAlignment << std::endl;
+#endif
 
 	// Static shared uniform buffer object with projection and view matrix
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboClouds), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.clouds);
+	uniform_buffers.clouds.CreateBuffer(logicalDevice, sizeof(UboClouds), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.clouds.Map();
 
 	// Uniform buffer object with per-object matrices
-	logicalDevice->CreateUnstagedBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &uniform_buffers.clouds_dynamic);
+	uniform_buffers.clouds_dynamic.CreateBuffer(logicalDevice, bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 	uniform_buffers.clouds_dynamic.Map();
 
 	// Rotating Objects Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboSelectionIndicator), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.selectionIndicator);
+	uniform_buffers.selectionIndicator.CreateBuffer(logicalDevice, sizeof(UboSelectionIndicator), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.selectionIndicator.Map();
 
 	// Objects Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.stillObjects);
+	uniform_buffers.stillObjects.CreateBuffer(logicalDevice, sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.stillObjects.Map();
 
 	// Objects Uniform buffers for reflection rendering -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
+	uniform_buffers.reflection.CreateBuffer(logicalDevice, sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.reflection.Map();
 
 	// Objects Uniform buffers for refraction rendering -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
+	uniform_buffers.refraction.CreateBuffer(logicalDevice, sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.refraction.Map();
 
 	// Additional uniform bufer for parameters -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.parameters);
+	uniform_buffers.parameters.CreateBuffer(logicalDevice, sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.parameters.Map();
 
 	// Additional uniform bufer parameters for reflection scene -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflectionParameters);
+	uniform_buffers.reflectionParameters.CreateBuffer(logicalDevice, sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.reflectionParameters.Map();
 
 	// Additional uniform bufer parameters for refraction scene -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refractionParameters);
+	uniform_buffers.refractionParameters.CreateBuffer(logicalDevice, sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.refractionParameters.Map();
 
 	// Skybox Uniform buffers memory -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
+	uniform_buffers.skybox.CreateBuffer(logicalDevice, sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.skybox.Map();
 
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
+	uniform_buffers.skyboxReflection.CreateBuffer(logicalDevice, sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.skyboxReflection.Map();
 
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
+	uniform_buffers.skyboxRefraction.CreateBuffer(logicalDevice, sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.skyboxRefraction.Map();
 
 	// Line uniform buffer -> static
-	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
+	uniform_buffers.line.CreateBuffer(logicalDevice, sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.line.Map();
 
 	// Create random positions for dynamic uniform buffer
@@ -1188,9 +1190,9 @@ void Scene::UpdateDynamicUniformBuffer() {
 				}
 			}
 		}
-
+		//uniform_buffers.clouds_dynamic.CopyTo(uboDataDynamic.model, uniform_buffers.clouds_dynamic.size);
+		//uniform_buffers.clouds_dynamic.Flush();
 		memcpy(uniform_buffers.clouds_dynamic.mapped, uboDataDynamic.model, uniform_buffers.clouds_dynamic.size);
-
 		// Flush to make changes visible to the host 
 		VkMappedMemoryRange memoryRange = {};
 		memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
@@ -1479,8 +1481,8 @@ void Scene::CreateDescriptorSet() {
 	for (auto& m : materialLibrary->materials) {
 		VkDescriptorImageInfo IrradianceMapImageInfo = {};
 		IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		IrradianceMapImageInfo.imageView = sky->skybox.view;
-		IrradianceMapImageInfo.sampler = sky->skybox.sampler;
+		IrradianceMapImageInfo.imageView = sky.skybox.view;
+		IrradianceMapImageInfo.sampler = sky.skybox.sampler;
 
 		VkDescriptorImageInfo AlbedoImageInfo = {};
 		AlbedoImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1675,8 +1677,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = sky->skybox.view;
-	ImageInfo.sampler = sky->skybox.sampler;
+	ImageInfo.imageView = sky.skybox.view;
+	ImageInfo.sampler = sky.skybox.sampler;
 
 	std::array<VkWriteDescriptorSet, 3> skyboxDescriptorWrites = {};
 
@@ -1801,8 +1803,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo IrradianceMapImageInfo = {};
 	IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	IrradianceMapImageInfo.imageView = sky->skybox.view;
-	IrradianceMapImageInfo.sampler = sky->skybox.sampler;
+	IrradianceMapImageInfo.imageView = sky.skybox.view;
+	IrradianceMapImageInfo.sampler = sky.skybox.sampler;
 
 	VkDescriptorImageInfo ReflectionImageInfo = {};
 	ReflectionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -1892,8 +1894,8 @@ void Scene::CreateDescriptorSet() {
 
 	VkDescriptorImageInfo SelectionIndicatorImageInfo = {};
 	SelectionIndicatorImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	SelectionIndicatorImageInfo.imageView = sky->skybox.view;
-	SelectionIndicatorImageInfo.sampler = sky->skybox.sampler;
+	SelectionIndicatorImageInfo.imageView = sky.skybox.view;
+	SelectionIndicatorImageInfo.sampler = sky.skybox.sampler;
 	
 	std::array<VkWriteDescriptorSet, 2> selectionIndicatorDescriptorWrites = {};
 
@@ -1950,8 +1952,8 @@ void Scene::UpdateDescriptorSet() {
 
 	VkDescriptorImageInfo IrradianceMapImageInfo = {};
 	IrradianceMapImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	IrradianceMapImageInfo.imageView = sky->skybox.view;
-	IrradianceMapImageInfo.sampler = sky->skybox.sampler;
+	IrradianceMapImageInfo.imageView = sky.skybox.view;
+	IrradianceMapImageInfo.sampler = sky.skybox.sampler;
 
 	VkDescriptorImageInfo ReflectionImageInfo = {};
 	ReflectionImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -2143,8 +2145,8 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
 	enginetool::Buffer vertexStagingBuffer;
-	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
-	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer);
+	vertexStagingBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices.data());
+	vertexBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
 	CopyBuffer(vertexStagingBuffer.buffer, vertexBuffer.buffer, vertexBufferSize);
 	vertexStagingBuffer.Destroy();
 }
@@ -2152,33 +2154,31 @@ void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, 
 void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer) {
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 	enginetool::Buffer indexStagingBuffer;
-	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, indices.data());
-	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer);
+	indexStagingBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices.data());
+	indexBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
 	CopyBuffer(indexStagingBuffer.buffer, indexBuffer.buffer, indexBufferSize);
 	indexStagingBuffer.Destroy();
 }
 
 void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
-	logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
-	vertexBuffer.device = logicalDevice->device;
+	vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 	vertexBuffer.Unmap();
 	vertexBuffer.Map();
 }
 
 void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer){
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
-	logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
-	indexBuffer.device = logicalDevice->device;
+	indexBuffer.CreateBuffer(logicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 	indexBuffer.Unmap();
 	indexBuffer.Map();
 };
 
 
 void Scene::InitMaterials() {
-	sky->name = "Sky_materal";
-	materialLibrary->LoadSkyboxTexture(sky->skybox);
-	sky->assignedPipeline = &skyboxPipeline;
+	sky.name = "Sky_materal";
+	materialLibrary->LoadSkyboxTexture(sky.skybox);
+	sky.assignedPipeline = &skyboxPipeline;
 
 	for (auto& m : materialLibrary->materials) {
 		m.second.assignedPipeline = &pbrPipeline;
@@ -2319,17 +2319,19 @@ void Scene::DeInitScene() {
 	vkDestroyCommandPool(logicalDevice->device, reflectionCommandPool, nullptr);
 	vkDestroyCommandPool(logicalDevice->device, refractionCommandPool, nullptr);
 	DeInitUniformBuffer();
-
-	delete sky;
-	sky = nullptr;
 	
 	guiMainHub = nullptr;
 	meshLibrary = nullptr;
 	logicalDevice = nullptr;
+	materialLibrary = nullptr;
+	mousePicker = nullptr;
+	threadPool = nullptr;
+	mainClock = nullptr;
+	selectionIndicatorMesh = nullptr;	
 }
 
 void Scene::DeInitTextureImage() {
-	sky->skybox.DeInit();
+	sky.skybox.DeInit();
 }
 
 void Scene::DeInitUniformBuffer() {
