@@ -131,11 +131,11 @@ private:
 	void CreateSelectRay(); 
 	void CreateCharacter(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
 	void CreateCloud(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
-	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
+	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
+	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer);
-	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer);
+	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
+	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
 	bool HasStencilComponent(VkFormat);
@@ -253,36 +253,36 @@ private:
 	};
 
 	struct {
-		enginetool::Buffer line;
-		enginetool::Buffer skybox;
-		enginetool::Buffer skyboxReflection;
-		enginetool::Buffer skyboxRefraction;
-		enginetool::Buffer clouds;
-		enginetool::Buffer clouds_dynamic;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectionIndicator;
-		enginetool::Buffer stillObjects;
-		enginetool::Buffer parameters;
-		enginetool::Buffer reflection;
-		enginetool::Buffer reflectionParameters;
-		enginetool::Buffer refraction;
-		enginetool::Buffer refractionParameters;
+		enginetool::Buffer<void> line;
+		enginetool::Buffer<void> skybox;
+		enginetool::Buffer<void> skyboxReflection;
+		enginetool::Buffer<void> skyboxRefraction;
+		enginetool::Buffer<void> clouds;
+		enginetool::Buffer<void> clouds_dynamic;
+		enginetool::Buffer<void> ocean;
+		enginetool::Buffer<void> selectionIndicator;
+		enginetool::Buffer<void> stillObjects;
+		enginetool::Buffer<void> parameters;
+		enginetool::Buffer<void> reflection;
+		enginetool::Buffer<void> reflectionParameters;
+		enginetool::Buffer<void> refraction;
+		enginetool::Buffer<void> refractionParameters;
 	} uniform_buffers;
 
 	struct {
-		enginetool::Buffer meshLibraryObjects;
-		enginetool::Buffer skybox;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectRay;
-		enginetool::Buffer aabb;
+		enginetool::Buffer<void> meshLibraryObjects;
+		enginetool::Buffer<void> skybox;
+		enginetool::Buffer<void> ocean;
+		enginetool::Buffer<void> selectRay;
+		enginetool::Buffer<void> aabb;
 	} vertex_buffers;
 
 	struct {
-		enginetool::Buffer meshLibraryObjects;
-		enginetool::Buffer skybox;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectRay;
-		enginetool::Buffer aabb;
+		enginetool::Buffer<void> meshLibraryObjects;
+		enginetool::Buffer<void> skybox;
+		enginetool::Buffer<void> ocean;
+		enginetool::Buffer<void> selectRay;
+		enginetool::Buffer<void> aabb;
 	} index_buffers;
 
 	std::unique_ptr<TextureLayout> reflectionImage = std::make_unique<TextureLayout>();

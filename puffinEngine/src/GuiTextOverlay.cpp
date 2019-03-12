@@ -52,7 +52,7 @@ void GuiTextOverlay::LoadImage() {
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
-	enginetool::Buffer stagingBuffer;
+	enginetool::Buffer<void> stagingBuffer;
 	stagingBuffer.CreateBuffer(logicalDevice, uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stbFontData);
 
 	VkDeviceSize stagingBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
@@ -316,29 +316,29 @@ void GuiTextOverlay::RenderText(std::string text, float x, float y, TextAlignmen
 	for (auto letter : text) {
 		stb_fontchar *charData = &stbFontData[(uint32_t)letter - STB_FIRST_CHAR];
 
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->x = (x + (float)charData->x0 * charW);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->y = (y + (float)charData->y0 * charH);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->z = charData->s0;
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->w = charData->t0;
-		vertexBuffer.mapped=vertexBuffer.mapped+sizeof(glm::vec4);
+		vertexBuffer.mapped->x = (x + (float)charData->x0 * charW);
+		vertexBuffer.mapped->y = (y + (float)charData->y0 * charH);
+		vertexBuffer.mapped->z = charData->s0;
+		vertexBuffer.mapped->w = charData->t0;
+		vertexBuffer.mapped++;
 
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->x = (x + (float)charData->x1 * charW);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->y = (y + (float)charData->y0 * charH);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->z = charData->s1;
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->w = charData->t0;
-		vertexBuffer.mapped=vertexBuffer.mapped+sizeof(glm::vec4);
+		vertexBuffer.mapped->x = (x + (float)charData->x1 * charW);
+		vertexBuffer.mapped->y = (y + (float)charData->y0 * charH);
+		vertexBuffer.mapped->z = charData->s1;
+		vertexBuffer.mapped->w = charData->t0;
+		vertexBuffer.mapped++;
 
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->x = (x + (float)charData->x0 * charW);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->y = (y + (float)charData->y1 * charH);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->z = charData->s0;
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->w = charData->t1;
-		vertexBuffer.mapped=vertexBuffer.mapped+sizeof(glm::vec4);
+		vertexBuffer.mapped->x = (x + (float)charData->x0 * charW);
+		vertexBuffer.mapped->y = (y + (float)charData->y1 * charH);
+		vertexBuffer.mapped->z = charData->s0;
+		vertexBuffer.mapped->w = charData->t1;
+		vertexBuffer.mapped++;
 
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->x = (x + (float)charData->x1 * charW);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->y = (y + (float)charData->y1 * charH);
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->z = charData->s1;
-		static_cast<glm::vec4*>(vertexBuffer.mapped)->w = charData->t1;
-		vertexBuffer.mapped=vertexBuffer.mapped+sizeof(glm::vec4);
+		vertexBuffer.mapped->x = (x + (float)charData->x1 * charW);
+		vertexBuffer.mapped->y = (y + (float)charData->y1 * charH);
+		vertexBuffer.mapped->z = charData->s1;
+		vertexBuffer.mapped->w = charData->t1;
+		vertexBuffer.mapped++;
 
 		x += charData->advance * charW;
 

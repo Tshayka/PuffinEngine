@@ -2142,32 +2142,32 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 
 // ------------------ Buffers ---------------------- //
 
-void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
+void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
-	enginetool::Buffer vertexStagingBuffer;
+	enginetool::Buffer<void> vertexStagingBuffer;
 	vertexStagingBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices.data());
 	vertexBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
 	CopyBuffer(vertexStagingBuffer.buffer, vertexBuffer.buffer, vertexBufferSize);
 	vertexStagingBuffer.Destroy();
 }
 
-void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer) {
+void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer) {
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
-	enginetool::Buffer indexStagingBuffer;
+	enginetool::Buffer<void> indexStagingBuffer;
 	indexStagingBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices.data());
 	indexBuffer.CreateBuffer(logicalDevice, static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, nullptr);
 	CopyBuffer(indexStagingBuffer.buffer, indexBuffer.buffer, indexBufferSize);
 	indexStagingBuffer.Destroy();
 }
 
-void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
+void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
 	vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 	vertexBuffer.Unmap();
 	vertexBuffer.Map();
 }
 
-void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer){
+void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer){
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 	indexBuffer.CreateBuffer(logicalDevice, indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 	indexBuffer.Unmap();

@@ -7,20 +7,22 @@
 #include "ErrorCheck.hpp"
 
 namespace enginetool {
-	struct Buffer {
+template <typename T>
+	class Buffer {
+		public:
 		Device* logicalDevice = nullptr;
 		VkBuffer buffer;
 		VkDeviceMemory memory;
 		VkDeviceSize size = 0;
 		VkDeviceSize alignment = 0;
-		void* mapped = nullptr;
+		T* mapped = nullptr;
 
 		VkDescriptorBufferInfo descriptor;
 		VkBufferUsageFlags usageFlags;
 		VkMemoryPropertyFlags memoryPropertyFlags;
 
 		VkResult Map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0) {
-			return vkMapMemory(logicalDevice->device, memory, offset, size, 0, &mapped);
+			return vkMapMemory(logicalDevice->device, memory, offset, size, 0, (void**)&mapped);
 		}
 
 		void Unmap() {

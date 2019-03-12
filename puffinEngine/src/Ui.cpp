@@ -102,7 +102,7 @@ void GuiElement::LoadImage() {
 	io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
 	
 	VkDeviceSize uploadSize = font.texWidth * font.texHeight * 4 * sizeof(char);
-	enginetool::Buffer stagingBuffer;
+	enginetool::Buffer<void> stagingBuffer;
 	stagingBuffer.CreateBuffer(logicalDevice, uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);

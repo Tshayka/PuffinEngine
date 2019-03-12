@@ -83,7 +83,7 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	}
 
 	VkDeviceSize imageSize = layer.texWidth * layer.texHeight * 4;
-	enginetool::Buffer stagingBuffer;
+	enginetool::Buffer<void> stagingBuffer;
 	stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pixels);
 
 	stbi_image_free(pixels);
@@ -111,7 +111,7 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	VkDeviceSize imageSize = texCube.size();
-	enginetool::Buffer stagingBuffer;
+	enginetool::Buffer<void> stagingBuffer;
 	stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, texCube.data());
 
 	VkCommandBuffer command_buffer = layer.BeginSingleTimeCommands();

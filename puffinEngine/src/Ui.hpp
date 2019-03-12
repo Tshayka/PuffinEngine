@@ -37,8 +37,8 @@ private:
 	VkShaderModule CreateFragShaderModule();
 	void CreateViewAndSampler();
 	
-	enginetool::Buffer vertexBuffer;
-	enginetool::Buffer indexBuffer;	
+	enginetool::Buffer<void> vertexBuffer;
+	enginetool::Buffer<void> indexBuffer;	
 	int32_t vertexCount = 0;
 	int32_t indexCount = 0;
 	TextureLayout font;

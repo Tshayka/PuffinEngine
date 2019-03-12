@@ -41,7 +41,7 @@ private:
 	stb_fontchar stbFontData[STB_NUM_CHARS];
 	uint32_t num_letters;
 
-	enginetool::Buffer vertexBuffer; // mapping the vertex data
+	enginetool::Buffer<glm::vec4> vertexBuffer; // mapping the vertex data
 
 	TextureLayout font;
 	VkDescriptorPool descriptorPool;
