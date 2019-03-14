@@ -4,32 +4,25 @@
 
 #include "../imgui/imgui.h"
 #include "ErrorCheck.hpp"
+#include "MaterialLibrary.hpp"
 #include "Texture.hpp"
 
 class GuiMainUi {
 public:
-
 	GuiMainUi();
 	~GuiMainUi();
 
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInit();
-	void Init(Device* device, VkCommandPool& commandPool);
+	void Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool);
 	void LoadImage();
 	void NewFrame();
 	void SetUp();
 	void UpdateDrawData();
+	void UpdateFontSettingsUniformBuffer();
+	void UpdateFontUniformBuffer();
 
-	// AngelCode .fnt format structs and classes
-	struct bmchar {
-		uint32_t x, y;
-		uint32_t width;
-		uint32_t height;
-		int32_t xoffset;
-		int32_t yoffset;
-		int32_t xadvance;
-		uint32_t page;
-	};
+	bool splitScreen = true;
 
 	// UI params are set via push constants
 	struct PushConstBlock {
@@ -40,14 +33,14 @@ public:
     struct Vertex {
         glm::vec2 pos;
         glm::vec2 uv;
-        glm::vec4 col;
     };
 
 	struct UiComponent {
 		glm::vec2 position;
         std::vector<Vertex> vertices;
-        std::vector<uint16_t> indices;
+        std::vector<uint32_t> indices;
         glm::vec4 clipExtent;
+		VkPipeline *assignedPipeline;
 	};
 
     struct DrawData {
@@ -57,33 +50,54 @@ public:
     };
 
 	DrawData drawData;
- 
 
 	//bool visible = true;
 
 private:
+	void CreateBuffers();
 	void CreateDescriptorPool();
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
 	void CreateViewAndSampler();
     void GetDrawData();
+	void GenerateText(UiComponent& word, std::string text);
+
+	struct UBOF {
+		glm::mat4 proj;
+		glm::mat4 model;
+	} UBOF;
+
+	struct UBOS {
+		glm::vec4 outlineColor = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
+		float outlineWidth = 0.6f;
+		float outline = true;
+	} UBOS;
+
+	struct {
+		enginetool::Buffer<void> fontMatrices;
+		enginetool::Buffer<void> fontSettings;
+	} uniformBuffers;
+
 	
 	enginetool::Buffer<void> vertexBuffer;
 	enginetool::Buffer<void> indexBuffer;	
 	int32_t vertexCount = 0;
 	int32_t indexCount = 0;
-	TextureLayout font;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSetLayout descriptorSetLayout;
 	VkDescriptorSet descriptorSet;
 	VkPipelineLayout pipelineLayout;
-	VkPipeline pipeline;
+	VkPipeline imagePipeline;
+	VkPipeline textPipeline;
 	VkPipelineCache pipelineCache;
+
+	//TextureLayout font;
 
 	VkViewport viewport = {};
 	VkRect2D scissor = {};
 
 	Device* logicalDevice = nullptr;
 	VkCommandPool* commandPool = nullptr;
+	MaterialLibrary* materialLibrary = nullptr;	
 };

@@ -1,9 +1,9 @@
 #include <gli/gli.hpp>
+#include <fstream>
 #include <iostream>
-#include <stb_image.h>
+#include <stb_image.h> // Image loading/decoding from file/memory: JPG, PNG, TGA, BMP, PSD, GIF, HDR, PIC
 
-#include "LoadTexture.cpp"
-#include "MaterialLibrary.hpp"
+#include "MaterialLibrary.hpp" 
 #include "ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
@@ -26,52 +26,54 @@ void MaterialLibrary::Init(Device* device) {
 	logicalDevice = device;
 
 	CreateCommandPool();
-  FillLibrary();  
+	FillLibrary();
+	LoadTexture("puffinEngine/fonts/exoSemiBold_0.png", font);
+	ParseFont("puffinEngine/fonts/exoSemiBold.fnt");
 }
 
 void MaterialLibrary::CreateCommandPool() {
-		QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
+	QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
 
-		VkCommandPoolCreateInfo poolInfo = {};
-		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
-	
-		ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
+
+	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
 }
 
 void MaterialLibrary::FillLibrary() {
-    enginetool::SceneMaterial defaultGray;
-		enginetool::SceneMaterial rust;
-		enginetool::SceneMaterial chrome;
-		enginetool::SceneMaterial plastic;
-		enginetool::SceneMaterial gold; 
+	enginetool::SceneMaterial defaultGray;
+	enginetool::SceneMaterial rust;
+	enginetool::SceneMaterial chrome;
+	enginetool::SceneMaterial plastic;
+	enginetool::SceneMaterial gold; 
 
-    materials = {
-			{"default", defaultGray},
-			{"gold", gold},
-			{"plastic", plastic},
-			{"rust", rust},
-			{"chrome", chrome}
-    };
+	materials = {
+		{"default", defaultGray},
+		{"gold", gold},
+		{"plastic", plastic},
+		{"rust", rust},
+		{"chrome", chrome}
+	};
 
-    for (auto& m : materials) {
-		m.second.name = m.first;
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Albedo.jpg", m.second.albedo);
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Metallic.jpg", m.second.metallic); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Roughness.jpg", m.second.roughness); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Normal.jpg", m.second.normal); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Ao.jpg", m.second.ambientOcclucion);     
-    }
+	for (auto& m : materials) {
+	m.second.name = m.first;
+		LoadTexture("puffinEngine/assets/textures/" + m.first + "Albedo.jpg", m.second.albedo);
+		LoadTexture("puffinEngine/assets/textures/" + m.first + "Metallic.jpg", m.second.metallic); 
+		LoadTexture("puffinEngine/assets/textures/" + m.first + "Roughness.jpg", m.second.roughness); 
+		LoadTexture("puffinEngine/assets/textures/" + m.first + "Normal.jpg", m.second.normal); 
+		LoadTexture("puffinEngine/assets/textures/" + m.first + "Ao.jpg", m.second.ambientOcclucion);     
+	}
 
-		enginetool::SceneMaterial character; 
-		LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg",  character.albedo);
-		LoadTexture("puffinEngine/assets/textures/defaultMetallic.jpg", character.metallic); 
-    LoadTexture("puffinEngine/assets/textures/defaultRoughness.jpg", character.roughness); 
-    LoadTexture("puffinEngine/assets/textures/defaultNormal.jpg", character.normal); 
-    LoadTexture("puffinEngine/assets/textures/defaultAo.jpg", character.ambientOcclucion);
+	enginetool::SceneMaterial character; 
+	LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg",  character.albedo);
+	LoadTexture("puffinEngine/assets/textures/defaultMetallic.jpg", character.metallic); 
+	LoadTexture("puffinEngine/assets/textures/defaultRoughness.jpg", character.roughness); 
+	LoadTexture("puffinEngine/assets/textures/defaultNormal.jpg", character.normal); 
+	LoadTexture("puffinEngine/assets/textures/defaultAo.jpg", character.ambientOcclucion);
 
-		materials.insert(std::make_pair("character", character));   
+	materials.insert(std::make_pair("character", character));   
 }
 
 void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
@@ -96,6 +98,36 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	layer.CopyBufferToImage(stagingBuffer.buffer);
 	stagingBuffer.Destroy();
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+void MaterialLibrary::ParseFont(const std::string& fileName) {
+	std::filebuf fileBuffer;
+	fontChars.resize(512);
+	fileBuffer.open(fileName, std::ios::in);
+	std::istream istream(&fileBuffer);
+	assert(istream.good());
+
+	while (!istream.eof()) {
+		std::string line;
+		std::stringstream lineStream;
+		std::getline(istream, line);
+		lineStream << line;
+
+		std::string info;
+		lineStream >> info;
+
+		if (info == "char") {
+			uint32_t charid = NextValuePair(&lineStream);
+			fontChars[charid].x = NextValuePair(&lineStream);
+			fontChars[charid].y = NextValuePair(&lineStream);
+			fontChars[charid].width = NextValuePair(&lineStream);
+			fontChars[charid].height = NextValuePair(&lineStream);
+			fontChars[charid].xoffset = NextValuePair(&lineStream);
+			fontChars[charid].yoffset = NextValuePair(&lineStream);
+			fontChars[charid].xadvance = NextValuePair(&lineStream);
+			fontChars[charid].page = NextValuePair(&lineStream);
+		}
+	}
 }
 
 void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
@@ -142,6 +174,15 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
+int32_t MaterialLibrary::NextValuePair(std::stringstream *stream) {
+	std::string pair;
+	*stream >> pair;
+	uint32_t spos = pair.find("=");
+	std::string value = pair.substr(spos + 1);
+	int32_t val = std::stoi(value);
+	return val;
+}
+
 void MaterialLibrary::DeInit() {
 	for (auto& m : materials) {
 		m.second.albedo.DeInit();
@@ -151,7 +192,8 @@ void MaterialLibrary::DeInit() {
 		m.second.ambientOcclucion.DeInit();
 	}
 
+	font.DeInit();
+
 	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
-	
 	logicalDevice = nullptr;
 }

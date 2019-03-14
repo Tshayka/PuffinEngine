@@ -28,20 +28,21 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
+void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary) {
 	logicalDevice = device; 
 	this->mainUi = mainUi;
 	this->console = console;
 	this->textOverlay = textOverlay;
 	this->threadPool = &threadPool;
 	this->mainClock = mainClock;
+	this->materialLibrary = materialLibrary;
 		
 	CreateRenderPass();
 	CreateCommandPool();
 
 	console->Init(logicalDevice, commandPool);
 	textOverlay->Init(logicalDevice, commandPool);
-	mainUi->Init(logicalDevice, commandPool);
+	mainUi->Init(logicalDevice, materialLibrary, commandPool);
 }
 
 void GuiMainHub::UpdateGui() {
@@ -232,4 +233,5 @@ void GuiMainHub::DeInit() {
 	logicalDevice = nullptr;
 	threadPool = nullptr;
 	mainClock = nullptr;
+	materialLibrary = nullptr;
 }

@@ -58,6 +58,16 @@ void PuffinEngine::GatherThreadInfo() {
 	threadPool.SetThreadCount(numThreads);		
 }
 
+void PuffinEngine::CreateMaterialLibrary() {
+	materialLibrary = new MaterialLibrary();
+	materialLibrary->Init(worldDevice);
+}
+
+void PuffinEngine::CreateMeshLibrary() {
+	meshLibrary = new MeshLibrary();
+	meshLibrary->Init(worldDevice);
+}
+
 void PuffinEngine::CreateImGuiMenu() {
 	console = new GuiElement();
 }
@@ -75,16 +85,6 @@ void PuffinEngine::CreateMousePicker() {
 	mousePicker->Init(worldDevice);
 }
 
-void PuffinEngine::CreateMaterialLibrary() {
-	materialLibrary = new MaterialLibrary();
-	materialLibrary->Init(worldDevice);
-}
-
-void PuffinEngine::CreateMeshLibrary() {
-	meshLibrary = new MeshLibrary();
-	meshLibrary->Init(worldDevice);
-}
-
 void PuffinEngine::CreateMainCharacter() {
 	//mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter);
 	//dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
@@ -92,7 +92,7 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateGuiMainHub() {
 	guiMainHub = new GuiMainHub();
-	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool);
+	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool, materialLibrary);
 }
 
 void PuffinEngine::CreateScene() {
@@ -107,10 +107,10 @@ void PuffinEngine::InitVulkan() {
 	CreateImGuiMenu();
 	CreateGuiTextOverlay();
 	CreateMainUi();
-	CreateGuiMainHub();
 	CreateMousePicker();
 	CreateMaterialLibrary();
 	CreateMeshLibrary();
+	CreateGuiMainHub();
 	CreateScene();
 	CreateSemaphores();
 }
@@ -553,10 +553,10 @@ void PuffinEngine::CleanUp() {
 	DeInitSemaphores();
 	DestroyMousePicker();
 	DestroyScene();
-	DestroyMeshLibrary();
-	DestroyMaterialLibrary();
 	DestroyGUI();
 	DestroyWorldClock();
+	DestroyMeshLibrary();
+	DestroyMaterialLibrary();
 	DestroyDevice();
 	glfwDestroyWindow(window);
 	glfwTerminate();

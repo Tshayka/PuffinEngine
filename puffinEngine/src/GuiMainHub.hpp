@@ -3,7 +3,6 @@
 #include "GuiMainUi.hpp"
 #include "GuiTextOverlay.hpp"
 #include "Ui.hpp"
-#include "Device.hpp"
 
 class GuiMainHub 
 {
@@ -22,7 +21,7 @@ public:
 	bool guiOverlayVisible = true;
 	void CleanUpForSwapchain();
 	void DeInit();
-	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
+	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary);
 	void RecreateForSwapchain();
 	void Submit(VkQueue, uint32_t);
 	void UpdateGui(); 
@@ -46,5 +45,6 @@ private:
 	GuiTextOverlay* textOverlay = nullptr;
 	Device* logicalDevice = nullptr;
 	enginetool::ThreadPool* threadPool = nullptr;
-	WorldClock* mainClock = nullptr;	
+	WorldClock* mainClock = nullptr;
+	MaterialLibrary* materialLibrary = nullptr;	
 };

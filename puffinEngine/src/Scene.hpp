@@ -13,10 +13,8 @@
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
 #include "MainCharacter.hpp"
-#include "MaterialLibrary.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
-#include "Ui.hpp"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;

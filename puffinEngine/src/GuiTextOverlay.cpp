@@ -30,8 +30,8 @@ void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
 	this->commandPool = &commandPool; 
 	
 	SetUp();
-	LoadImage();
 	CreateVertexBuffer();
+	LoadImage();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
@@ -40,9 +40,18 @@ void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
 
 void GuiTextOverlay::SetUp(){}
 
+void GuiTextOverlay::CreateVertexBuffer() {
+	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
+	vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
+}
+
 void GuiTextOverlay::LoadImage() {
 	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
+
+	VkDeviceSize imageSize = STB_FONT_WIDTH * STB_FONT_HEIGHT;
+	enginetool::Buffer<void> stagingBuffer;
+	stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &font24pixels);
 
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8_UNORM, 0, 1, 1);
 	font.texWidth = STB_FONT_WIDTH;
@@ -50,25 +59,10 @@ void GuiTextOverlay::LoadImage() {
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
-	enginetool::Buffer<void> stagingBuffer;
-	stagingBuffer.CreateBuffer(logicalDevice, uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stbFontData);
-
-	VkDeviceSize stagingBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	stagingBuffer.Map(stagingBufferSize, 0);
-	stagingBuffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
-	stagingBuffer.Unmap();
-
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	font.CopyBufferToImage(stagingBuffer.buffer);
 	stagingBuffer.Destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-}
-
-void GuiTextOverlay::CreateVertexBuffer() {
-	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	vertexBuffer.CreateBuffer(logicalDevice, vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, nullptr);
 }
 
 void GuiTextOverlay::CreateDescriptorSetLayout() {
@@ -105,30 +99,30 @@ void GuiTextOverlay::CreateDescriptorPool() {
 }
 
 void GuiTextOverlay::CreateDescriptorSet() {
-		VkDescriptorSetAllocateInfo AllocInfo = {};
-		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		AllocInfo.descriptorPool = descriptorPool;
-		AllocInfo.descriptorSetCount = 1;
-		AllocInfo.pSetLayouts = &descriptorSetLayout;
+	VkDescriptorSetAllocateInfo AllocInfo = {};
+	AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	AllocInfo.descriptorPool = descriptorPool;
+	AllocInfo.descriptorSetCount = 1;
+	AllocInfo.pSetLayouts = &descriptorSetLayout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &descriptorSet));
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &descriptorSet));
 
-		VkDescriptorImageInfo ImageInfo = {};
-		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		ImageInfo.imageView = font.view;
-		ImageInfo.sampler = font.sampler;
+	VkDescriptorImageInfo ImageInfo = {};
+	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	ImageInfo.imageView = font.view;
+	ImageInfo.sampler = font.sampler;
 
-		std::array<VkWriteDescriptorSet, 1> descriptorWrites = {};
+	std::array<VkWriteDescriptorSet, 1> descriptorWrites = {};
 
-		descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-		descriptorWrites[0].dstSet = descriptorSet;
-		descriptorWrites[0].dstBinding = 0;
-		descriptorWrites[0].dstArrayElement = 0;
-		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pImageInfo = &ImageInfo;
+	descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	descriptorWrites[0].dstSet = descriptorSet;
+	descriptorWrites[0].dstBinding = 0;
+	descriptorWrites[0].dstArrayElement = 0;
+	descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	descriptorWrites[0].descriptorCount = 1;
+	descriptorWrites[0].pImageInfo = &ImageInfo;
 
-		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
 void GuiTextOverlay::CreateGraphicsPipeline() {

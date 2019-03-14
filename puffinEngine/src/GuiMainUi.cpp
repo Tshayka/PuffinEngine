@@ -3,6 +3,10 @@
 #include <fstream>
 #include <iostream>
 
+#define GLM_FORCE_RADIANS // necessary to make sure that functions like glm::rotate use radians as arguments, to avoid any possible confusion
+#define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#include <glm/gtc/matrix_transform.hpp> 
+
 #include "LoadFile.cpp"
 #include "GuiMainUi.hpp"
 
@@ -20,12 +24,14 @@ GuiMainUi::~GuiMainUi() {
 #endif
 }
 
-void GuiMainUi::Init(Device* device, VkCommandPool& commandPool) {
+void GuiMainUi::Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool) {
 	logicalDevice = device;
-	this->commandPool = &commandPool; 
+	this->commandPool = &commandPool;
+	this->materialLibrary = materialLibrary;	 
 
 	SetUp();
 	LoadImage();
+	CreateBuffers(); 
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
@@ -36,97 +42,195 @@ void GuiMainUi::SetUp() {
 	GetDrawData();
 }
 
-void GuiMainUi::LoadImage() {
-    ImGuiIO& io = ImGui::GetIO();
+void GuiMainUi::GenerateText(UiComponent& word, std::string text) {
+	uint32_t indexOffset = 0;
 
-	unsigned char* fontData;
-	io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
-	
-	VkDeviceSize imageSize = font.texWidth * font.texHeight * 4 * sizeof(char);
-	enginetool::Buffer<void> stagingBuffer;
-	stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
-	
-	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
-	
-	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	font.CopyBufferToImage(stagingBuffer.buffer);
-	stagingBuffer.Destroy();
-	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	float w = materialLibrary->font.texWidth;
+
+	float posx = 0.0f;
+	float posy = 0.0f;
+
+	for (uint32_t i = 0; i < text.size(); i++) {
+		MaterialLibrary::bmchar *charInfo = &materialLibrary->fontChars[(int)text[i]];
+
+		if (charInfo->width == 0)
+			charInfo->width = 154;
+
+		float charw = ((float)(charInfo->width) / 154.0f);
+		float dimx = 1.0f * charw;
+		float charh = ((float)(charInfo->height) / 154.0f);
+		float dimy = 1.0f * charh;
+		posy = 1.0f - charh;
+
+		float us = charInfo->x / w;
+		float ue = (charInfo->x + charInfo->width) / w;
+		float ts = charInfo->y / w;
+		float te = (charInfo->y + charInfo->height) / w;
+
+		float xo = charInfo->xoffset / 154.0f;
+		float yo = charInfo->yoffset / 154.0f;
+
+		word.vertices.push_back({{ posx + dimx + xo, posy + dimy}, { ue, te }});
+		word.vertices.push_back({{ posx + xo, posy + dimy}, { us, te }});
+		word.vertices.push_back({ { posx + xo, posy}, { us, ts } });
+		word.vertices.push_back({ { posx + dimx + xo, posy}, { ue, ts }});
+
+		std::array<uint32_t, 6> letterIndices = { 0,1,2, 2,3,0 };
+		for (auto& index : letterIndices) {
+			word.indices.push_back(indexOffset + index);
+		}
+		indexOffset += 4;
+
+		float advance = ((float)(charInfo->xadvance) / 154.0f);
+		posx += advance;
+	}
+	indexCount = word.indices.size();
+
+	// Center
+	for (auto& v : word.vertices)
+	{
+		v.pos[0] -= posx / 2.0f;
+		v.pos[1] -= 0.5f;
+	}
+}
+
+void GuiMainUi::LoadImage() {
+	// ImGuiIO& io = ImGui::GetIO();
+
+	// unsigned char* fontData;
+	// io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
+
+	// VkDeviceSize imageSize = font.texWidth * font.texHeight * 4 * sizeof(char);
+	// enginetool::Buffer<void> stagingBuffer;
+	// stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
+
+	// font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	// font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
+	// font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
+	// font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
+	// font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+	// font.CopyBufferToImage(stagingBuffer.buffer);
+	// stagingBuffer.Destroy();
+	// font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+void GuiMainUi::CreateBuffers() {
+	uniformBuffers.fontMatrices.CreateBuffer(logicalDevice, sizeof(UBOF), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
+	uniformBuffers.fontMatrices.Map();
+	uniformBuffers.fontSettings.CreateBuffer(logicalDevice, sizeof(UBOS), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
+	uniformBuffers.fontSettings.Map();
+
+	UpdateFontSettingsUniformBuffer();
+	UpdateFontUniformBuffer();
 }
 
 void GuiMainUi::CreateDescriptorSetLayout() {
-	VkDescriptorSetLayoutBinding ConsoleLayoutBinding = {};
-	ConsoleLayoutBinding.binding = 0;
-	ConsoleLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	ConsoleLayoutBinding.descriptorCount = 1;
-	ConsoleLayoutBinding.pImmutableSamplers = nullptr;
-	ConsoleLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	VkDescriptorSetLayoutBinding LayoutBinding = {};
+	LayoutBinding.binding = 0;
+	LayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	LayoutBinding.descriptorCount = 1;
+	LayoutBinding.pImmutableSamplers = nullptr;
+	LayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 
-	std::array<VkDescriptorSetLayoutBinding, 1> set_layout_bindings = { ConsoleLayoutBinding };
+	VkDescriptorSetLayoutBinding ImageLayoutBinding = {};
+	ImageLayoutBinding.binding = 1;
+	ImageLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	ImageLayoutBinding.descriptorCount = 1;
+	ImageLayoutBinding.pImmutableSamplers = nullptr;
+	ImageLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	VkDescriptorSetLayoutCreateInfo SceneObjectsLayoutInfo = {};
-	SceneObjectsLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
-	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
+	VkDescriptorSetLayoutBinding SettingsLayoutBinding = {};
+	SettingsLayoutBinding.binding = 2;
+	SettingsLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	SettingsLayoutBinding.descriptorCount = 1;
+	SettingsLayoutBinding.pImmutableSamplers = nullptr;
+	SettingsLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
 
-	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
+	std::array<VkDescriptorSetLayoutBinding, 3> textLayoutBindings = { LayoutBinding, ImageLayoutBinding, SettingsLayoutBinding };
+
+	VkDescriptorSetLayoutCreateInfo textLayoutInfo = {};
+	textLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	textLayoutInfo.bindingCount = static_cast<uint32_t>(textLayoutBindings.size());
+	textLayoutInfo.pBindings = textLayoutBindings.data();
+
+	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &textLayoutInfo, nullptr, &descriptorSetLayout));
 }
-
 
 void GuiMainUi::CreateDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
-	std::array<VkDescriptorPoolSize, 1> PoolSizes = {};
+	std::array<VkDescriptorPoolSize, 2> PoolSizes = {};
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[0].descriptorCount = 1;
+	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
+	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(2);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = 2; // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = 3; // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
 
 void GuiMainUi::CreateDescriptorSet() {
-	VkDescriptorSetAllocateInfo AllocInfo = {};
-	AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	AllocInfo.descriptorPool = descriptorPool;
-	AllocInfo.descriptorSetCount = 1;
-	AllocInfo.pSetLayouts = &descriptorSetLayout;
+	VkDescriptorSetAllocateInfo textAllocInfo = {};
+	textAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	textAllocInfo.descriptorPool = descriptorPool;
+	textAllocInfo.descriptorSetCount = 1;
+	textAllocInfo.pSetLayouts = &descriptorSetLayout;
 
-	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &descriptorSet));
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &textAllocInfo, &descriptorSet));
 
-	VkDescriptorImageInfo ImageInfo = {};
-	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	ImageInfo.imageView = font.view;
-	ImageInfo.sampler = font.sampler;
+	VkDescriptorBufferInfo fontMatricesBufferInfo = {};
+	fontMatricesBufferInfo.buffer = uniformBuffers.fontMatrices.buffer;
+	fontMatricesBufferInfo.offset = 0;
+	fontMatricesBufferInfo.range = sizeof(UBOF);
 
-	std::array<VkWriteDescriptorSet, 1> WriteDescriptorSets = {};
+	VkDescriptorImageInfo textImageInfo = {};
+	textImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+	textImageInfo.imageView = materialLibrary->font.view;
+	textImageInfo.sampler = materialLibrary->font.sampler;
 
-	WriteDescriptorSets[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	WriteDescriptorSets[0].dstSet = descriptorSet;
-	WriteDescriptorSets[0].dstBinding = 0;
-	WriteDescriptorSets[0].dstArrayElement = 0;
-	WriteDescriptorSets[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	WriteDescriptorSets[0].descriptorCount = 1;
-	WriteDescriptorSets[0].pImageInfo = &ImageInfo;
+	VkDescriptorBufferInfo fontSettingsBufferInfo = {};
+	fontSettingsBufferInfo.buffer = uniformBuffers.fontSettings.buffer;
+	fontSettingsBufferInfo.offset = 0;
+	fontSettingsBufferInfo.range = sizeof(UBOS);
 
-	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
+	std::array<VkWriteDescriptorSet, 3> textDescriptorWrites = {};
+
+	textDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	textDescriptorWrites[0].dstSet = descriptorSet;
+	textDescriptorWrites[0].dstBinding = 0;
+	textDescriptorWrites[0].dstArrayElement = 0;
+	textDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	textDescriptorWrites[0].descriptorCount = 1;
+	textDescriptorWrites[0].pBufferInfo = &fontMatricesBufferInfo;
+
+	textDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	textDescriptorWrites[1].dstSet = descriptorSet;
+	textDescriptorWrites[1].dstBinding = 1;
+	textDescriptorWrites[1].dstArrayElement = 0;
+	textDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	textDescriptorWrites[1].descriptorCount = 1;
+	textDescriptorWrites[1].pImageInfo = &textImageInfo;
+
+	textDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	textDescriptorWrites[2].dstSet = descriptorSet;
+	textDescriptorWrites[2].dstBinding = 2;
+	textDescriptorWrites[2].dstArrayElement = 0;
+	textDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+	textDescriptorWrites[2].descriptorCount = 1;
+	textDescriptorWrites[2].pBufferInfo = &fontSettingsBufferInfo;
+
+	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(textDescriptorWrites.size()), textDescriptorWrites.data(), 0, nullptr);
 }
 
 void GuiMainUi::CreateGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	ErrorCheck(vkCreatePipelineCache(logicalDevice->device, &PipelineCacheCreateInfo, nullptr, &pipelineCache));
-
-	VkPushConstantRange PushConstantRange = {};
-	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-	PushConstantRange.offset = 0;
-	PushConstantRange.size = sizeof(PushConstBlock);
 	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -140,15 +244,15 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; // determines how fragments are generated for geometry
 	Rasterization.lineWidth = 1.0f;
 	Rasterization.cullMode = VK_CULL_MODE_NONE;
-	Rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;//VK_FRONT_FACE_COUNTER_CLOCKWISE
+	Rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //VK_FRONT_FACE_COUNTER_CLOCKWISE
 	Rasterization.depthBiasEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState ColorBlendAttachment = {}; // Enable blending
 	ColorBlendAttachment.blendEnable = VK_TRUE;
-	ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
 	ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
 	ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
 	ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
 	ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 	ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
@@ -174,7 +278,7 @@ void GuiMainUi::CreateGraphicsPipeline() {
 
 	VkPipelineDepthStencilStateCreateInfo DepthStencil = {};
 	DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	DepthStencil.depthTestEnable = VK_TRUE;
+	DepthStencil.depthTestEnable = VK_FALSE;
 	DepthStencil.depthWriteEnable = VK_TRUE;
 	DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
@@ -190,21 +294,16 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	vertex_bindings[0].stride = sizeof(Vertex);
 	vertex_bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	std::array<VkVertexInputAttributeDescription, 3> vertex_attributes = {};
+	std::array<VkVertexInputAttributeDescription, 2> vertex_attributes = {};
 	vertex_attributes[0].binding = 0;
 	vertex_attributes[0].location = 0;
 	vertex_attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
-	vertex_attributes[0].offset = offsetof(Vertex, pos);
+	vertex_attributes[0].offset = 0;
 
 	vertex_attributes[1].binding = 0;
 	vertex_attributes[1].location = 1;
 	vertex_attributes[1].format = VK_FORMAT_R32G32_SFLOAT;
-	vertex_attributes[1].offset = offsetof(Vertex, uv);
-
-	vertex_attributes[2].binding = 0;
-	vertex_attributes[2].location = 2;
-	vertex_attributes[2].format = VK_FORMAT_R8G8B8A8_UNORM;
-	vertex_attributes[2].offset = offsetof(Vertex, col); 
+	vertex_attributes[1].offset = sizeof(float) * 2;
 
 	VkPipelineVertexInputStateCreateInfo VertexInputInfo = {};
 	VertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
@@ -215,14 +314,12 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	
 	std::array<VkDescriptorSetLayout, 1> layouts = { descriptorSetLayout };
 
-	VkPipelineLayoutCreateInfo PipelineLayoutCreateInfo = {};
-	PipelineLayoutCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	PipelineLayoutCreateInfo.pushConstantRangeCount = 1;
-	PipelineLayoutCreateInfo.pPushConstantRanges = &PushConstantRange;
-	PipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());;
-	PipelineLayoutCreateInfo.pSetLayouts = layouts.data();
-	
-	ErrorCheck(vkCreatePipelineLayout(logicalDevice->device, &PipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());;
+	pipelineLayoutInfo.pSetLayouts = layouts.data();
+
+	ErrorCheck(vkCreatePipelineLayout(logicalDevice->device, &pipelineLayoutInfo, nullptr, &pipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -243,31 +340,59 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); 
-	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); 
+	// I. Image pipeline
+	auto vertImageShaderCode = enginetool::readFile("puffinEngine/shaders/uiImageShader.vert.spv");
+	auto fragImageShaderCode = enginetool::readFile("puffinEngine/shaders/uiImageShader.frag.spv"); 
 
-	VkShaderModule vertModelsShaderModule = logicalDevice->CreateShaderModule(vertModelsShaderCode);
-	VkShaderModule fragModelsShaderModule = logicalDevice->CreateShaderModule(fragModelsShaderCode);
+	VkShaderModule vertImageShaderModule = logicalDevice->CreateShaderModule(vertImageShaderCode);
+	VkShaderModule fragImageShaderModule = logicalDevice->CreateShaderModule(fragImageShaderCode);
 
-	VkPipelineShaderStageCreateInfo vertModelsShaderStageInfo = {};
-	vertModelsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	vertModelsShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
-	vertModelsShaderStageInfo.module = vertModelsShaderModule;
-	vertModelsShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo vertImageShaderStageInfo = {};
+	vertImageShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertImageShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertImageShaderStageInfo.module = vertImageShaderModule;
+	vertImageShaderStageInfo.pName = "main";
 
-	VkPipelineShaderStageCreateInfo fragModelsShaderStageInfo = {};
-	fragModelsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-	fragModelsShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
-	fragModelsShaderStageInfo.module = fragModelsShaderModule;
-	fragModelsShaderStageInfo.pName = "main";
+	VkPipelineShaderStageCreateInfo fragImageShaderStageInfo = {};
+	fragImageShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragImageShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragImageShaderStageInfo.module = fragImageShaderModule;
+	fragImageShaderStageInfo.pName = "main";
 
-	shaderStages[0] = vertModelsShaderStageInfo;
-	shaderStages[1] = fragModelsShaderStageInfo;
+	shaderStages[0] = vertImageShaderStageInfo;
+	shaderStages[1] = fragImageShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &imagePipeline));
 
-	vkDestroyShaderModule(logicalDevice->device, fragModelsShaderModule, nullptr);
-	vkDestroyShaderModule(logicalDevice->device, vertModelsShaderModule, nullptr); 
+	vkDestroyShaderModule(logicalDevice->device, fragImageShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->device, vertImageShaderModule, nullptr);
+
+	// II. Text pipeline
+	auto vertTextShaderCode = enginetool::readFile("puffinEngine/shaders/uiTextShader.vert.spv");
+	auto fragTextShaderCode = enginetool::readFile("puffinEngine/shaders/uiTextShader.frag.spv"); 
+
+	VkShaderModule vertTextShaderModule = logicalDevice->CreateShaderModule(vertTextShaderCode);
+	VkShaderModule fragTextShaderModule = logicalDevice->CreateShaderModule(fragTextShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertTextShaderStageInfo = {};
+	vertTextShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertTextShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertTextShaderStageInfo.module = vertTextShaderModule;
+	vertTextShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragTextShaderStageInfo = {};
+	fragTextShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragTextShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragTextShaderStageInfo.module = fragTextShaderModule;
+	fragTextShaderStageInfo.pName = "main";
+
+	shaderStages[0] = vertTextShaderStageInfo;
+	shaderStages[1] = fragTextShaderStageInfo;
+
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &textPipeline));
+
+	vkDestroyShaderModule(logicalDevice->device, fragTextShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->device, vertTextShaderModule, nullptr); 
 }
 
 void GuiMainUi::NewFrame() {
@@ -275,30 +400,37 @@ void GuiMainUi::NewFrame() {
 }
 
 void GuiMainUi::GetDrawData() {
+	UiComponent word;
+	GenerateText(word, "Puffin");
+	word.assignedPipeline = &textPipeline;
+
 	UiComponent rectangle;
 
-    rectangle.position = glm::vec2(100.0f, 100.0f);
+	rectangle.assignedPipeline = &imagePipeline;
 
-    rectangle.vertices = {
-		{{-0.25f, -0.25f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.5f}},
-		{{0.25f, -0.25f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.5f}},
-		{{0.25f, 0.25f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}},
-		{{-0.25f, 0.25f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.5f}}
-    };
+	rectangle.position = glm::vec2(100.0f, 100.0f);
 
-    rectangle.indices = { 0, 1, 2, 2, 3, 0 };
+	rectangle.vertices = {
+		{{-0.25f, -0.25f}, {1.0f, 0.0f}},
+		{{0.25f, -0.25f}, {0.0f, 0.0f}},
+		{{0.25f, 0.25f}, {0.0f, 1.0f}},
+		{{-0.25f, 0.25f}, {1.0f, 1.0f}}
+	};
 
-    float clipX1 = (float)(int)(0.5f + rectangle.position.x - 1.0f); //add column offset
-    float clipX2 = (float)(int)(0.5f + rectangle.position.x - 1.0f);
+	rectangle.indices = { 0, 1, 2, 2, 3, 0 };
 
-    rectangle.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
+	float clipX1 = (float)(int)(0.5f + rectangle.position.x - 1.0f); //add column offset
+	float clipX2 = (float)(int)(0.5f + rectangle.position.x - 1.0f);
 
-    drawData.componentsToDraw.push_back(rectangle);
+	rectangle.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
+
+	drawData.componentsToDraw.push_back(rectangle);
+	drawData.componentsToDraw.push_back(word);
 
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
-        drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
-        drawData.totalIndicesCount += drawData.componentsToDraw[i].indices.size();
-    }
+		drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
+		drawData.totalIndicesCount += drawData.componentsToDraw[i].indices.size();
+	}
 }
 
 void GuiMainUi::UpdateDrawData() {
@@ -307,7 +439,7 @@ void GuiMainUi::UpdateDrawData() {
 	
 	// Note: Alignment is done inside buffer creation
 	VkDeviceSize vertexBufferSize = drawData.totalVerticesCount * sizeof(Vertex);
-	VkDeviceSize indexBufferSize = drawData.totalIndicesCount * sizeof(uint16_t);
+	VkDeviceSize indexBufferSize = drawData.totalIndicesCount * sizeof(uint32_t);
 
 	// Update buffers only if vertex or index count has been changed compared to current buffer size
 
@@ -332,17 +464,28 @@ void GuiMainUi::UpdateDrawData() {
 	}
 
 	 Vertex* vtxDst = (Vertex*)vertexBuffer.mapped;
-	 uint16_t* idxDst = (uint16_t*)indexBuffer.mapped;
+	 uint32_t* idxDst = (uint32_t*)indexBuffer.mapped;
 
 	 for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
 	    memcpy(vtxDst, drawData.componentsToDraw[i].vertices.data(), drawData.componentsToDraw[i].vertices.size() * sizeof(Vertex));
-	  	memcpy(idxDst, drawData.componentsToDraw[i].indices.data(), drawData.componentsToDraw[i].indices.size() * sizeof(uint16_t));
+	  	memcpy(idxDst, drawData.componentsToDraw[i].indices.data(), drawData.componentsToDraw[i].indices.size() * sizeof(uint32_t));
 	 	vtxDst += drawData.componentsToDraw[i].vertices.size() ;
 	 	idxDst += drawData.componentsToDraw[i].indices.size();
 	}
 
 	vertexBuffer.Flush();
 	indexBuffer.Flush();
+}
+
+void GuiMainUi::UpdateFontUniformBuffer() {
+	UBOF.proj = glm::mat4(1.0f);
+	//UBOF.proj = glm::perspective(glm::radians(45.0f), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, 0.001f, 256.0f);
+	UBOF.model = glm::mat4(1.0f);
+	memcpy(uniformBuffers.fontMatrices.mapped, &UBOF, sizeof(UBOF));	
+} 
+
+void GuiMainUi::UpdateFontSettingsUniformBuffer() {
+	memcpy(uniformBuffers.fontSettings.mapped, &UBOS, sizeof(UBOS));
 }
 
 void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
@@ -354,25 +497,19 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
-	// UI scale and translate via push constants
-	pushConstBlock.scale = glm::vec2(2.0f / viewport.width, 2.0f / viewport.height );
-	pushConstBlock.translate = glm::vec2(-1.0f);
-	vkCmdPushConstants(command_buffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstBlock), &pushConstBlock);
-
 	VkDeviceSize offsets[1] = { 0 };
 
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.buffer, offsets);
-	vkCmdBindIndexBuffer(command_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
-
+	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.buffer, offsets);
+	vkCmdBindIndexBuffer(command_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
+	
 	// Render the command lists:
 	int32_t vertexOffset = 0;
 	int32_t indexOffset = 0;
 
-	
-
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
+		
+		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *drawData.componentsToDraw[i].assignedPipeline);
 		scissor.offset.x = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
 		scissor.offset.y = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
 		scissor.extent.width = (float)logicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
@@ -392,13 +529,17 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 void GuiMainUi::DeInit() {
 	indexBuffer.Destroy();
 	vertexBuffer.Destroy();
-	font.DeInit();
+	uniformBuffers.fontMatrices.Destroy();
+	uniformBuffers.fontSettings.Destroy();
+	//font.DeInit();
 	vkDestroyPipelineCache(logicalDevice->device, pipelineCache, nullptr);
-	vkDestroyPipeline(logicalDevice->device, pipeline, nullptr);
+	vkDestroyPipeline(logicalDevice->device, imagePipeline, nullptr);
+	vkDestroyPipeline(logicalDevice->device, textPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice->device, pipelineLayout, nullptr);
 	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptorSetLayout, nullptr);
 
 	logicalDevice = nullptr;
 	commandPool = nullptr;
+	materialLibrary = nullptr;	
 }

@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 
 #include "MeshLayout.cpp"
-#include "LoadTexture.cpp"
+#include "MaterialLibrary.hpp"
 
 enum class ActorType {
     Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea, Cloud, MainCharacter
