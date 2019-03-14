@@ -33,8 +33,6 @@ private:
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
-	VkShaderModule CreateVertShaderModule();
-	VkShaderModule CreateFragShaderModule();
 	void CreateViewAndSampler();
 	
 	enginetool::Buffer<void> vertexBuffer;
