@@ -158,13 +158,13 @@ void PuffinEngine::UpdateGui(){
 }
 
 void PuffinEngine::CreateSemaphores() {
-	VkSemaphoreCreateInfo semaphore_info = {};
-	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	VkSemaphoreCreateInfo semaphoreInfo = {};
+	semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &imageAvailableSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &renderFinishedSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &reflectRenderSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &refractRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphoreInfo, nullptr, &imageAvailableSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphoreInfo, nullptr, &renderFinishedSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphoreInfo, nullptr, &reflectRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphoreInfo, nullptr, &refractRenderSemaphore));
 }
 
 void PuffinEngine::DrawFrame() {
@@ -180,45 +180,54 @@ void PuffinEngine::DrawFrame() {
 		std::exit(-1);
 	}
 
-	// Submitting the command buffer
-	VkSubmitInfo submit_info = {}; // queue submission and synchronization is configured through parameters
-	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+	// Submitting the scene command buffer
+	VkSubmitInfo sceneSubmitInfo = {}; // queue submission and synchronization is configured through parameters
+	sceneSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-	submit_info.pWaitDstStageMask = wait_stages;
-	submit_info.waitSemaphoreCount = 1;
-	submit_info.signalSemaphoreCount = 1;
+	sceneSubmitInfo.pWaitDstStageMask = wait_stages;
+	sceneSubmitInfo.waitSemaphoreCount = 1;
+	sceneSubmitInfo.signalSemaphoreCount = 1;
 	
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->reflectionCmdBuff;
-	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
-	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	sceneSubmitInfo.commandBufferCount = 1;
+	sceneSubmitInfo.pCommandBuffers = &scene_1->reflectionCmdBuff;
+	sceneSubmitInfo.pWaitSemaphores = &imageAvailableSemaphore;
+	sceneSubmitInfo.pSignalSemaphores = &reflectRenderSemaphore;
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &sceneSubmitInfo, VK_NULL_HANDLE));
 
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->refractionCmdBuff;
-	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
-	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	sceneSubmitInfo.commandBufferCount = 1;
+	sceneSubmitInfo.pCommandBuffers = &scene_1->refractionCmdBuff;
+	sceneSubmitInfo.pWaitSemaphores = &reflectRenderSemaphore;
+	sceneSubmitInfo.pSignalSemaphores = &refractRenderSemaphore;
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &sceneSubmitInfo, VK_NULL_HANDLE));
 	
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->commandBuffers[imageIndex];
-	submit_info.pWaitSemaphores = &refractRenderSemaphore;
-	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	sceneSubmitInfo.commandBufferCount = 1;
+	sceneSubmitInfo.pCommandBuffers = &scene_1->commandBuffers[imageIndex];
+	sceneSubmitInfo.pWaitSemaphores = &refractRenderSemaphore;
+	sceneSubmitInfo.pSignalSemaphores = &renderFinishedSemaphore;
+	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &sceneSubmitInfo, VK_NULL_HANDLE));
 
-	guiMainHub->Submit(worldDevice->queue, imageIndex);
-	
-	VkPresentInfoKHR present_info = {};
-	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-	present_info.waitSemaphoreCount = 1;
-	present_info.pWaitSemaphores = &renderFinishedSemaphore;
+	// Submitting the gui command buffer
+	if (guiMainHub->guiOverlayVisible) {
+		VkSubmitInfo guiSubmitInfo = {};
+		guiSubmitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		guiSubmitInfo.commandBufferCount = 1;
+		guiSubmitInfo.pCommandBuffers = &guiMainHub->command_buffers[imageIndex];
+				
+		ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &guiSubmitInfo, VK_NULL_HANDLE));
+		ErrorCheck(vkQueueWaitIdle(worldDevice->queue));
+	}
+		
+	VkPresentInfoKHR presentInfo = {};
+	presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+	presentInfo.waitSemaphoreCount = 1;
+	presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
 
 	VkSwapchainKHR swapChains[] = { worldDevice->swapchain };
-	present_info.swapchainCount = 1;
-	present_info.pSwapchains = swapChains;
-	present_info.pImageIndices = &imageIndex;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = swapChains;
+	presentInfo.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(worldDevice->present_queue, &present_info);
+	result = vkQueuePresentKHR(worldDevice->present_queue, &presentInfo);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		RecreateSwapChain();
