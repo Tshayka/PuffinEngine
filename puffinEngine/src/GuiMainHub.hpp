@@ -23,7 +23,6 @@ public:
 	void DeInit();
 	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary);
 	void RecreateForSwapchain();
-	void Submit(VkQueue, uint32_t);
 	void UpdateGui(); 
 	
 	std::vector<VkCommandBuffer> command_buffers;
