@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "Device.hpp"
-#include "LoadTexture.cpp"
+#include "Material.cpp"
 
 class MaterialLibrary {
 public:
@@ -28,6 +28,7 @@ public:
     void LoadSkyboxTexture(TextureLayout& layer);
 
     std::map<std::string, enginetool::SceneMaterial> materials;
+    std::map<std::string, TextureLayout> icons;
     TextureLayout font;
     std::vector<bmchar> fontChars;
 

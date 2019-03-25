@@ -30,7 +30,6 @@ void GuiMainUi::Init(Device* device, MaterialLibrary* materialLibrary, VkCommand
 	this->materialLibrary = materialLibrary;	 
 
 	SetUp();
-	LoadImage();
 	CreateBuffers(); 
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
@@ -42,8 +41,11 @@ void GuiMainUi::SetUp() {
 	GetDrawData();
 }
 
-void GuiMainUi::GenerateText(UiComponent& word, std::string text) {
+void GuiMainUi::GenerateText(UiComponent& word, std::string text, float scale) {
 	uint32_t indexOffset = 0;
+
+	// float fbW = (float)logicalDevice->swapchain_extent.width;
+	// float fbH = (float)logicalDevice->swapchain_extent.height;
 
 	float w = materialLibrary->font.texWidth;
 
@@ -54,65 +56,54 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text) {
 		MaterialLibrary::bmchar *charInfo = &materialLibrary->fontChars[(int)text[i]];
 
 		if (charInfo->width == 0)
-			charInfo->width = 154;
+			charInfo->width = 146;
 
-		float charw = ((float)(charInfo->width) / 154.0f);
-		float dimx = 1.0f * charw;
-		float charh = ((float)(charInfo->height) / 154.0f);
-		float dimy = 1.0f * charh;
-		posy = 1.0f - charh;
+		float charw = ((float)(charInfo->width) / 146.0f);
+		float dimx = scale * charw;
+		float charh = ((float)(charInfo->height) / 146.0f);
+		float dimy = scale * charh;
+		posy = 1.0f - scale * charh;
 
 		float us = charInfo->x / w;
 		float ue = (charInfo->x + charInfo->width) / w;
 		float ts = charInfo->y / w;
 		float te = (charInfo->y + charInfo->height) / w;
 
-		float xo = charInfo->xoffset / 154.0f;
-		float yo = charInfo->yoffset / 154.0f;
+		float xo = charInfo->xoffset / 146.0f;
+		float yo = charInfo->yoffset / 146.0f;
 
 		word.vertices.push_back({{ posx + dimx + xo, posy + dimy}, { ue, te }});
 		word.vertices.push_back({{ posx + xo, posy + dimy}, { us, te }});
-		word.vertices.push_back({ { posx + xo, posy}, { us, ts } });
-		word.vertices.push_back({ { posx + dimx + xo, posy}, { ue, ts }});
+		word.vertices.push_back({{ posx + xo, posy}, { us, ts } });
+		word.vertices.push_back({{ posx + dimx + xo, posy}, { ue, ts }});
 
 		std::array<uint32_t, 6> letterIndices = { 0,1,2, 2,3,0 };
-		for (auto& index : letterIndices) {
+		for (const auto& index : letterIndices) {
 			word.indices.push_back(indexOffset + index);
 		}
 		indexOffset += 4;
 
-		float advance = ((float)(charInfo->xadvance) / 154.0f);
-		posx += advance;
+		float advance = ((float)(charInfo->xadvance) / 146.0f);
+		posx += advance * scale;
 	}
 	indexCount = word.indices.size();
 
 	// Center
-	for (auto& v : word.vertices)
-	{
+	for (auto& v : word.vertices) {
 		v.pos[0] -= posx / 2.0f;
 		v.pos[1] -= 0.5f;
 	}
-}
 
-void GuiMainUi::LoadImage() {
-	// ImGuiIO& io = ImGui::GetIO();
 
-	// unsigned char* fontData;
-	// io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
-
-	// VkDeviceSize imageSize = font.texWidth * font.texHeight * 4 * sizeof(char);
-	// enginetool::Buffer<void> stagingBuffer;
-	// stagingBuffer.CreateBuffer(logicalDevice, imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
-
-	// font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	// font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
-	// font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
-	// font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
-
-	// font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	// font.CopyBufferToImage(stagingBuffer.buffer);
-	// stagingBuffer.Destroy();
-	// font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+	// switch (align) {
+	// case TextAlignment::alignRight:
+	// 	x -= posx;
+	// 	break;
+	// case TextAlignment::alignCenter:
+	// 	v.pos[0] -= posx / 2.0f;
+	// 	v.pos[1] -= 0.5f;
+	// 	break;
+	// }
 }
 
 void GuiMainUi::CreateBuffers() {
@@ -161,70 +152,72 @@ void GuiMainUi::CreateDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
 	std::array<VkDescriptorPoolSize, 2> PoolSizes = {};
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
+	PoolSizes[0].descriptorCount = static_cast<uint32_t>(drawData.componentsToDraw.size());
 	PoolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	PoolSizes[1].descriptorCount = static_cast<uint32_t>(2);
+	PoolSizes[1].descriptorCount = static_cast<uint32_t>(drawData.componentsToDraw.size()*2);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = 3; // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets =  static_cast<uint32_t>(drawData.componentsToDraw.size())+1; // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
 
 void GuiMainUi::CreateDescriptorSet() {
-	VkDescriptorSetAllocateInfo textAllocInfo = {};
-	textAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-	textAllocInfo.descriptorPool = descriptorPool;
-	textAllocInfo.descriptorSetCount = 1;
-	textAllocInfo.pSetLayouts = &descriptorSetLayout;
+	for (auto& c : drawData.componentsToDraw) {
+		VkDescriptorSetAllocateInfo textAllocInfo = {};
+		textAllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		textAllocInfo.descriptorPool = descriptorPool;
+		textAllocInfo.descriptorSetCount = 1;
+		textAllocInfo.pSetLayouts = &descriptorSetLayout;
 
-	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &textAllocInfo, &descriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &textAllocInfo, &c.descriptorSet));
 
-	VkDescriptorBufferInfo fontMatricesBufferInfo = {};
-	fontMatricesBufferInfo.buffer = uniformBuffers.fontMatrices.buffer;
-	fontMatricesBufferInfo.offset = 0;
-	fontMatricesBufferInfo.range = sizeof(UBOF);
+		VkDescriptorBufferInfo fontMatricesBufferInfo = {};
+		fontMatricesBufferInfo.buffer = uniformBuffers.fontMatrices.buffer;
+		fontMatricesBufferInfo.offset = 0;
+		fontMatricesBufferInfo.range = sizeof(UBOF);
 
-	VkDescriptorImageInfo textImageInfo = {};
-	textImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-	textImageInfo.imageView = materialLibrary->font.view;
-	textImageInfo.sampler = materialLibrary->font.sampler;
+		VkDescriptorImageInfo textImageInfo = {};
+		textImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		textImageInfo.imageView = c.assignedTexture->view;
+		textImageInfo.sampler = c.assignedTexture->sampler;
 
-	VkDescriptorBufferInfo fontSettingsBufferInfo = {};
-	fontSettingsBufferInfo.buffer = uniformBuffers.fontSettings.buffer;
-	fontSettingsBufferInfo.offset = 0;
-	fontSettingsBufferInfo.range = sizeof(UBOS);
+		VkDescriptorBufferInfo fontSettingsBufferInfo = {};
+		fontSettingsBufferInfo.buffer = uniformBuffers.fontSettings.buffer;
+		fontSettingsBufferInfo.offset = 0;
+		fontSettingsBufferInfo.range = sizeof(UBOS);
 
-	std::array<VkWriteDescriptorSet, 3> textDescriptorWrites = {};
+		std::array<VkWriteDescriptorSet, 3> textDescriptorWrites = {};
 
-	textDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	textDescriptorWrites[0].dstSet = descriptorSet;
-	textDescriptorWrites[0].dstBinding = 0;
-	textDescriptorWrites[0].dstArrayElement = 0;
-	textDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	textDescriptorWrites[0].descriptorCount = 1;
-	textDescriptorWrites[0].pBufferInfo = &fontMatricesBufferInfo;
+		textDescriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		textDescriptorWrites[0].dstSet =  c.descriptorSet;
+		textDescriptorWrites[0].dstBinding = 0;
+		textDescriptorWrites[0].dstArrayElement = 0;
+		textDescriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		textDescriptorWrites[0].descriptorCount = 1;
+		textDescriptorWrites[0].pBufferInfo = &fontMatricesBufferInfo;
 
-	textDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	textDescriptorWrites[1].dstSet = descriptorSet;
-	textDescriptorWrites[1].dstBinding = 1;
-	textDescriptorWrites[1].dstArrayElement = 0;
-	textDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	textDescriptorWrites[1].descriptorCount = 1;
-	textDescriptorWrites[1].pImageInfo = &textImageInfo;
+		textDescriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		textDescriptorWrites[1].dstSet =  c.descriptorSet;
+		textDescriptorWrites[1].dstBinding = 1;
+		textDescriptorWrites[1].dstArrayElement = 0;
+		textDescriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+		textDescriptorWrites[1].descriptorCount = 1;
+		textDescriptorWrites[1].pImageInfo = &textImageInfo;
 
-	textDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-	textDescriptorWrites[2].dstSet = descriptorSet;
-	textDescriptorWrites[2].dstBinding = 2;
-	textDescriptorWrites[2].dstArrayElement = 0;
-	textDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-	textDescriptorWrites[2].descriptorCount = 1;
-	textDescriptorWrites[2].pBufferInfo = &fontSettingsBufferInfo;
+		textDescriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+		textDescriptorWrites[2].dstSet = c.descriptorSet;
+		textDescriptorWrites[2].dstBinding = 2;
+		textDescriptorWrites[2].dstArrayElement = 0;
+		textDescriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+		textDescriptorWrites[2].descriptorCount = 1;
+		textDescriptorWrites[2].pBufferInfo = &fontSettingsBufferInfo;
 
-	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(textDescriptorWrites.size()), textDescriptorWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(textDescriptorWrites.size()), textDescriptorWrites.data(), 0, nullptr);
+	}
 }
 
 void GuiMainUi::CreateGraphicsPipeline() {
@@ -243,20 +236,14 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	Rasterization.rasterizerDiscardEnable = VK_FALSE; // geometry never passes through the rasterizer stage
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; // determines how fragments are generated for geometry
 	Rasterization.lineWidth = 1.0f;
-	Rasterization.cullMode = VK_CULL_MODE_NONE;
+	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
 	Rasterization.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; //VK_FRONT_FACE_COUNTER_CLOCKWISE
 	Rasterization.depthBiasEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState ColorBlendAttachment = {}; // Enable blending
-	ColorBlendAttachment.blendEnable = VK_TRUE;
-	ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
-	ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-	ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
-	ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-	ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-	ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 	ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-	
+	ColorBlendAttachment.blendEnable = VK_FALSE;
+
 	VkPipelineColorBlendStateCreateInfo ColorBlending = {};
 	ColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
 	ColorBlending.logicOpEnable = VK_FALSE;
@@ -278,7 +265,7 @@ void GuiMainUi::CreateGraphicsPipeline() {
 
 	VkPipelineDepthStencilStateCreateInfo DepthStencil = {};
 	DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	DepthStencil.depthTestEnable = VK_FALSE;
+	DepthStencil.depthTestEnable = VK_TRUE;
 	DepthStencil.depthWriteEnable = VK_TRUE;
 	DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
@@ -389,10 +376,46 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	shaderStages[0] = vertTextShaderStageInfo;
 	shaderStages[1] = fragTextShaderStageInfo;
 
+	ColorBlendAttachment.blendEnable = VK_TRUE;
+	ColorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+	ColorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	ColorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	ColorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	ColorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	ColorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+	ColorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
 	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &textPipeline));
 
 	vkDestroyShaderModule(logicalDevice->device, fragTextShaderModule, nullptr);
-	vkDestroyShaderModule(logicalDevice->device, vertTextShaderModule, nullptr); 
+	vkDestroyShaderModule(logicalDevice->device, vertTextShaderModule, nullptr);
+
+	// III. Background pipeline
+	auto vertBackgroundShaderCode = enginetool::readFile("puffinEngine/shaders/uiBackgroundShader.vert.spv");
+	auto fragBackgroundShaderCode = enginetool::readFile("puffinEngine/shaders/uiBackgroundShader.frag.spv");
+
+	VkShaderModule vertBackgroundShaderModule = logicalDevice->CreateShaderModule(vertBackgroundShaderCode);
+	VkShaderModule fragBackgroundShaderModule = logicalDevice->CreateShaderModule(fragBackgroundShaderCode);
+
+	VkPipelineShaderStageCreateInfo vertBackgroundShaderStageInfo = {};
+	vertBackgroundShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	vertBackgroundShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+	vertBackgroundShaderStageInfo.module = vertBackgroundShaderModule;
+	vertBackgroundShaderStageInfo.pName = "main";
+
+	VkPipelineShaderStageCreateInfo fragBackgroundShaderStageInfo = {};
+	fragBackgroundShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	fragBackgroundShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+	fragBackgroundShaderStageInfo.module = fragBackgroundShaderModule;
+	fragBackgroundShaderStageInfo.pName = "main"; 
+
+	shaderStages[0] = vertBackgroundShaderStageInfo;
+	shaderStages[1] = fragBackgroundShaderStageInfo;
+
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &backgroundPipeline));
+
+	vkDestroyShaderModule(logicalDevice->device, fragBackgroundShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->device, vertBackgroundShaderModule, nullptr); 
 }
 
 void GuiMainUi::NewFrame() {
@@ -400,32 +423,45 @@ void GuiMainUi::NewFrame() {
 }
 
 void GuiMainUi::GetDrawData() {
-	UiComponent word;
-	GenerateText(word, "Puffin");
-	word.assignedPipeline = &textPipeline;
+	InfoBox testInfoBox;
 
-	UiComponent rectangle;
+	testInfoBox.text.assignedPipeline = &textPipeline;
+	testInfoBox.icon.assignedPipeline = &imagePipeline;
+	testInfoBox.background.assignedPipeline = &backgroundPipeline;
+	testInfoBox.text.assignedTexture = &materialLibrary->font;  
+	testInfoBox.icon.assignedTexture = &materialLibrary->icons["cameraIcon"];
+	testInfoBox.background.assignedTexture = &materialLibrary->icons["defaultIcon"];
 
-	rectangle.assignedPipeline = &imagePipeline;
+	GenerateText(testInfoBox.text, "Puffin Engine", 0.25f);
 
-	rectangle.position = glm::vec2(100.0f, 100.0f);
+	testInfoBox.position = glm::vec2(100.0f, 100.0f);
 
-	rectangle.vertices = {
-		{{-0.25f, -0.25f}, {1.0f, 0.0f}},
-		{{0.25f, -0.25f}, {0.0f, 0.0f}},
-		{{0.25f, 0.25f}, {0.0f, 1.0f}},
-		{{-0.25f, 0.25f}, {1.0f, 1.0f}}
+	testInfoBox.icon.vertices = {
+		{{-0.5f, -0.5f}, {1.0f, 0.0f}},
+		{{0.5f, -0.5f}, {0.0f, 0.0f}},
+		{{0.5f, 0.5f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.5f}, {1.0f, 1.0f}}
 	};
 
-	rectangle.indices = { 0, 1, 2, 2, 3, 0 };
+	testInfoBox.background.vertices = {
+		{{-0.7f, -0.7f}, {1.0f, 0.0f}},
+		{{0.7f, -0.7f}, {0.0f, 0.0f}},
+		{{0.7f, 0.7f}, {0.0f, 1.0f}},
+		{{-0.7f, 0.7f}, {1.0f, 1.0f}}
+	};
 
-	float clipX1 = (float)(int)(0.5f + rectangle.position.x - 1.0f); //add column offset
-	float clipX2 = (float)(int)(0.5f + rectangle.position.x - 1.0f);
+	testInfoBox.icon.indices = { 0, 1, 2, 2, 3, 0 };
+	testInfoBox.background.indices = { 0, 1, 2, 2, 3, 0 };
 
-	rectangle.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
+	float clipX1 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f); //add column offset
+	float clipX2 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f);
 
-	drawData.componentsToDraw.push_back(rectangle);
-	drawData.componentsToDraw.push_back(word);
+	testInfoBox.icon.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
+
+	drawData.componentsToDraw.push_back(testInfoBox.background);
+	drawData.componentsToDraw.push_back(testInfoBox.icon);
+	drawData.componentsToDraw.push_back(testInfoBox.text);
+	
 
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
 		drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
@@ -497,9 +533,15 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(command_buffer, 0, 1, &viewport);
 
+	scissor.offset.x = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
+	scissor.offset.y = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
+	scissor.extent.width = (float)logicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
+	scissor.extent.height = (float)logicalDevice->swapchain_extent.height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
+	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
+
 	VkDeviceSize offsets[1] = { 0 };
 
-	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
+
 	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.buffer, offsets);
 	vkCmdBindIndexBuffer(command_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT32);
 	
@@ -508,13 +550,8 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	int32_t indexOffset = 0;
 
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
-		
+		vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &drawData.componentsToDraw[i].descriptorSet, 0, nullptr);
 		vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, *drawData.componentsToDraw[i].assignedPipeline);
-		scissor.offset.x = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
-		scissor.offset.y = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
-		scissor.extent.width = (float)logicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
-		scissor.extent.height = (float)logicalDevice->swapchain_extent.height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
-		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 		vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(drawData.componentsToDraw[i].indices.size()), 1, indexOffset, vertexOffset, 0);
 		//vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
 		indexOffset += static_cast<uint32_t>(drawData.componentsToDraw[i].indices.size());
@@ -531,10 +568,10 @@ void GuiMainUi::DeInit() {
 	vertexBuffer.Destroy();
 	uniformBuffers.fontMatrices.Destroy();
 	uniformBuffers.fontSettings.Destroy();
-	//font.DeInit();
 	vkDestroyPipelineCache(logicalDevice->device, pipelineCache, nullptr);
 	vkDestroyPipeline(logicalDevice->device, imagePipeline, nullptr);
 	vkDestroyPipeline(logicalDevice->device, textPipeline, nullptr);
+	vkDestroyPipeline(logicalDevice->device, backgroundPipeline, nullptr);
 	vkDestroyPipelineLayout(logicalDevice->device, pipelineLayout, nullptr);
 	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptorSetLayout, nullptr);

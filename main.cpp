@@ -10,9 +10,9 @@ int main(int argc, char* argv[]){
     try {
 		engine.Run();
 
-        char l;
-        std::cin >> l;
-        std::cout << engine.isUppercase(l) << std::endl;
+        // char l;
+        // std::cin >> l;
+        // std::cout << engine.isUppercase(l) << std::endl;
 	}
 	catch (const std::runtime_error& e) {
 		std::cerr << e.what() << std::endl;

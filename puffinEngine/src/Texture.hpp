@@ -37,4 +37,4 @@ class TextureLayout {
         
         VkCommandPool* commandPool = nullptr;
         Device* logicalDevice;
-    };
+};

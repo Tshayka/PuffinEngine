@@ -15,7 +15,6 @@ public:
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInit();
 	void Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool);
-	void LoadImage();
 	void NewFrame();
 	void SetUp();
 	void UpdateDrawData();
@@ -36,11 +35,26 @@ public:
     };
 
 	struct UiComponent {
-		glm::vec2 position;
         std::vector<Vertex> vertices;
         std::vector<uint32_t> indices;
         glm::vec4 clipExtent;
-		VkPipeline *assignedPipeline;
+		VkPipeline *assignedPipeline = nullptr;
+		TextureLayout* assignedTexture = nullptr;
+		VkDescriptorSet descriptorSet;
+	};
+
+	enum class TextAlignment { alignLeft, alignCenter, alignRight };
+
+	struct InfoBox {
+		glm::vec2 position;
+		glm::vec2 dimension;
+		glm::vec4 backgroundColor;
+		glm::vec2 textSize;
+		TextAlignment textAlign = TextAlignment::alignLeft;
+
+		GuiMainUi::UiComponent background;
+		GuiMainUi::UiComponent text;
+		GuiMainUi::UiComponent icon;
 	};
 
     struct DrawData {
@@ -61,7 +75,7 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateViewAndSampler();
     void GetDrawData();
-	void GenerateText(UiComponent& word, std::string text);
+	void GenerateText(UiComponent& word, std::string text, float scale);
 
 	struct UBOF {
 		glm::mat4 proj;
@@ -70,7 +84,8 @@ private:
 
 	struct UBOS {
 		glm::vec4 outlineColor = glm::vec4(1.0f, 0.0f, 0.0f, 0.0f);
-		float outlineWidth = 0.6f;
+		glm::vec2 offset = glm::vec2(1.0f, 1.0f);
+		float outlineWidth = 0.6f; // Between 1.0 and 0.0, 1.0 = thick outline, 0.0 = no outline
 		float outline = true;
 	} UBOS;
 
@@ -86,10 +101,10 @@ private:
 	int32_t indexCount = 0;
 	VkDescriptorPool descriptorPool;
 	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet descriptorSet;
 	VkPipelineLayout pipelineLayout;
 	VkPipeline imagePipeline;
 	VkPipeline textPipeline;
+	VkPipeline backgroundPipeline;
 	VkPipelineCache pipelineCache;
 
 	//TextureLayout font;

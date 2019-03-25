@@ -27,7 +27,6 @@ void MaterialLibrary::Init(Device* device) {
 
 	CreateCommandPool();
 	FillLibrary();
-	LoadTexture("puffinEngine/fonts/exoSemiBold_0.png", font);
 	ParseFont("puffinEngine/fonts/exoSemiBold.fnt");
 }
 
@@ -43,6 +42,7 @@ void MaterialLibrary::CreateCommandPool() {
 }
 
 void MaterialLibrary::FillLibrary() {
+	//Load files for materials
 	enginetool::SceneMaterial defaultGray;
 	enginetool::SceneMaterial rust;
 	enginetool::SceneMaterial chrome;
@@ -73,7 +73,27 @@ void MaterialLibrary::FillLibrary() {
 	LoadTexture("puffinEngine/assets/textures/defaultNormal.jpg", character.normal); 
 	LoadTexture("puffinEngine/assets/textures/defaultAo.jpg", character.ambientOcclucion);
 
-	materials.insert(std::make_pair("character", character));   
+	materials.insert(std::make_pair("character", character));
+
+	//Load files for icons 
+	TextureLayout defaultIcon;
+	TextureLayout lightbulbIcon;
+	TextureLayout characterIcon;
+	TextureLayout cameraIcon;
+
+	icons = {
+		{"defaultIcon", defaultIcon},
+		{"lightbulbIcon", lightbulbIcon },
+		{"characterIcon", characterIcon },
+		{"cameraIcon", cameraIcon }
+	};
+
+	for (auto& ico : icons) {
+		LoadTexture("puffinEngine/assets/textures/icons/" + ico.first + ".jpg", ico.second);  
+	} 
+
+	//Load files for fonts
+	LoadTexture("puffinEngine/fonts/exoSemiBold.png", font); 
 }
 
 void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
@@ -184,6 +204,10 @@ int32_t MaterialLibrary::NextValuePair(std::stringstream *stream) {
 }
 
 void MaterialLibrary::DeInit() {
+	for (auto& ico : icons) {
+		ico.second.DeInit();
+	}
+
 	for (auto& m : materials) {
 		m.second.albedo.DeInit();
 		m.second.metallic.DeInit();
