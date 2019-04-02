@@ -82,7 +82,7 @@ void PuffinEngine::CreateMainUi() {
 
 void PuffinEngine::CreateMousePicker() {
 	mousePicker = new MousePicker();
-	mousePicker->Init(worldDevice);
+	mousePicker->Init();
 }
 
 void PuffinEngine::CreateMainCharacter() {
@@ -90,14 +90,18 @@ void PuffinEngine::CreateMainCharacter() {
 	//dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 }
 
+void PuffinEngine::CreateScene() {
+	scene_1 = new Scene();
+	scene_1->InitScene(worldDevice, mousePicker, meshLibrary, materialLibrary, mainClock, threadPool);
+}
+
 void PuffinEngine::CreateGuiMainHub() {
 	guiMainHub = new GuiMainHub();
 	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool, materialLibrary);
 }
 
-void PuffinEngine::CreateScene() {
-	scene_1 = new Scene();
-	scene_1->InitScene(worldDevice, guiMainHub, mousePicker, meshLibrary, materialLibrary, mainClock, threadPool);
+void PuffinEngine::CreateController() {
+	controller.Init(guiMainHub, scene_1);
 }
 
 void PuffinEngine::InitVulkan() {
@@ -110,8 +114,9 @@ void PuffinEngine::InitVulkan() {
 	CreateMousePicker();
 	CreateMaterialLibrary();
 	CreateMeshLibrary();
-	CreateGuiMainHub();
 	CreateScene();
+	CreateGuiMainHub();
+	CreateController();
 	CreateSemaphores();
 }
 
@@ -416,35 +421,35 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 }
 
 void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
-	FuncPair test = {&Scene::Test, nullptr};
+	FuncPair test = {&Controller::TestButton, nullptr};
 
-	FuncPair moveForward = {&Scene::MoveCameraForward, &Scene::StopCameraForwardBackward};
-	FuncPair moveBackward = {&Scene::MoveCameraBackward, &Scene::StopCameraForwardBackward};
-	FuncPair moveLeft = {&Scene::MoveCameraLeft, &Scene::StopCameraLeftRight};
-	FuncPair moveRight = {&Scene::MoveCameraRight, &Scene::StopCameraLeftRight};
-	FuncPair moveUp = {&Scene::MoveCameraUp, &Scene::StopCameraUpDown};
-	FuncPair moveDown = {&Scene::MoveCameraDown, &Scene::StopCameraUpDown};
+	FuncPair moveForward = {&Controller::MoveCameraForward, &Controller::StopCameraForwardBackward};
+	FuncPair moveBackward = {&Controller::MoveCameraBackward, &Controller::StopCameraForwardBackward};
+	FuncPair moveLeft = {&Controller::MoveCameraLeft, &Controller::StopCameraLeftRight};
+	FuncPair moveRight = {&Controller::MoveCameraRight, &Controller::StopCameraLeftRight};
+	FuncPair moveUp = {&Controller::MoveCameraUp, &Controller::StopCameraUpDown};
+	FuncPair moveDown = {&Controller::MoveCameraDown, &Controller::StopCameraUpDown};
 
-	FuncPair makeMainCharacterJump = {&Scene::MakeMainCharacterJump, nullptr};
-	FuncPair moveMainCharacterForward = {&Scene::MoveMainCharacterForward, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterBackward = {&Scene::MoveMainCharacterBackward, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterLeft = {&Scene::MoveMainCharacterLeft, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterRight = {&Scene::MoveMainCharacterRight, &Scene::StopMainCharacter};
+	FuncPair makeMainCharacterJump = {&Controller::MakeMainCharacterJump, nullptr};
+	FuncPair moveMainCharacterForward = {&Controller::MoveMainCharacterForward, &Controller::StopMainCharacter};
+	FuncPair moveMainCharacterBackward = {&Controller::MoveMainCharacterBackward, &Controller::StopMainCharacter};
+	FuncPair moveMainCharacterLeft = {&Controller::MoveMainCharacterLeft, &Controller::StopMainCharacter};
+	FuncPair moveMainCharacterRight = {&Controller::MoveMainCharacterRight, &Controller::StopMainCharacter};
 	
-	FuncPair moveSelectedActorForward = {&Scene::MoveSelectedActorForward, &Scene::StopSelectedActorForwardBackward};
-	FuncPair moveSelectedActorBackward = {&Scene::MoveSelectedActorBackward, &Scene::StopSelectedActorForwardBackward};
-	FuncPair moveSelectedActorLeft = {&Scene::MoveSelectedActorLeft, &Scene::StopSelectedActorLeftRight};
-	FuncPair moveSelectedActorRight = {&Scene::MoveSelectedActorRight, &Scene::StopSelectedActorLeftRight};
-	FuncPair moveSelectedActorUp = {&Scene::MoveSelectedActorUp, &Scene::StopSelectedActorUpDown};
-	FuncPair moveSelectedActorDown = {&Scene::MoveSelectedActorDown, &Scene::StopSelectedActorUpDown};
+	FuncPair moveSelectedActorForward = {&Controller::MoveSelectedActorForward, &Controller::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorBackward = {&Controller::MoveSelectedActorBackward, &Controller::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorLeft = {&Controller::MoveSelectedActorLeft, &Controller::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorRight = {&Controller::MoveSelectedActorRight, &Controller::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorUp = {&Controller::MoveSelectedActorUp, &Controller::StopSelectedActorUpDown};
+	FuncPair moveSelectedActorDown = {&Controller::MoveSelectedActorDown, &Controller::StopSelectedActorUpDown};
 		
-	FuncPair allGuiToggle = {&Scene::AllGuiToggle, nullptr};
-	FuncPair SelectionIndicatorToggle = {&Scene::SelectionIndicatorToggle, nullptr};
-	FuncPair WireframeToggle = {&Scene::WireframeToggle, nullptr};
-	FuncPair AabbToggle = {&Scene::AabbToggle, nullptr};
-	FuncPair ConsoleToggle = {&Scene::ConsoleToggle, nullptr};
-	FuncPair MainUiToggle = {&Scene::MainUiToggle, nullptr};
-	FuncPair TextOverlayToggle = {&Scene::TextOverlayToggle, nullptr};
+	FuncPair allGuiToggle = {&Controller::AllGuiToggle, nullptr};
+	FuncPair SelectionIndicatorToggle = {&Controller::SelectionIndicatorToggle, nullptr};
+	FuncPair WireframeToggle = {&Controller::WireframeToggle, nullptr};
+	FuncPair AabbToggle = {&Controller::AabbToggle, nullptr};
+	FuncPair ConsoleToggle = {&Controller::ConsoleToggle, nullptr};
+	FuncPair MainUiToggle = {&Controller::MainUiToggle, nullptr};
+	FuncPair TextOverlayToggle = {&Controller::TextOverlayToggle, nullptr};
 
 	functions = {
 		{GLFW_KEY_SPACE, makeMainCharacterJump},
@@ -480,9 +485,9 @@ void PuffinEngine::PressKey(int key) {
 		
 	if (functions.count(key)) {
 		if (state == GLFW_PRESS) 
-			functions[key].first(scene_1);
+			functions[key].first(&controller);
 		if (state == GLFW_RELEASE && functions[key].second!=nullptr)  
-			functions[key].second(scene_1);
+			functions[key].second(&controller);
 	}
 }
 
