@@ -11,7 +11,6 @@
 #include "Device.hpp"
 #include "Landscape.hpp"
 #include "Light.hpp"
-#include "GuiMainHub.hpp"
 #include "MainCharacter.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
@@ -30,56 +29,23 @@ public:
 	void DeInitScene();
 	void DeSelect();
 	void HandleMouseClick();
-	void InitScene(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
+	void InitScene(Device* device, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
 	void RecreateForSwapchain();
 	void CleanUpForSwapchain();
 	void CreateCommandBuffers();
 	void CreateReflectionCommandBuffer();
 	void CreateRefractionCommandBuffer();
-	void UpdateGUI();
+	void Test();
 	void UpdateScene();
 
-	// ------------ Scene navigation functions ------------- //
-
-	void TestButton();
-	void Test();
-
-	void MoveCameraForward();
-	void MoveCameraBackward();
-	void StopCameraForwardBackward();
-	void MoveCameraLeft();
-	void MoveCameraRight();
-	void StopCameraLeftRight();
-	void MoveCameraUp();
-	void MoveCameraDown();
-	void StopCameraUpDown();
-
-	void MakeMainCharacterJump();
-	void MakeMainCharacterRun();
-	void MoveMainCharacterForward();
-	void MoveMainCharacterBackward();
-	void MoveMainCharacterLeft();
-	void MoveMainCharacterRight();
-	void StopMainCharacter();
-
-	void MakeSelectedActorJump();
-	void MoveSelectedActorForward();
-	void MoveSelectedActorBackward();
-	void StopSelectedActorForwardBackward();
-	void MoveSelectedActorLeft();
-	void MoveSelectedActorRight();
-	void StopSelectedActorLeftRight();
-	void MoveSelectedActorUp();
-	void MoveSelectedActorDown();
-	void StopSelectedActorUpDown();
-	
-	void SelectionIndicatorToggle();
-	void WireframeToggle();
-	void AabbToggle();
-	void ConsoleToggle();
-	void AllGuiToggle();
-	void MainUiToggle();
-	void TextOverlayToggle();
+	bool displayWireframe = false;
+	bool displaySceneGeometry = true;
+	bool displayAabb = false;
+	bool displayClouds = true;
+	bool displaySkybox = true;
+	bool displayOcean = true;
+	bool displaySelectionIndicator = true;
+	bool displayMainCharacter = true;
 	
 	std::shared_ptr<Camera> currentCamera;
 	std::shared_ptr<Actor> selectedActor;
@@ -92,8 +58,6 @@ public:
 
 	std::vector<std::shared_ptr<Actor>> actors;
 		
-	GuiMainHub *guiMainHub = nullptr;
-	
 	std::vector<VkCommandBuffer> commandBuffers;
 	VkCommandBuffer reflectionCmdBuff;
 	VkCommandBuffer refractionCmdBuff;
@@ -289,15 +253,6 @@ private:
 	std::unique_ptr<TextureLayout> screenDepthImage = std::make_unique<TextureLayout>();
 	std::unique_ptr<TextureLayout> reflectionDepthImage = std::make_unique<TextureLayout>();
 	std::unique_ptr<TextureLayout> refractionDepthImage = std::make_unique<TextureLayout>();
-
-	bool displayWireframe = false;
-	bool displaySceneGeometry = true;
-	bool displayAabb = false;
-	bool displayClouds = true;
-	bool displaySkybox = true;
-	bool displayOcean = true;
-	bool displaySelectionIndicator = true;
-	bool displayMainCharacter = true;
 
 	glm::vec3 rnd_pos[DYNAMIC_UB_OBJECTS];
 	

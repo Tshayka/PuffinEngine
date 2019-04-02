@@ -4,8 +4,7 @@
 #include "GuiTextOverlay.hpp"
 #include "Ui.hpp"
 
-class GuiMainHub 
-{
+class GuiMainHub {
 public:
 	GuiMainHub();
 	~GuiMainHub();

@@ -25,7 +25,7 @@ public:
     void CreateUniformBuffer(VkCommandBuffer);
     void DeInit();
 	void EndTextUpdate();
-	void Init(Device* device, VkCommandPool& commandPool);
+	void Init(Device* device, VkCommandPool& commandPool, VkRenderPass& renderPass);
 	void RenderText(std::string, float, float, enum TextAlignment);
 	void SetUp();
 
@@ -56,4 +56,5 @@ private:
 
 	Device* logicalDevice = nullptr;
 	VkCommandPool* commandPool = nullptr;
+	VkRenderPass* renderPass = nullptr; 
 };

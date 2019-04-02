@@ -40,9 +40,11 @@ void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textO
 	CreateRenderPass();
 	CreateCommandPool();
 
-	console->Init(logicalDevice, commandPool);
-	textOverlay->Init(logicalDevice, commandPool);
-	mainUi->Init(logicalDevice, materialLibrary, commandPool);
+	console->Init(logicalDevice, commandPool, renderPass);
+	textOverlay->Init(logicalDevice, commandPool, renderPass);
+	mainUi->Init(logicalDevice, materialLibrary, commandPool, renderPass);
+
+	UpdateGui();
 }
 
 void GuiMainHub::UpdateGui() {

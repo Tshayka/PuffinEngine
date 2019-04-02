@@ -31,7 +31,7 @@ glm::vec3 MousePicker::GetRayOrigin() const {
 
 // ---------------- Main functions ------------------ //
 
-void MousePicker::Init(Device* device) {
+void MousePicker::Init() {
 	hitPoint = glm::vec3(0.0f, 0.0f, 0.0f);
 	width = 800;
 	height = 600;

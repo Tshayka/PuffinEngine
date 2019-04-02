@@ -3,6 +3,7 @@
 #include <utility>
 #include <map>
 
+#include "Controller.hpp"
 #include "Scene.hpp"
 
 const int FRAMES_PER_SECOND = 25;
@@ -35,9 +36,11 @@ class PuffinEngine {
 
     // ---------------- Main functions ------------------ //
     
-    typedef std::pair<std::function<void (Scene*)>, std::function<void (Scene*)>> FuncPair;
+    //typedef std::pair<std::function<void (Scene*)>, std::function<void (Scene*)>> FuncPair;
+    typedef std::pair<std::function<void (Controller*)>, std::function<void (Controller*)>> FuncPair;
 
     //void ConnectGamepad();
+    void CreateController();
     void CreateDevice();
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
@@ -75,6 +78,8 @@ class PuffinEngine {
     GuiElement* console = nullptr;
     GuiMainUi* mainUi = nullptr;
     GuiTextOverlay* guiStatistics = nullptr;
+
+    Controller controller;
 
 	VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;

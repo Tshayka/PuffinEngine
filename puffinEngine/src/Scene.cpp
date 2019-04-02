@@ -49,9 +49,8 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
+void Scene::InitScene(Device* device, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
 	logicalDevice = device;
-	this->guiMainHub = guiMainHub;
 	this->mousePicker = mousePicker;
 	this->meshLibrary = meshLibrary;
 	this->materialLibrary = materialLibrary;
@@ -71,7 +70,6 @@ void Scene::InitScene(Device* device, GuiMainHub* guiMainHub, MousePicker* mouse
 	CreateDescriptorSetLayout();
 	CreateDescriptorSet();
 	CreateGraphicsPipeline();
-	UpdateGUI();
 	CreateCommandBuffers();
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
@@ -1229,12 +1227,6 @@ void Scene::UpdateOceanUniformBuffer() {
 	memcpy(uniform_buffers.ocean.mapped, &UBOSE, sizeof(UBOSE));
 }
 
-// ------ Text overlay - performance statistics ----- //
-
-void Scene::UpdateGUI() {
-	guiMainHub->UpdateGui();
-}
-
 // ------------------ Descriptors ------------------- //
 
 void Scene::CreateDescriptorSetLayout() {
@@ -2226,46 +2218,6 @@ void Scene::PrepareOffscreenImage() {
 	refractionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 }
 
-// ---------------- Scene navigation ---------------- //
-
-void Scene::TestButton() {Test();}
-
-void Scene::MoveCameraForward() {currentCamera->Dolly(150.0f);}
-void Scene::MoveCameraBackward() {currentCamera->Dolly(-150.0f);}
-void Scene::StopCameraForwardBackward() {currentCamera->Dolly(0.0f);}
-void Scene::MoveCameraLeft() {currentCamera->Truck(150.0f);}
-void Scene::MoveCameraRight() {currentCamera->Truck(-150.0f);}
-void Scene::StopCameraLeftRight() {currentCamera->Truck(0.0f);}
-void Scene::MoveCameraUp() {currentCamera->Pedestal(150.0f);}
-void Scene::MoveCameraDown() {currentCamera->Pedestal(-150.0f);}
-void Scene::StopCameraUpDown() {currentCamera->Pedestal(0.0f);}
-
-void Scene::MakeMainCharacterJump() {mainCharacter->SetState(ActorState::Jump);}
-void Scene::MakeMainCharacterRun() {mainCharacter->SetState(ActorState::Run);}
-void Scene::MoveMainCharacterForward() {mainCharacter->SetState(ActorState::WalkForward);}
-void Scene::MoveMainCharacterBackward() {mainCharacter->SetState(ActorState::WalkBackward);}
-void Scene::MoveMainCharacterLeft() {mainCharacter->SetState(ActorState::WalkLeft);}
-void Scene::MoveMainCharacterRight() {mainCharacter->SetState(ActorState::WalkRight);}
-void Scene::StopMainCharacter() {mainCharacter->SetState(ActorState::Idle);}
-
-void Scene::MoveSelectedActorForward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(150.0f);}}
-void Scene::MoveSelectedActorBackward() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Dolly(-150.0f);}}
-void Scene::StopSelectedActorForwardBackward() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Dolly(0.0f);}}
-void Scene::MoveSelectedActorLeft() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(-150.0f);}}
-void Scene::MoveSelectedActorRight() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Strafe(150.0f); }}
-void Scene::StopSelectedActorLeftRight() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Strafe(0.0f);}}
-void Scene::MoveSelectedActorUp() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(150.0f);}}
-void Scene::MoveSelectedActorDown() {if (selectedActor!=nullptr) {selectedActor->onManualControl(); selectedActor->Pedestal(-150.0f);}}
-void Scene::StopSelectedActorUpDown() {if (selectedActor!=nullptr) {selectedActor->offManualControl(); selectedActor->Strafe(0.0f);}}
-
-void Scene::WireframeToggle() {displayWireframe = !displayWireframe;}
-void Scene::AabbToggle() {displayAabb = !displayAabb;}
-void Scene::SelectionIndicatorToggle() {displaySelectionIndicator = !displaySelectionIndicator;}
-void Scene::ConsoleToggle() {guiMainHub->ui_settings.display_imgui = !guiMainHub->ui_settings.display_imgui;}
-void Scene::AllGuiToggle() {guiMainHub->guiOverlayVisible = !guiMainHub->guiOverlayVisible;}
-void Scene::MainUiToggle() {guiMainHub->ui_settings.display_main_ui = !guiMainHub->ui_settings.display_main_ui;}
-void Scene::TextOverlayToggle() {guiMainHub->ui_settings.display_stats_overlay = !guiMainHub->ui_settings.display_stats_overlay;}
-
 // ---------------- Deinitialisation ---------------- //
 
 void Scene::DeInitFramebuffer() {
@@ -2320,7 +2272,7 @@ void Scene::DeInitScene() {
 	vkDestroyCommandPool(logicalDevice->device, refractionCommandPool, nullptr);
 	DeInitUniformBuffer();
 	
-	guiMainHub = nullptr;
+	//guiMainHub = nullptr;
 	meshLibrary = nullptr;
 	logicalDevice = nullptr;
 	materialLibrary = nullptr;

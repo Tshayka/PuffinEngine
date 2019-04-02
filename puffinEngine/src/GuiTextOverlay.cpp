@@ -25,9 +25,10 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
+void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool, VkRenderPass& renderPass) {
 	logicalDevice = device;
-	this->commandPool = &commandPool; 
+	this->commandPool = &commandPool;
+	this->renderPass = &renderPass;  
 	
 	SetUp();
 	CreateVertexBuffer();
@@ -87,13 +88,13 @@ void GuiTextOverlay::CreateDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
 	std::array<VkDescriptorPoolSize, 1> PoolSizes = {};
 	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[0].descriptorCount = 1;
+	PoolSizes[0].descriptorCount = static_cast<uint32_t>(1);
 
 	VkDescriptorPoolCreateInfo PoolInfo = {};
 	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
 	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
+	PoolInfo.maxSets = static_cast<uint32_t>(1); // maximum number of descriptor sets that will be allocated
 
 	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
 }
@@ -242,7 +243,7 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;	
 	PipelineInfo.layout = pipelineLayout;
-	PipelineInfo.renderPass = logicalDevice->renderPass;
+	PipelineInfo.renderPass = *renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	
@@ -381,4 +382,5 @@ void GuiTextOverlay::DeInit() {
 
 	logicalDevice = nullptr;
 	commandPool = nullptr;
+	renderPass = nullptr; 
 }

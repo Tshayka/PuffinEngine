@@ -24,10 +24,11 @@ GuiMainUi::~GuiMainUi() {
 #endif
 }
 
-void GuiMainUi::Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool) {
+void GuiMainUi::Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool, VkRenderPass& renderPass) {
 	logicalDevice = device;
 	this->commandPool = &commandPool;
-	this->materialLibrary = materialLibrary;	 
+	this->materialLibrary = materialLibrary;	
+	this->renderPass = &renderPass; 
 
 	SetUp();
 	CreateBuffers(); 
@@ -41,16 +42,17 @@ void GuiMainUi::SetUp() {
 	GetDrawData();
 }
 
-void GuiMainUi::GenerateText(UiComponent& word, std::string text, float scale) {
+void GuiMainUi::GenerateText(UiComponent& word, std::string text, TextAlignment align, glm::vec2 position, float scale, float maxWidth, float lineHeight, glm::vec2 padding) {
 	uint32_t indexOffset = 0;
+	float wrapWidth = maxWidth;
 
 	// float fbW = (float)logicalDevice->swapchain_extent.width;
 	// float fbH = (float)logicalDevice->swapchain_extent.height;
 
 	float w = materialLibrary->font.texWidth;
 
-	float posx = 0.0f;
-	float posy = 0.0f;
+	float posx = position.x + padding.x;
+	float posy = position.y + padding.y;
 
 	for (uint32_t i = 0; i < text.size(); i++) {
 		MaterialLibrary::bmchar *charInfo = &materialLibrary->fontChars[(int)text[i]];
@@ -62,20 +64,20 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text, float scale) {
 		float dimx = scale * charw;
 		float charh = ((float)(charInfo->height) / 146.0f);
 		float dimy = scale * charh;
-		posy = 1.0f - scale * charh;
+		posy = 1.0f;
 
 		float us = charInfo->x / w;
 		float ue = (charInfo->x + charInfo->width) / w;
 		float ts = charInfo->y / w;
 		float te = (charInfo->y + charInfo->height) / w;
 
-		float xo = charInfo->xoffset / 146.0f;
-		float yo = charInfo->yoffset / 146.0f;
+		float xo = scale * charInfo->xoffset / 146.0f;
+		float yo = scale * charInfo->yoffset / 146.0f;
 
-		word.vertices.push_back({{ posx + dimx + xo, posy + dimy}, { ue, te }});
-		word.vertices.push_back({{ posx + xo, posy + dimy}, { us, te }});
-		word.vertices.push_back({{ posx + xo, posy}, { us, ts } });
-		word.vertices.push_back({{ posx + dimx + xo, posy}, { ue, ts }});
+		word.vertices.push_back({{ posx + dimx + xo, posy + dimy + yo}, { ue, te }});
+		word.vertices.push_back({{ posx + xo, posy + dimy + yo}, { us, te }});
+		word.vertices.push_back({{ posx + xo, posy + yo}, { us, ts } });
+		word.vertices.push_back({{ posx + dimx + xo, posy + yo}, { ue, ts }});
 
 		std::array<uint32_t, 6> letterIndices = { 0,1,2, 2,3,0 };
 		for (const auto& index : letterIndices) {
@@ -323,7 +325,7 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = pipelineLayout;
-	PipelineInfo.renderPass = logicalDevice->renderPass;
+	PipelineInfo.renderPass = *renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -431,23 +433,27 @@ void GuiMainUi::GetDrawData() {
 	testInfoBox.text.assignedTexture = &materialLibrary->font;  
 	testInfoBox.icon.assignedTexture = &materialLibrary->icons["cameraIcon"];
 	testInfoBox.background.assignedTexture = &materialLibrary->icons["defaultIcon"];
+	testInfoBox.position = glm::vec2(10.0f, 10.0f);
+	GenerateText(testInfoBox.text, "Puffin Engine", TextAlignment::left,  glm::vec2(0.0f, 0.0f), 0.125f, 700.0f, 1.0f, glm::vec2(0.0f, 0.0f));
 
-	GenerateText(testInfoBox.text, "Puffin Engine", 0.25f);
+	// float fbW = (float)logicalDevice->swapchain_extent.width;
+	// float fbH = (float)logicalDevice->swapchain_extent.height;
 
-	testInfoBox.position = glm::vec2(100.0f, 100.0f);
+	// float x = (testInfoBox.position.x / fbW);
+	// float y = (testInfoBox.position.y / fbH);
 
 	testInfoBox.icon.vertices = {
+		{{-0.5f, -0.5f}, {1.0f, 0.0f}},
+		{{0.125f, -0.5f}, {0.0f, 0.0f}},
+		{{0.125f, 0.125f}, {0.0f, 1.0f}},
+		{{-0.5f, 0.125f}, {1.0f, 1.0f}}
+	};
+
+	testInfoBox.background.vertices = {
 		{{-0.5f, -0.5f}, {1.0f, 0.0f}},
 		{{0.5f, -0.5f}, {0.0f, 0.0f}},
 		{{0.5f, 0.5f}, {0.0f, 1.0f}},
 		{{-0.5f, 0.5f}, {1.0f, 1.0f}}
-	};
-
-	testInfoBox.background.vertices = {
-		{{-0.7f, -0.7f}, {1.0f, 0.0f}},
-		{{0.7f, -0.7f}, {0.0f, 0.0f}},
-		{{0.7f, 0.7f}, {0.0f, 1.0f}},
-		{{-0.7f, 0.7f}, {1.0f, 1.0f}}
 	};
 
 	testInfoBox.icon.indices = { 0, 1, 2, 2, 3, 0 };
@@ -578,5 +584,6 @@ void GuiMainUi::DeInit() {
 
 	logicalDevice = nullptr;
 	commandPool = nullptr;
-	materialLibrary = nullptr;	
+	materialLibrary = nullptr;
+	renderPass = nullptr;	
 }

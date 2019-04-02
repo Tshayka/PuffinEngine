@@ -14,7 +14,7 @@ public:
 
 	void CreateUniformBuffer(VkCommandBuffer);
 	void DeInit();
-	void Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool);
+	void Init(Device* device, MaterialLibrary* materialLibrary, VkCommandPool& commandPool, VkRenderPass& renderPass);
 	void NewFrame();
 	void SetUp();
 	void UpdateDrawData();
@@ -43,14 +43,14 @@ public:
 		VkDescriptorSet descriptorSet;
 	};
 
-	enum class TextAlignment { alignLeft, alignCenter, alignRight };
+	enum class TextAlignment { left, center, right, justify };
 
 	struct InfoBox {
 		glm::vec2 position;
 		glm::vec2 dimension;
 		glm::vec4 backgroundColor;
 		glm::vec2 textSize;
-		TextAlignment textAlign = TextAlignment::alignLeft;
+		TextAlignment textAlign = TextAlignment::left;
 
 		GuiMainUi::UiComponent background;
 		GuiMainUi::UiComponent text;
@@ -75,7 +75,7 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateViewAndSampler();
     void GetDrawData();
-	void GenerateText(UiComponent& word, std::string text, float scale);
+	void GenerateText(UiComponent& word, std::string text, TextAlignment align, glm::vec2 position, float scale, float maxWidth, float lineHeight, glm::vec2 padding);
 
 	struct UBOF {
 		glm::mat4 proj;
@@ -114,5 +114,6 @@ private:
 
 	Device* logicalDevice = nullptr;
 	VkCommandPool* commandPool = nullptr;
-	MaterialLibrary* materialLibrary = nullptr;	
+	MaterialLibrary* materialLibrary = nullptr;
+	VkRenderPass* renderPass = nullptr;	
 };
