@@ -20,9 +20,10 @@ GuiElement::~GuiElement() {
 #endif
 }
 
-void GuiElement::Init(Device* device, VkCommandPool& commandPool) {
+void GuiElement::Init(Device* device, VkCommandPool& commandPool, VkRenderPass& renderPass) {
 	logicalDevice = device;
-	this->commandPool = &commandPool; 
+	this->commandPool = &commandPool;
+	this->renderPass = &renderPass;  
 
 	SetUp();
 	LoadImage();
@@ -301,7 +302,7 @@ void GuiElement::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = pipelineLayout;
-	PipelineInfo.renderPass = logicalDevice->renderPass;
+	PipelineInfo.renderPass = *renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -413,8 +414,8 @@ void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 	// Render the command lists:
-	int32_t vertex_offset = 0;
-	int32_t index_offset = 0;
+	int32_t vertexOffset = 0;
+	int32_t indexOffset = 0;
 
 	for (int32_t i = 0; i < draw_data->CmdListsCount; i++) {
 		const ImDrawList* cmd_list = draw_data->CmdLists[i];
@@ -431,11 +432,11 @@ void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 				vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
 				// Draw
-				vkCmdDrawIndexed(command_buffer, pcmd->ElemCount, 1, index_offset, vertex_offset, 0);
+				vkCmdDrawIndexed(command_buffer, pcmd->ElemCount, 1, indexOffset, vertexOffset, 0);
 			}
-			index_offset += pcmd->ElemCount;
+			indexOffset += pcmd->ElemCount;
 		}
-		vertex_offset += cmd_list->VtxBuffer.Size;
+		vertexOffset += cmd_list->VtxBuffer.Size;
 	}
 }
 
@@ -450,5 +451,6 @@ void GuiElement::DeInit() {
 	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptorSetLayout, nullptr);
 
 	logicalDevice = nullptr;
-	commandPool = nullptr; 
+	commandPool = nullptr;
+	renderPass = nullptr; 
 }
