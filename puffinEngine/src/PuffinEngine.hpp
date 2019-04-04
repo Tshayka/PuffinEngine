@@ -65,7 +65,7 @@ class PuffinEngine {
    
     std::map<int, FuncPair> functions;
 
-    std::unique_ptr<Actor> mainCharacter;
+    std::shared_ptr<Actor> mainCharacter;
     
     Device* worldDevice = nullptr;
     MaterialLibrary* materialLibrary = nullptr;

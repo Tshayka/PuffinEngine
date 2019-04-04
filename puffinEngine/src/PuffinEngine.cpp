@@ -211,6 +211,8 @@ void PuffinEngine::DrawFrame() {
 	sceneSubmitInfo.pSignalSemaphores = &renderFinishedSemaphore;
 	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &sceneSubmitInfo, VK_NULL_HANDLE));
 
+	ErrorCheck(vkQueueWaitIdle(worldDevice->queue));
+	
 	// Submitting the gui command buffer
 	if (guiMainHub->guiOverlayVisible) {
 		VkSubmitInfo guiSubmitInfo = {};
@@ -219,7 +221,6 @@ void PuffinEngine::DrawFrame() {
 		guiSubmitInfo.pCommandBuffers = &guiMainHub->command_buffers[imageIndex];
 				
 		ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &guiSubmitInfo, VK_NULL_HANDLE));
-		ErrorCheck(vkQueueWaitIdle(worldDevice->queue));
 	}
 		
 	VkPresentInfoKHR presentInfo = {};
@@ -435,6 +436,8 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair moveMainCharacterBackward = {&Controller::MoveMainCharacterBackward, &Controller::StopMainCharacter};
 	FuncPair moveMainCharacterLeft = {&Controller::MoveMainCharacterLeft, &Controller::StopMainCharacter};
 	FuncPair moveMainCharacterRight = {&Controller::MoveMainCharacterRight, &Controller::StopMainCharacter};
+
+	FuncPair takeItem = {&Controller::TakeItem, nullptr};
 	
 	FuncPair moveSelectedActorForward = {&Controller::MoveSelectedActorForward, &Controller::StopSelectedActorForwardBackward};
 	FuncPair moveSelectedActorBackward = {&Controller::MoveSelectedActorBackward, &Controller::StopSelectedActorForwardBackward};
@@ -450,6 +453,7 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair ConsoleToggle = {&Controller::ConsoleToggle, nullptr};
 	FuncPair MainUiToggle = {&Controller::MainUiToggle, nullptr};
 	FuncPair TextOverlayToggle = {&Controller::TextOverlayToggle, nullptr};
+	FuncPair TriggerAreaToggle = {nullptr, nullptr};
 
 	functions = {
 		{GLFW_KEY_SPACE, makeMainCharacterJump},
@@ -461,6 +465,7 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 		{GLFW_KEY_B, AabbToggle},
 		{GLFW_KEY_D, moveRight},
 		{GLFW_KEY_E, moveDown},
+		{GLFW_KEY_F, takeItem},
 		{GLFW_KEY_I, moveSelectedActorForward},
 		{GLFW_KEY_J, moveSelectedActorLeft},
 		{GLFW_KEY_K, moveSelectedActorBackward},
@@ -473,6 +478,7 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 		{GLFW_KEY_W, moveForward},
 		{GLFW_KEY_V, WireframeToggle},
 		{GLFW_KEY_X, SelectionIndicatorToggle},
+		{GLFW_KEY_Z, TriggerAreaToggle},
 		{GLFW_KEY_RIGHT,moveMainCharacterRight},
 		{GLFW_KEY_LEFT, moveMainCharacterLeft},
 		{GLFW_KEY_DOWN, moveMainCharacterBackward},

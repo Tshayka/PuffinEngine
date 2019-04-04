@@ -774,6 +774,11 @@ void Scene::CreateCommandBuffers() {
 			}
 		}
 
+		if(displayTriggerArea) {
+
+
+		}
+
 		vkCmdEndRenderPass(commandBuffers[i]);
 		ErrorCheck(vkEndCommandBuffer(commandBuffers[i]));
 	}
@@ -2065,14 +2070,19 @@ void Scene::LoadAssets() {
 	CreateLandscape("Visibility test post 11", "Do you see me?", glm::vec3(0.0f, 0.0f, 11000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
 	CreateLandscape("Visibility test post 12", "Do you see me?", glm::vec3(0.0f, 0.0f, 12000.0f), meshLibrary->meshes["human"], materialLibrary->materials["default"]);
 
-	CreateLandscape("coin", "lorem ipsum", glm::vec3(0.0f, 50.0f, 100.0f), meshLibrary->meshes["coin"], materialLibrary->materials["gold"]);
+	CreateItem("coin", "coin to pick up", glm::vec3(0.0f, 50.0f, 100.0f), meshLibrary->meshes["coin"], materialLibrary->materials["gold"], ItemType::Money);
+	CreateItem("coin", "sword to pick up", glm::vec3(0.0f, 50.0f, 250.0f), meshLibrary->meshes["box"], materialLibrary->materials["plastic"], ItemType::Sword);
+	CreateItem("coin", "coin to pick up 2", glm::vec3(0.0f, 50.0f, 500.0f), meshLibrary->meshes["coin"], materialLibrary->materials["gold"], ItemType::Money);
+
+	CreateTriggerArea("quest", "gather money quest", glm::vec3(0.0f, 500.0f, 500.0f));
+	CreateQuest();
 			
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 }
 
 void Scene::PrepeareMainCharacter(enginetool::ScenePart &mesh) {
-	mainCharacter = std::make_unique<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter, actors);
+	mainCharacter = std::make_shared<MainCharacter>("Temp", "Brave hero", glm::vec3(0.0f, 0.0f, 0.0f), ActorType::MainCharacter, actors);
 	dynamic_cast<MainCharacter*>(mainCharacter.get())->Init(1000, 1000, 100);
 	mainCharacter->assignedMesh = &mesh;
 	mainCharacter->assignedMaterial = &materialLibrary->materials["default"];
@@ -2102,6 +2112,14 @@ void Scene::CreateSphereLight(std::string name, std::string description, glm::ve
 	actors.emplace_back(std::move(light));
 }
 
+void Scene::CreateItem(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material, ItemType itemType) {
+	std::shared_ptr<Actor> item = std::make_shared<Item>(name, description, position, ActorType::Item, actors, itemType);
+	std::dynamic_pointer_cast<Item>(item)->Init(1000);
+	item->assignedMesh = &mesh;
+	item->assignedMaterial = &material;
+	actors.emplace_back(std::move(item));
+}
+
 void Scene::CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material) {
 	std::shared_ptr<Actor> stillObject = std::make_shared<Landscape>(name, description, position, ActorType::Landscape, actors);
 	std::dynamic_pointer_cast<Landscape>(stillObject)->Init(1000, 1000);
@@ -2114,6 +2132,11 @@ void Scene::CreateCloud(std::string name, std::string description, glm::vec3 pos
 	std::shared_ptr<Actor> cloud = std::make_shared<Cloud>(name, description, position, ActorType::Cloud, actors);
 	cloud->assignedMesh = &mesh;
 	clouds.emplace_back(std::move(cloud));
+}
+
+void Scene::CreateQuest(){
+	std::shared_ptr<Quest> tsk1 = std::make_shared<Quest>(std::dynamic_pointer_cast<Character>(mainCharacter), 1500, "Get 1500 of gold");
+	quests.emplace_back(tsk1);
 }
 
 void Scene::CreateSea(std::string name, std::string description, glm::vec3 position) {
@@ -2131,6 +2154,11 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 	CreateIndexBuffer(std::dynamic_pointer_cast<Skybox>(skybox)->indices, index_buffers.skybox);
 	skyboxes.emplace_back(std::move(skybox));
 }
+
+void Scene::CreateTriggerArea(std::string name, std::string description, glm::vec3 position){
+	std::shared_ptr<Actor> triggerArea = std::make_shared<TriggerArea>(name, description, position, ActorType::TriggerArea, actors, TriggerAreaType::GiveQuest);
+}
+
 
 // ------------------ Buffers ---------------------- //
 

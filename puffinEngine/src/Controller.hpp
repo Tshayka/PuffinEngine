@@ -31,6 +31,8 @@ public:
 	void MoveMainCharacterRight();
 	void StopMainCharacter();
 
+	void TakeItem();
+
 	void MakeSelectedActorJump();
 	void MoveSelectedActorForward();
 	void MoveSelectedActorBackward();

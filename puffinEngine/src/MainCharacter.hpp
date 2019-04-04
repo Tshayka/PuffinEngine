@@ -10,5 +10,4 @@ public:
 	enginetool::ScenePart* assignedMesh;
 
 private:
-
 };

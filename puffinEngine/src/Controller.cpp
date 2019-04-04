@@ -54,6 +54,8 @@ void Controller::MoveMainCharacterLeft() {scene->mainCharacter->SetState(ActorSt
 void Controller::MoveMainCharacterRight() {scene->mainCharacter->SetState(ActorState::WalkRight);}
 void Controller::StopMainCharacter() {scene->mainCharacter->SetState(ActorState::Idle);}
 
+void Controller::TakeItem() {dynamic_cast<MainCharacter*>(scene->mainCharacter.get())->FindCollidingItem();}
+
 void Controller::MoveSelectedActorForward() {if (scene->selectedActor!=nullptr) {scene->selectedActor->onManualControl(); scene->selectedActor->Dolly(150.0f);}}
 void Controller::MoveSelectedActorBackward() {if (scene->selectedActor!=nullptr) {scene->selectedActor->onManualControl(); scene->selectedActor->Dolly(-150.0f);}}
 void Controller::StopSelectedActorForwardBackward() {if (scene->selectedActor!=nullptr) {scene->selectedActor->offManualControl(); scene->selectedActor->Dolly(0.0f);}}

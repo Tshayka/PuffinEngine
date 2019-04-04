@@ -7,13 +7,16 @@
 #define DYNAMIC_UB_OBJECTS 216 // Clouds
 
 #include "Character.hpp"
+#include "Quest/Quest.cpp"
 #include "Camera.hpp"
 #include "Device.hpp"
+#include "Item/Item.hpp"
 #include "Landscape.hpp"
 #include "Light.hpp"
 #include "MainCharacter.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
+#include "TriggerArea.hpp"
 
 const int WIDTH = 800;
 const int HEIGHT = 600;
@@ -46,15 +49,18 @@ public:
 	bool displayOcean = true;
 	bool displaySelectionIndicator = true;
 	bool displayMainCharacter = true;
+	bool displayTriggerArea = true;
 	
 	std::shared_ptr<Camera> currentCamera;
 	std::shared_ptr<Actor> selectedActor;
-	std::unique_ptr<Actor> mainCharacter;
+	std::shared_ptr<Actor> mainCharacter;
 	
 	std::vector<std::shared_ptr<Actor>> sceneCameras;
 	std::vector<std::shared_ptr<Actor>> seas;
 	std::vector<std::shared_ptr<Actor>> skyboxes;
 	std::vector<std::shared_ptr<Actor>> clouds;
+
+	std::vector<std::shared_ptr<Quest>> quests;
 
 	std::vector<std::shared_ptr<Actor>> actors;
 		
@@ -83,8 +89,11 @@ private:
 	void CreateGraphicsPipeline();
 	void CreateGUI(float, uint32_t);
 	void CreateImage(uint32_t, uint32_t, VkFormat, VkImageTiling, VkImageUsageFlags, VkMemoryPropertyFlags, VkImage&, VkDeviceMemory&);
+	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
+	void CreateItem(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material, ItemType itemType);
 	void CreateLandscape(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
 	VkImageView CreateImageView(VkImage, VkFormat, VkImageAspectFlags);
+	void CreateQuest();
 	void CreateSea(std::string name, std::string description, glm::vec3 position);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	void CreateSkybox(std::string name, std::string description, glm::vec3 position, float horizon);
@@ -96,7 +105,7 @@ private:
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
+	void CreateTriggerArea(std::string name, std::string description, glm::vec3 position);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
@@ -120,6 +129,8 @@ private:
 	void UpdateStaticUniformBuffer();
 	void UpdateOffscreenUniformBuffer();
 	void UpdateUniformBufferParameters();
+
+	// ----- Function pointrers for multithreading ------ //
 	
 	std::function<void()> task1 = std::bind(&Scene::CheckActorsVisibility, this);
 	std::function<void()> task2 = std::bind(&Scene::UpdatePositions, this);

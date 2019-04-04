@@ -19,10 +19,66 @@ Character::~Character() {
 #endif
 }
 
+// ---------------- Observer methods ---------------- //
+
+void Character::Attach(Observer *observer) {
+	obervatorsToUpdate.push_back(observer);
+}
+
+void Character::Notify() {
+	for (int i = 0; i < obervatorsToUpdate.size(); ++i)
+		obervatorsToUpdate[i]->Update(gold);
+}
+
+// ---------------------- Init ---------------------- //
+
 void Character::Init(unsigned int maxHealth, int currentHealth, unsigned int gold) {
     this->maxHealth = maxHealth;
 	this->currentHealth = currentHealth;
 	this->gold = gold;
+}
+
+void Character::AddGold(unsigned int amount) {
+	gold+=amount;
+	std::cout << gold << "\n";
+	Notify();
+}
+
+void Character::AddToInventory(Item* item){
+	inventory.push_back(std::move(*item));
+	std::cout << inventory.size() << "\n";
+}
+
+bool Character::CheckItem(Item* item){
+	// in future add chain of responsibility
+	if(item->itemType==ItemType::Money) {
+		AddGold(item->GetValue());
+		return true;
+	}
+	
+	if(item->itemType==ItemType::Sword) {
+		AddToInventory(item);
+		return true;
+	}
+
+	return false;
+}
+
+
+void Character::FindCollidingItem() {
+	std::cout << interactActors->size() << "\n";
+	std::vector<std::shared_ptr<Actor>>::iterator it;
+	for (it = interactActors->begin(); it!=interactActors->end() ;++it) {
+		if(it->get()->GetType()==ActorType::Item){
+			if(enginetool::ScenePart::Overlaps(this->currentAabb, it->get()->currentAabb) && it->get()!=this) {
+				if(CheckItem(dynamic_cast<Item*>(it->get()))){
+					interactActors->erase(it);// remove item from scene
+					break;
+				}		
+			}
+		}
+	}
+	std::cout << interactActors->size() << "\n";
 }
 
 glm::vec3 Character::CalculateSelectionIndicatorColor(){

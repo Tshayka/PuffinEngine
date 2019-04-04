@@ -6,11 +6,23 @@
 #include "MaterialLibrary.hpp"
 
 enum class ActorType {
-    Actor, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea, Cloud, MainCharacter
+    Actor, Item, Landscape, SphereLight, RectangularLight, Skybox, DomeLight, Character, Camera, Sea, Cloud, MainCharacter, TriggerArea
 };
 
 enum class ActorState {
 	Crouch, Fall, Idle, Jump, Lie, Run, WalkForward, WalkBackward, WalkLeft, WalkRight, Reflection
+};
+
+enum class CharacterType {
+	MainCharacter
+};
+
+enum class ItemType {
+	Sword, Helmet, Money
+};
+
+enum class TriggerAreaType {
+	GiveQuest, Info
 };
 
 class Actor {
