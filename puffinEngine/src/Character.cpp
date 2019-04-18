@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -21,13 +22,19 @@ Character::~Character() {
 
 // ---------------- Observer methods ---------------- //
 
-void Character::Attach(Observer *observer) {
+void Character::AttachObservator(Observer *observer) {
 	obervatorsToUpdate.push_back(observer);
+}
+
+void Character::DettachObservator(Observer *observer) {
+	auto it = std::find(obervatorsToUpdate.begin(), obervatorsToUpdate.end(), observer);
+	if (it != obervatorsToUpdate.end())
+   		obervatorsToUpdate.erase(it);
 }
 
 void Character::Notify() {
 	for (int i = 0; i < obervatorsToUpdate.size(); ++i)
-		obervatorsToUpdate[i]->Update(gold);
+		obervatorsToUpdate[i]->Update();
 }
 
 // ---------------------- Init ---------------------- //
@@ -46,7 +53,7 @@ void Character::AddGold(unsigned int amount) {
 
 void Character::AddToInventory(Item* item){
 	inventory.push_back(std::move(*item));
-	std::cout << inventory.size() << "\n";
+	Notify();
 }
 
 bool Character::CheckItem(Item* item){

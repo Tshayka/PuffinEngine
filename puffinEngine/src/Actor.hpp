@@ -22,7 +22,7 @@ enum class ItemType {
 };
 
 enum class TriggerAreaType {
-	GiveQuest, Info
+	GiveQuest, Info, Portal, Sound
 };
 
 class Actor {

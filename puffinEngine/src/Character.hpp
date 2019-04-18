@@ -1,16 +1,11 @@
 #pragma once
 
 #include "Actor.hpp"
+#include "CharacterObserver/Observer.cpp"
 #include "Item/Item.hpp"
 
 enum class BodySlots {
 	LeftHand, RightHand, Head, Neck, Chest, Belt1, Belt2, Finger1, Finger2, Cloak, Shoes
-};
-
-class Observer {
-    public:
-    virtual void Update(unsigned int value) = 0;
-    std::string description;
 };
 
 class Character : public Actor {
@@ -18,8 +13,9 @@ public:
 	Character(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors);
 	virtual ~Character();
 
-	void Attach(Observer *observer);
+	void AttachObservator(Observer *observer);
 	virtual glm::vec3 CalculateSelectionIndicatorColor() override;
+	void DettachObservator(Observer *observer);
 	void FindCollidingItem();
 	void Init(unsigned int maxHealth, int currentHealth, unsigned int gold);
 	void Notify();
@@ -30,7 +26,7 @@ public:
 	bool onGround = false;
 
 	std::vector<Item> inventory;
-
+	std::vector<std::shared_ptr<Observer>> quests;
 
 		
 private:

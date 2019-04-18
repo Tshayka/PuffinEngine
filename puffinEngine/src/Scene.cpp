@@ -775,7 +775,13 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if(displayTriggerArea) {
-
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.triggerArea.buffer, offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.triggerArea.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
+			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
+			for (const auto& t : triggerAreas) {
+				vkCmdDrawIndexed(commandBuffers[i], 24, 1, 0, std::dynamic_pointer_cast<TriggerArea>(t)->indexBaseAabb, 0);
+			}
 
 		}
 
@@ -940,6 +946,9 @@ void Scene::CreateBuffers() {
 	CreateVertexBuffer(meshLibrary->aabbVertices, vertex_buffers.aabb);
 	CreateIndexBuffer(meshLibrary->aabbIndices, index_buffers.aabb);
 
+	CreateVertexBuffer(triggerAreaVertices, vertex_buffers.triggerArea);
+	CreateIndexBuffer(triggerAreaIndices, index_buffers.triggerArea);
+
 	// Ocean Uniform buffers memory -> static
 	uniform_buffers.ocean.CreateBuffer(logicalDevice, sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, nullptr);
 	uniform_buffers.ocean.Map();
@@ -1031,8 +1040,9 @@ void Scene::RandomPositions() {
 }
 
 void Scene::UpdatePositions() {
-	for(const auto& a : actors) a->UpdatePosition((float)mainClock->fixedTimeValue);
+	for(const auto& a : actors) 	  a->UpdatePosition((float)mainClock->fixedTimeValue);
 	for(const auto& c : sceneCameras) c->UpdatePosition((float)mainClock->fixedTimeValue);
+	for(const auto& t : triggerAreas) t->UpdatePosition((float)mainClock->fixedTimeValue);
 	mainCharacter->UpdatePosition((float)mainClock->fixedTimeValue);
 }
 
@@ -2034,6 +2044,23 @@ void Scene::CreateSelectRay() {
 	CreateMappedIndexBuffer(rayIndices, index_buffers.selectRay);
 }
 
+void Scene::UpdateTriggerAreaData(){
+	for (auto& t : triggerAreas) {
+		std::dynamic_pointer_cast<TriggerArea>(t)->indexBaseAabb = static_cast<uint32_t>(triggerAreaVertices.size());
+		triggerAreaVertices.push_back({{t->currentAabb.max.x, t->currentAabb.max.y, t->currentAabb.max.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.min.x, t->currentAabb.max.y, t->currentAabb.max.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.min.x, t->currentAabb.min.y, t->currentAabb.max.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.max.x, t->currentAabb.min.y, t->currentAabb.max.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.max.x, t->currentAabb.min.y, t->currentAabb.min.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.max.x, t->currentAabb.max.y, t->currentAabb.min.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+		triggerAreaVertices.push_back({{t->currentAabb.min.x, t->currentAabb.max.y, t->currentAabb.min.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});	
+		triggerAreaVertices.push_back({{t->currentAabb.min.x, t->currentAabb.min.y, t->currentAabb.min.z}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}});
+	}
+	
+	triggerAreaIndices = {0,1,1,2,2,3,3,0,4,7,7,6,6,5,5,4,0,5,1,6,2,7,3,4};
+
+}
+
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
@@ -2074,8 +2101,12 @@ void Scene::LoadAssets() {
 	CreateItem("coin", "sword to pick up", glm::vec3(0.0f, 50.0f, 250.0f), meshLibrary->meshes["box"], materialLibrary->materials["plastic"], ItemType::Sword);
 	CreateItem("coin", "coin to pick up 2", glm::vec3(0.0f, 50.0f, 500.0f), meshLibrary->meshes["coin"], materialLibrary->materials["gold"], ItemType::Money);
 
-	CreateTriggerArea("quest", "gather money quest", glm::vec3(0.0f, 500.0f, 500.0f));
+	CreateTriggerArea("Give quest", "gather money quest", glm::vec3(300.0f, 5.0f, 150.0f), glm::vec3(100.0f, 100.0f, 100.0f), TriggerAreaType::GiveQuest);
+	CreateTriggerArea("Someday portal", "gather money quest", glm::vec3(500.0f, 5.0f, 100.0f), glm::vec3(10.0f, 200.0f, 100.0f), TriggerAreaType::Portal);
+	CreateTriggerArea("Give another quest", "gather money quest", glm::vec3(550.0f, 5.0f, 500.0f), glm::vec3(200.0f, 100.0f, 200.0f), TriggerAreaType::GiveQuest);
 	CreateQuest();
+
+	UpdateTriggerAreaData();
 			
 	currentCamera = std::dynamic_pointer_cast<Camera>(sceneCameras[0]);
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
@@ -2135,8 +2166,7 @@ void Scene::CreateCloud(std::string name, std::string description, glm::vec3 pos
 }
 
 void Scene::CreateQuest(){
-	std::shared_ptr<Quest> tsk1 = std::make_shared<Quest>(std::dynamic_pointer_cast<Character>(mainCharacter), 1500, "Get 1500 of gold");
-	quests.emplace_back(tsk1);
+
 }
 
 void Scene::CreateSea(std::string name, std::string description, glm::vec3 position) {
@@ -2155,8 +2185,9 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 	skyboxes.emplace_back(std::move(skybox));
 }
 
-void Scene::CreateTriggerArea(std::string name, std::string description, glm::vec3 position){
-	std::shared_ptr<Actor> triggerArea = std::make_shared<TriggerArea>(name, description, position, ActorType::TriggerArea, actors, TriggerAreaType::GiveQuest);
+void Scene::CreateTriggerArea(std::string name, std::string description, glm::vec3 position, glm::vec3 dimensions, TriggerAreaType type){
+	std::shared_ptr<Actor> area = std::make_shared<TriggerArea>(name, description, position, ActorType::TriggerArea, actors, type, dimensions, mainCharacter);
+	triggerAreas.emplace_back(std::move(area));
 }
 
 
@@ -2279,6 +2310,8 @@ void Scene::DeInitIndexAndVertexBuffer() {
 	vertex_buffers.selectRay.Destroy();
 	index_buffers.aabb.Destroy();
 	vertex_buffers.aabb.Destroy();
+	index_buffers.triggerArea.Destroy();
+	vertex_buffers.triggerArea.Destroy();
 }
 
 void Scene::DeInitScene() {

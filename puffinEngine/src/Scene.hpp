@@ -6,8 +6,6 @@
 
 #define DYNAMIC_UB_OBJECTS 216 // Clouds
 
-#include "Character.hpp"
-#include "Quest/Quest.cpp"
 #include "Camera.hpp"
 #include "Device.hpp"
 #include "Item/Item.hpp"
@@ -59,8 +57,9 @@ public:
 	std::vector<std::shared_ptr<Actor>> seas;
 	std::vector<std::shared_ptr<Actor>> skyboxes;
 	std::vector<std::shared_ptr<Actor>> clouds;
+	std::vector<std::shared_ptr<Actor>> triggerAreas;
 
-	std::vector<std::shared_ptr<Quest>> quests;
+	//std::vector<std::shared_ptr<Observer>> quests;
 
 	std::vector<std::shared_ptr<Actor>> actors;
 		
@@ -105,7 +104,7 @@ private:
 	void CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer<void>& indexBuffer);
 	void CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void CreateSphereLight(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh);
-	void CreateTriggerArea(std::string name, std::string description, glm::vec3 position);
+	void CreateTriggerArea(std::string name, std::string description, glm::vec3 position, glm::vec3 dimensions, TriggerAreaType type);
 	void CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer<void>& vertexBuffer);
 	void EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const VkCommandPool& commandPool);
 	bool FindDestinationPosition(glm::vec3& destinationPoint);
@@ -128,6 +127,7 @@ private:
 	void UpdateSkyboxUniformBuffer();
 	void UpdateStaticUniformBuffer();
 	void UpdateOffscreenUniformBuffer();
+	void UpdateTriggerAreaData();
 	void UpdateUniformBufferParameters();
 
 	// ----- Function pointrers for multithreading ------ //
@@ -248,6 +248,7 @@ private:
 		enginetool::Buffer<void> ocean;
 		enginetool::Buffer<void> selectRay;
 		enginetool::Buffer<void> aabb;
+		enginetool::Buffer<void> triggerArea;
 	} vertex_buffers;
 
 	struct {
@@ -256,6 +257,7 @@ private:
 		enginetool::Buffer<void> ocean;
 		enginetool::Buffer<void> selectRay;
 		enginetool::Buffer<void> aabb;
+		enginetool::Buffer<void> triggerArea;
 	} index_buffers;
 
 	std::unique_ptr<TextureLayout> reflectionImage = std::make_unique<TextureLayout>();
@@ -290,6 +292,9 @@ private:
 
 	std::vector<uint32_t> rayIndices;
 	std::vector<enginetool::VertexLayout> rayVertices;
+
+	std::vector<uint32_t> triggerAreaIndices;
+	std::vector<enginetool::VertexLayout> triggerAreaVertices;
 	
 	VkDescriptorSet aabbDescriptorSet = VK_NULL_HANDLE;
 	VkDescriptorSet lineDescriptorSet = VK_NULL_HANDLE;
