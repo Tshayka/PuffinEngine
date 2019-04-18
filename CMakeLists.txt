@@ -30,8 +30,12 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Scene.cpp"
                                 "puffinEngine/src/Texture.cpp"
                                 "puffinEngine/src/Threads.cpp"
+                                "puffinEngine/src/TriggerArea.cpp"
                                 "puffinEngine/src/Ui.cpp"
                                 "puffinEngine/src/WorldClock.cpp"
+                                "puffinEngine/src/Item/Item.cpp"
+                                "puffinEngine/src/Item/Weapon.cpp"
+                                "puffinEngine/src/CharacterObserver/Quest.cpp"
                                 "main.cpp")
 
 find_package(Vulkan)
