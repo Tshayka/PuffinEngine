@@ -51,6 +51,7 @@ public:
 	void AllGuiToggle();
 	void MainUiToggle();
 	void TextOverlayToggle();
+	void TriggerAreaToggle();
 
     Scene* scene = nullptr;
     GuiMainHub* guiMainHub = nullptr;

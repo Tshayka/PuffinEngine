@@ -69,6 +69,7 @@ void Controller::StopSelectedActorUpDown() {if (scene->selectedActor!=nullptr) {
 void Controller::WireframeToggle() {scene->displayWireframe = !scene->displayWireframe;}
 void Controller::AabbToggle() {scene->displayAabb = !scene->displayAabb;}
 void Controller::SelectionIndicatorToggle() {scene->displaySelectionIndicator = !scene->displaySelectionIndicator;}
+void Controller::TriggerAreaToggle() {scene->displayTriggerArea = !scene->displayTriggerArea;}
 
 void Controller::ConsoleToggle() {guiMainHub->ui_settings.display_imgui = !guiMainHub->ui_settings.display_imgui;}
 void Controller::AllGuiToggle() {guiMainHub->guiOverlayVisible = !guiMainHub->guiOverlayVisible;}

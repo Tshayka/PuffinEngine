@@ -453,7 +453,7 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 	FuncPair ConsoleToggle = {&Controller::ConsoleToggle, nullptr};
 	FuncPair MainUiToggle = {&Controller::MainUiToggle, nullptr};
 	FuncPair TextOverlayToggle = {&Controller::TextOverlayToggle, nullptr};
-	FuncPair TriggerAreaToggle = {nullptr, nullptr};
+	FuncPair TriggerAreaToggle = {&Controller::TriggerAreaToggle, nullptr};
 
 	functions = {
 		{GLFW_KEY_SPACE, makeMainCharacterJump},
