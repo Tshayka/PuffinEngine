@@ -61,11 +61,13 @@ class PuffinEngine {
     void MainLoop();
     void PressKey(int key);
 	void RecreateSwapChain();
+    void SetCurrentScene();
     void UpdateGui();
    
     std::map<int, FuncPair> functions;
 
     std::shared_ptr<Actor> mainCharacter;
+    Scene* currentScene;
     
     Device* worldDevice = nullptr;
     MaterialLibrary* materialLibrary = nullptr;

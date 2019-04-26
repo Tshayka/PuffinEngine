@@ -5,7 +5,9 @@
 #include "../imgui/imgui.h"
 #include "ErrorCheck.hpp"
 #include "MaterialLibrary.hpp"
+#include "Scene.hpp"
 #include "Texture.hpp"
+
 
 class GuiMainUi {
 public:

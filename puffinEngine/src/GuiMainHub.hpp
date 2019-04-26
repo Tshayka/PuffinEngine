@@ -20,7 +20,7 @@ public:
 	bool guiOverlayVisible = true;
 	void CleanUpForSwapchain();
 	void DeInit();
-	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary);
+	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary, Scene* currentScene);
 	void RecreateForSwapchain();
 	void UpdateGui(); 
 	
@@ -40,6 +40,7 @@ private:
 
 	GuiMainUi* mainUi = nullptr;
 	GuiElement* console = nullptr;
+	Scene* currentScene = nullptr;
 	GuiTextOverlay* textOverlay = nullptr;
 	Device* logicalDevice = nullptr;
 	enginetool::ThreadPool* threadPool = nullptr;

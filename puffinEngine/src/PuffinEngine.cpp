@@ -97,11 +97,15 @@ void PuffinEngine::CreateScene() {
 
 void PuffinEngine::CreateGuiMainHub() {
 	guiMainHub = new GuiMainHub();
-	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool, materialLibrary);
+	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool, materialLibrary, currentScene);
 }
 
 void PuffinEngine::CreateController() {
 	controller.Init(guiMainHub, scene_1);
+}
+
+void PuffinEngine::SetCurrentScene() {
+	currentScene = scene_1;
 }
 
 void PuffinEngine::InitVulkan() {
@@ -118,6 +122,7 @@ void PuffinEngine::InitVulkan() {
 	CreateGuiMainHub();
 	CreateController();
 	CreateSemaphores();
+	SetCurrentScene();
 }
 
 void PuffinEngine::MainLoop() {

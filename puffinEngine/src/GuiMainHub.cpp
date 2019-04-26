@@ -3,7 +3,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "MeshLayout.cpp"
+//#include "MeshLayout.cpp"
 #include "GuiMainHub.hpp"
 
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
@@ -28,10 +28,19 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool, MaterialLibrary* materialLibrary) {
+void GuiMainHub::Init(Device* device, 
+					  GuiElement* console, 
+					  GuiTextOverlay* textOverlay, 
+					  GuiMainUi* mainUi, 
+					  WorldClock* mainClock, 
+					  enginetool::ThreadPool& threadPool, 
+					  MaterialLibrary* materialLibrary, 
+					  Scene* currentScene) {
+	
 	logicalDevice = device; 
 	this->mainUi = mainUi;
 	this->console = console;
+	this->currentScene = currentScene;
 	this->textOverlay = textOverlay;
 	this->threadPool = &threadPool;
 	this->mainClock = mainClock;
@@ -217,6 +226,7 @@ void GuiMainHub::DeInit() {
 
 	mainUi = nullptr;
 	console = nullptr;
+	currentScene = nullptr;
 	textOverlay = nullptr;
 	logicalDevice = nullptr;
 	threadPool = nullptr;
