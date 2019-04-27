@@ -46,9 +46,6 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text, TextAlignment 
 	uint32_t indexOffset = 0;
 	float wrapWidth = maxWidth;
 
-	// float fbW = (float)logicalDevice->swapchain_extent.width;
-	// float fbH = (float)logicalDevice->swapchain_extent.height;
-
 	float w = materialLibrary->font.texWidth;
 
 	float posx = position.x + padding.x;
@@ -64,7 +61,7 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text, TextAlignment 
 		float dimx = scale * charw;
 		float charh = ((float)(charInfo->height) / 146.0f);
 		float dimy = scale * charh;
-		posy = 1.0f;
+		//posy = 1.0f;
 
 		float us = charInfo->x / w;
 		float ue = (charInfo->x + charInfo->width) / w;
@@ -74,10 +71,10 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text, TextAlignment 
 		float xo = scale * charInfo->xoffset / 146.0f;
 		float yo = scale * charInfo->yoffset / 146.0f;
 
-		word.vertices.push_back({{ posx + dimx + xo, posy + dimy + yo}, { ue, te }});
-		word.vertices.push_back({{ posx + xo, posy + dimy + yo}, { us, te }});
-		word.vertices.push_back({{ posx + xo, posy + yo}, { us, ts } });
-		word.vertices.push_back({{ posx + dimx + xo, posy + yo}, { ue, ts }});
+		word.vertices.push_back({{ posx + xo, 			posy + yo}, { us, ts } });
+		word.vertices.push_back({{ posx + dimx + xo,	posy + yo}, { ue, ts }});
+		word.vertices.push_back({{ posx + dimx + xo, 	posy + dimy + yo}, { ue, te }});
+		word.vertices.push_back({{ posx + xo,			posy + dimy + yo}, { us, te }});
 
 		std::array<uint32_t, 6> letterIndices = { 0,1,2, 2,3,0 };
 		for (const auto& index : letterIndices) {
@@ -90,11 +87,11 @@ void GuiMainUi::GenerateText(UiComponent& word, std::string text, TextAlignment 
 	}
 	indexCount = word.indices.size();
 
-	// Center
-	for (auto& v : word.vertices) {
-		v.pos[0] -= posx / 2.0f;
-		v.pos[1] -= 0.5f;
-	}
+	// // Center
+	// for (auto& v : word.vertices) {
+	// 	v.pos[0] -= posx / 2.0f;
+	// 	v.pos[1] -= 0.5f;
+	// }
 
 
 	// switch (align) {
@@ -226,6 +223,11 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	ErrorCheck(vkCreatePipelineCache(logicalDevice->device, &PipelineCacheCreateInfo, nullptr, &pipelineCache));
+
+	VkPushConstantRange PushConstantRange = {};
+	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+	PushConstantRange.offset = 0;
+	PushConstantRange.size = sizeof(PushConstBlock);
 	
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -305,6 +307,8 @@ void GuiMainUi::CreateGraphicsPipeline() {
 
 	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
 	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &PushConstantRange;
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());;
 	pipelineLayoutInfo.pSetLayouts = layouts.data();
 
@@ -433,36 +437,50 @@ void GuiMainUi::GetDrawData() {
 	testInfoBox.text.assignedTexture = &materialLibrary->font;  
 	testInfoBox.icon.assignedTexture = &materialLibrary->icons["cameraIcon"];
 	testInfoBox.background.assignedTexture = &materialLibrary->icons["defaultIcon"];
-	testInfoBox.position = glm::vec2(10.0f, 10.0f);
-	GenerateText(testInfoBox.text, "Puffin Engine", TextAlignment::left,  glm::vec2(0.0f, 0.0f), 0.125f, 700.0f, 1.0f, glm::vec2(0.0f, 0.0f));
+	
+	testInfoBox.background.position = glm::vec2(500.0f, 150.0f);
+	testInfoBox.background.dimension = glm::vec2(110.0f, 110.0f);
+	
+	GenerateText(testInfoBox.text, "Puffin Engine", TextAlignment::left,  glm::vec2(20.0f, 300.0f), 100.0f, 700.0f, 1.0f, glm::vec2(0.0f, 0.0f));
 
-	// float fbW = (float)logicalDevice->swapchain_extent.width;
-	// float fbH = (float)logicalDevice->swapchain_extent.height;
+	float fbW = (float)logicalDevice->swapchain_extent.width;
+	float fbH = (float)logicalDevice->swapchain_extent.height;
 
-	// float x = (testInfoBox.position.x / fbW);
-	// float y = (testInfoBox.position.y / fbH);
+	float dimx = testInfoBox.background.dimension.x;
+	float dimy = testInfoBox.background.dimension.y;
 
-	testInfoBox.icon.vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f}},
-		{{0.125f, -0.5f}, {0.0f, 0.0f}},
-		{{0.125f, 0.125f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.125f}, {1.0f, 1.0f}}
-	};
+	int posx = testInfoBox.background.position.x;
+	int posy = testInfoBox.background.position.y;
 
 	testInfoBox.background.vertices = {
-		{{-0.5f, -0.5f}, {1.0f, 0.0f}},
-		{{0.5f, -0.5f}, {0.0f, 0.0f}},
-		{{0.5f, 0.5f}, {0.0f, 1.0f}},
-		{{-0.5f, 0.5f}, {1.0f, 1.0f}}
+		{{posx, posy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posx + dimx, posy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posx + dimx, posy + dimy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posx, posy + dimy}, 			{1.0f, 1.0f}}	// bottom left
 	};
+
+	dimx = testInfoBox.background.dimension.x-10.0f;
+	dimy = testInfoBox.background.dimension.y-10.0f;
+
+	posx = testInfoBox.background.position.x+5.0f;
+	posy = testInfoBox.background.position.y+5.0f;
+
+	testInfoBox.icon.vertices = {
+		{{posx, posy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posx + dimx, posy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posx + dimx, posy + dimy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posx, posy + dimy}, 			{1.0f, 1.0f}}	// bottom left
+	};
+
+
 
 	testInfoBox.icon.indices = { 0, 1, 2, 2, 3, 0 };
 	testInfoBox.background.indices = { 0, 1, 2, 2, 3, 0 };
 
-	float clipX1 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f); //add column offset
-	float clipX2 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f);
+	// float clipX1 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f); //add column offset
+	// float clipX2 = (float)(int)(0.5f + testInfoBox.position.x - 1.0f);
 
-	testInfoBox.icon.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
+	//testInfoBox.icon.clipExtent = glm::vec4(clipX1, std::numeric_limits<float>::lowest(), clipX2, std::numeric_limits<float>::max()); 
 
 	drawData.componentsToDraw.push_back(testInfoBox.background);
 	drawData.componentsToDraw.push_back(testInfoBox.icon);
@@ -546,6 +564,10 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
+
+	// UI scale and translate via push constants
+	pushConstBlock.frameBufferSize = glm::vec2((float)logicalDevice->swapchain_extent.width/2.0f, (float)logicalDevice->swapchain_extent.height/2.0f);
+	vkCmdPushConstants(command_buffer, pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(PushConstBlock), &pushConstBlock);
 
 
 	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.buffer, offsets);

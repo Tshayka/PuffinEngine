@@ -27,8 +27,7 @@ public:
 
 	// UI params are set via push constants
 	struct PushConstBlock {
-		glm::vec2 scale;
-		glm::vec2 translate;
+		glm::vec2 frameBufferSize;
 	} pushConstBlock;
 
     struct Vertex {
@@ -43,13 +42,14 @@ public:
 		VkPipeline *assignedPipeline = nullptr;
 		TextureLayout* assignedTexture = nullptr;
 		VkDescriptorSet descriptorSet;
+
+		glm::vec2 position;
+		glm::vec2 dimension;
 	};
 
 	enum class TextAlignment { left, center, right, justify };
 
 	struct InfoBox {
-		glm::vec2 position;
-		glm::vec2 dimension;
 		glm::vec4 backgroundColor;
 		glm::vec2 textSize;
 		TextAlignment textAlign = TextAlignment::left;

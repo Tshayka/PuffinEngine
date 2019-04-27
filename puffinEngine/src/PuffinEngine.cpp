@@ -585,6 +585,8 @@ void PuffinEngine::CleanUp() {
 	DestroyDevice();
 	glfwDestroyWindow(window);
 	glfwTerminate();
+
+	currentScene = nullptr;
 }
 
 void PuffinEngine::CleanUpSwapChain() {
