@@ -429,6 +429,8 @@ void GuiMainUi::NewFrame() {
 }
 
 void GuiMainUi::GetDrawData() {
+	CreateHealtBar();
+
 	InfoBox testInfoBox;
 
 	testInfoBox.text.assignedPipeline = &textPipeline;
@@ -491,6 +493,112 @@ void GuiMainUi::GetDrawData() {
 		drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
 		drawData.totalIndicesCount += drawData.componentsToDraw[i].indices.size();
 	}
+}
+
+void GuiMainUi::CreateHealtBar(){
+	HealthBar mainCharacterBar;
+
+	mainCharacterBar.backgroundElementA.assignedPipeline = &backgroundPipeline;
+	mainCharacterBar.backgroundElementA.assignedTexture = &materialLibrary->icons["defaultIcon"];
+	mainCharacterBar.backgroundElementB.assignedPipeline = &backgroundPipeline;
+	mainCharacterBar.backgroundElementB.assignedTexture = &materialLibrary->icons["defaultIcon"];
+	mainCharacterBar.backgroundElementC.assignedPipeline = &backgroundPipeline;
+	mainCharacterBar.backgroundElementC.assignedTexture = &materialLibrary->icons["defaultIcon"];
+	mainCharacterBar.backgroundElementD.assignedPipeline = &backgroundPipeline;
+	mainCharacterBar.backgroundElementD.assignedTexture = &materialLibrary->icons["defaultIcon"];
+
+	float WPCNT = (float)logicalDevice->swapchain_extent.width*0.01f;
+	float HPCNT = (float)logicalDevice->swapchain_extent.height*0.01f;
+
+	float shapeOffsetX = WPCNT*2;
+
+	float textLenght = WPCNT * 20.0f;
+	
+	float posAx = WPCNT;
+	float posAy = HPCNT;
+
+	float dimAx = WPCNT*8;
+	float dimAy = HPCNT*8;
+
+	float posBx = dimAx + posAx + WPCNT;
+	float posBy = HPCNT;
+
+	float dimBx = WPCNT*25;
+	float dimBy = HPCNT*4;
+
+	float posCx = dimBx + posBx;
+	float posCy = HPCNT;
+
+	float dimCx = textLenght;
+	float dimCy = HPCNT*4;
+
+	float posDx = dimAx + posAx + WPCNT;
+	float posDy = dimBy + posBy;
+
+	float dimDx = WPCNT*25;
+	float dimDy = HPCNT*4;
+
+
+	mainCharacterBar.backgroundElementA.vertices = {
+		{{posAx, posAy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posAx + dimAx, posAy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posAx + dimAx + shapeOffsetX, posAy + dimAy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posAx, posAy + dimAy}, 			{1.0f, 1.0f}}	// bottom left
+	};
+
+	mainCharacterBar.backgroundElementB.vertices = {
+		{{posBx, posBy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posBx + dimBx, posBy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posBx + dimBx, posBy + dimBy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posBx + shapeOffsetX/2, posBy + dimBy}, 			{1.0f, 1.0f}}	// bottom left
+	};
+
+	mainCharacterBar.backgroundElementC.vertices = {
+		{{posCx, posCy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posCx + dimCx, posCy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posCx + dimCx - shapeOffsetX, posCy + dimCy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posCx, posCy + dimCy}, 			{1.0f, 1.0f}}	// bottom left
+	};
+
+	mainCharacterBar.backgroundElementD.vertices = {
+		{{posDx + shapeOffsetX/2, posDy}, 					{1.0f, 0.0f}}, 	// top left
+		{{posDx + dimDx, posDy}, 			{0.0f, 0.0f}}, 	// top right
+		{{posDx + dimDx - shapeOffsetX, posDy + dimDy}, 	{0.0f, 1.0f}}, 	// bottom right
+		{{posDx + shapeOffsetX, posDy + dimDy}, 			{1.0f, 1.0f}}	// bottom left
+	};
+
+	mainCharacterBar.backgroundElementA.indices = { 0, 1, 2, 2, 3, 0 };
+	mainCharacterBar.backgroundElementB.indices = { 0, 1, 2, 2, 3, 0 };
+	mainCharacterBar.backgroundElementC.indices = { 0, 1, 2, 2, 3, 0 };
+	mainCharacterBar.backgroundElementD.indices = { 0, 1, 2, 2, 3, 0 };
+	
+	// mainCharacterBar.backgroundElemntB.vertices = {
+	// 	{{posx, posy}, 					{1.0f, 0.0f}}, 	// top left
+	// 	{{posx + dimx, posy}, 			{0.0f, 0.0f}}, 	// top right
+	// 	{{posx + dimx, posy + dimy}, 	{0.0f, 1.0f}}, 	// bottom right
+	// 	{{posx, posy + dimy}, 			{1.0f, 1.0f}}	// bottom left
+	// };
+	
+	// mainCharacterBar.backgroundElemntC.vertices = {
+	// 	{{posx, posy}, 					{1.0f, 0.0f}}, 	// top left
+	// 	{{posx + dimx, posy}, 			{0.0f, 0.0f}}, 	// top right
+	// 	{{posx + dimx, posy + dimy}, 	{0.0f, 1.0f}}, 	// bottom right
+	// 	{{posx, posy + dimy}, 			{1.0f, 1.0f}}	// bottom left
+	// };
+	
+	// mainCharacterBar.backgroundElemntD.vertices = {
+	// 	{{posx, posy}, 					{1.0f, 0.0f}}, 	// top left
+	// 	{{posx + dimx, posy}, 			{0.0f, 0.0f}}, 	// top right
+	// 	{{posx + dimx, posy + dimy}, 	{0.0f, 1.0f}}, 	// bottom right
+	// 	{{posx, posy + dimy}, 			{1.0f, 1.0f}}	// bottom left
+	// };
+
+
+
+	drawData.componentsToDraw.push_back(mainCharacterBar.backgroundElementA);
+	drawData.componentsToDraw.push_back(mainCharacterBar.backgroundElementB);
+	drawData.componentsToDraw.push_back(mainCharacterBar.backgroundElementC);
+	drawData.componentsToDraw.push_back(mainCharacterBar.backgroundElementD);
 }
 
 void GuiMainUi::UpdateDrawData() {

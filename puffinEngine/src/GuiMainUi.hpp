@@ -59,6 +59,18 @@ public:
 		GuiMainUi::UiComponent icon;
 	};
 
+	struct HealthBar {
+		glm::vec4 backgroundColor;
+		glm::vec2 textSize;
+
+		GuiMainUi::UiComponent backgroundElementA;
+		GuiMainUi::UiComponent backgroundElementB;
+		GuiMainUi::UiComponent backgroundElementC;
+		GuiMainUi::UiComponent backgroundElementD;
+
+		GuiMainUi::UiComponent text;
+	};
+
     struct DrawData {
 		std::vector<UiComponent> componentsToDraw;
 		int totalIndicesCount;
@@ -75,6 +87,7 @@ private:
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
+	void CreateHealtBar();
 	void CreateViewAndSampler();
     void GetDrawData();
 	void GenerateText(UiComponent& word, std::string text, TextAlignment align, glm::vec2 position, float scale, float maxWidth, float lineHeight, glm::vec2 padding);
