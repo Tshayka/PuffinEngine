@@ -157,12 +157,17 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
 	textOverlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"WSADQE\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
 	textOverlay->RenderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"T\" to test new functionality", 5.0f, 185.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"Z\" to toggle trigger area boxes", 5.0f, 205.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"X\" to toggle selection indicator", 5.0f, 225.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"F\" to pick up stuff with character box", 5.0f, 245.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"IJKLUO\" to move selected item", 5.0f, 265.0f, TextAlignment::alignLeft);
+	textOverlay->RenderText("Press \"Arrows and space\" to move character", 5.0f, 285.0f, TextAlignment::alignLeft);
 	textOverlay->EndTextUpdate();
 
 	mainUi->NewFrame();
