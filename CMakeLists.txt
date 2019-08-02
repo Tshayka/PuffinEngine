@@ -3,7 +3,18 @@ cmake_minimum_required (VERSION 2.8.2)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_ROOT_DIR}/bin)
+
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic -Wextra")
+    set(CMAKE_CONFIGURATION_TYPES Debug)
+    message("-- Debug build")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wpedantic -Wextra -O3")
+    set(CMAKE_CONFIGURATION_TYPES Release)
+    message("-- Release build")
+endif()
 
 project (PuffinEngine)
 
@@ -33,14 +44,17 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/WorldClock.cpp"
                                 "main.cpp")
 
+add_subdirectory(puffinEngine/imgui)
+target_link_libraries(${PROJECT_NAME} imgui)
+
 find_package(Vulkan)
 if (Vulkan_FOUND)
     target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
-endif (Vulkan_FOUND)
+else ()
+    message("-- ??")
+endif ()
 
-add_subdirectory(puffinEngine/imgui)
-target_link_libraries(${PROJECT_NAME} imgui)
 
 #[[----Downloading and unpack GLFW3, GLI, GLM into liblaries directory.----]]
 
