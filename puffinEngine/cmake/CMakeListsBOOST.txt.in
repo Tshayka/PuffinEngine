@@ -1,0 +1,24 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(glfw-download NONE)
+include(ExternalProject)
+
+if(WIN32)
+	set(CONFIG_COMMAND_VAL b2.exe)
+	set(BUILD_COMMAND_VAL bootstrap.bat)
+elseif(UNIX)
+	set(CONFIG_COMMAND_VAL ./bootstrap.sh)
+	set(BUILD_COMMAND_VAL ./b2)
+endif()
+
+include(ExternalProject)
+ExternalProject_Add(boost
+	URL                     "https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.bz2"
+    URL_MD5                 "df7dc2fc6de751753198a5bf70210da7"
+    CONFIGURE_COMMAND       ${BUILD_COMMAND_VAL}
+							--with-libraries=atomic,date_time,filesystem,program_options,system,thread
+    BUILD_COMMAND           ${CONFIG_COMMAND_VAL} 
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+	UPDATE_COMMAND  ""
+)
