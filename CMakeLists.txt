@@ -5,16 +5,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_ROOT_DIR}/bin)
 
-
+if(CMAKE_COMPILER_IS_GNUCXX)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic -Wextra")
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic")
     set(CMAKE_CONFIGURATION_TYPES Debug)
     message("-- Debug build")
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wpedantic -Wextra -O3")
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wextra -Wpedantic -O3")
     set(CMAKE_CONFIGURATION_TYPES Release)
     message("-- Release build")
 endif()
+endif(CMAKE_COMPILER_IS_GNUCXX)
 
 project (PuffinEngine)
 
