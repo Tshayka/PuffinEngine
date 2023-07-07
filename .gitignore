@@ -1,6 +1,8 @@
 # Build results
 bin/
 build/
+build64d/
 puffinEngine/lib/
+puffinEngine/3rdParty/
 .vscode/
 imgui.ini
