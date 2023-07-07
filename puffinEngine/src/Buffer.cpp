@@ -7,7 +7,7 @@ namespace enginetool {
 	struct Buffer {
 		VkDevice device;
 		VkBuffer buffer;
-		VkDeviceMemory memory;
+		VkDeviceMemory memory = 0;
 		VkDeviceSize size = 0;
 		VkDeviceSize alignment = 0;
 		void* mapped = nullptr;
@@ -18,6 +18,10 @@ namespace enginetool {
 
 		VkResult Map(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0) {
 			return vkMapMemory(device, memory, offset, size, 0, &mapped);
+		}
+
+		void Copy(void* data) {
+			memcpy(mapped, data, size);	
 		}
 
 		void Unmap() {

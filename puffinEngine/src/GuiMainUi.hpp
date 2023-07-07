@@ -7,16 +7,20 @@
 #include "ErrorCheck.hpp"
 #include "Texture.hpp"
 
+#ifdef WIN32
+#include <windows.h>
+#endif
+
 class GuiMainUi {
 public:
 
 	GuiMainUi();
 	~GuiMainUi();
 
-	void CreateUniformBuffer(VkCommandBuffer);
+	void CreateUniformBuffer(VkCommandBuffer command_buffer);
 	void DeInit();
 	void Init(Device* device, VkCommandPool& commandPool);
-	void LoadImage();
+	void LoadImGuiImage();
 	void NewFrame();
 	void SetUp();
 	void UpdateDrawData();
@@ -53,8 +57,8 @@ public:
 
     struct DrawData {
 		std::vector<UiComponent> componentsToDraw;
-		int totalIndicesCount;
-		int totalVerticesCount;
+		int totalIndicesCount = 0;
+		int totalVerticesCount = 0;
     };
 
 	DrawData drawData;
@@ -67,7 +71,7 @@ private:
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
-	void CreateViewAndSampler();
+	//void CreateViewAndSampler();
     void GetDrawData();
 	
 	enginetool::Buffer vertexBuffer;

@@ -3,6 +3,10 @@
 #include <vector>
 #include <memory>
 
+#ifdef UNIX
+#define NOMINMAX
+#endif
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
 

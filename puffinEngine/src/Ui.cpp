@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <array>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 
@@ -403,8 +404,12 @@ void GuiElement::CreateGraphicsPipeline() {
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); 
-	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); 
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	std::filesystem::path vertModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "imgui_menu_shader.vert.spv";
+	std::filesystem::path fragModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "imgui_menu_shader.frag.spv";
+
+	auto vertModelsShaderCode = enginetool::readFile(vertModelsShaderCodePath.string());
+	auto fragModelsShaderCode = enginetool::readFile(fragModelsShaderCodePath.string());
 
 	VkShaderModule vertModelsShaderModule = CreateVertShaderModule();
 	VkShaderModule fragModelsShaderModule = CreateFragShaderModule();
@@ -451,9 +456,11 @@ void GuiElement::RenderDrawData() {
 	// Update buffers only if vertex or index count has been changed compared to current buffer size
 
 	// Vertex buffer
-	if ((vertexBuffer.buffer == VK_NULL_HANDLE) || (vertexCount != draw_data->TotalVtxCount)) {
-		vertexBuffer.Unmap();
-		vertexBuffer.Destroy();
+	if (vertexCount != draw_data->TotalVtxCount) {
+		if (vertexBuffer.buffer == VK_NULL_HANDLE) {
+			vertexBuffer.Unmap();
+			vertexBuffer.Destroy();
+		}
 
 		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
 		vertexBuffer.device = logicalDevice->device;
@@ -464,9 +471,11 @@ void GuiElement::RenderDrawData() {
 
 	// Index buffer
 	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-	if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < draw_data->TotalIdxCount)) {
-		indexBuffer.Unmap();
-		indexBuffer.Destroy();
+	if (indexCount < draw_data->TotalIdxCount) {
+		if (indexBuffer.buffer == VK_NULL_HANDLE) {
+			indexBuffer.Unmap();
+			indexBuffer.Destroy();
+		}
 
 		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
 		indexBuffer.device = logicalDevice->device;
@@ -491,7 +500,7 @@ void GuiElement::RenderDrawData() {
 	indexBuffer.Flush();
 }
 
-void GuiElement::CreateUniformBuffer(VkCommandBuffer command_buffer) {
+void GuiElement::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
 	ImDrawData* draw_data = ImGui::GetDrawData();
 
 	if (draw_data->TotalVtxCount == 0)

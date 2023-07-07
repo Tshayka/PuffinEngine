@@ -7,16 +7,12 @@
 #include <string>
 #include <unordered_map>
 
-#ifdef UNIX
-#define NOMINMAX
-#endif
-
-#ifdef WIN32
-#include <windows.h>
-#endif
-
 #include "Device.hpp"
 #include "ErrorCheck.hpp"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+
 
 // ------- Constructors and dectructors ------------- //
 
@@ -525,6 +521,7 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	AllocInfo.allocationSize = memory_requirements.size;
 	// Find a memory type index that fits the properties of the buffer
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
+	
 	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 
 	buffer->alignment = memory_requirements.alignment;
@@ -535,8 +532,8 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 	if (data != nullptr)
 	{
-		ErrorCheck(buffer->Map());
-		memcpy(buffer->mapped, data, size);
+		buffer->Map();
+		buffer->Copy(data);
 		buffer->Unmap();
 	}
 

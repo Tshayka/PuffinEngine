@@ -1,5 +1,7 @@
 #include <iostream>
+#include <filesystem>
 
+#include <array>
 #include "LoadFile.cpp"
 #include "GuiTextOverlay.hpp"
 
@@ -249,9 +251,13 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	PipelineInfo.renderPass = logical_device->renderPass;
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	std::filesystem::path vertModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "perform_stats.vert.spv";
+	std::filesystem::path fragModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "perform_stats.frag.spv";
 	
-	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/perform_stats.vert.spv");
-	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/perform_stats.frag.spv");
+	auto vertModelsShaderCode = enginetool::readFile(vertModelsShaderCodePath.string());
+	auto fragModelsShaderCode = enginetool::readFile(fragModelsShaderCodePath.string());
 
 	VkShaderModule vertModelsShaderModule = logical_device->CreateShaderModule(vertModelsShaderCode);
 	VkShaderModule fragModelsShaderModule = logical_device->CreateShaderModule(fragModelsShaderCode);
@@ -350,7 +356,7 @@ void GuiTextOverlay::EndTextUpdate() {
 	mapped = nullptr;
 }
 
-void GuiTextOverlay::CreateUniformBuffer(VkCommandBuffer command_buffer) {
+void GuiTextOverlay::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
 	viewport.width = (float)logical_device->swapchain_extent.width;

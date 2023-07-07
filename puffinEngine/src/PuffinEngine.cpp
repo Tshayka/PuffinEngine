@@ -279,8 +279,8 @@ void PuffinEngine::InitWindow() {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-	io.Fonts->AddFontFromFileTTF("puffinEngine/fonts/exo-2/Exo2-SemiBold.otf", 16.0f);
+	ImFont* font1 = io.Fonts->AddFontDefault();
+	//io.Fonts->AddFontFromFileTTF("puffinEngine/fonts/exo-2/Exo2-SemiBold.otf", 16.0f);
 
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;   // We can honor GetMouseCursor() values (optional)

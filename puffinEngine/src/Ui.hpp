@@ -13,7 +13,7 @@ public:
 	GuiElement();
 	~GuiElement();
 
-	void CreateUniformBuffer(VkCommandBuffer);
+	void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
 	void DeInit();
 	void Init(Device* logiclDevice, VkCommandPool& commandPool);
 	void LoadImage();

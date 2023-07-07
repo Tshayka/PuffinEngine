@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <random>
+#include <filesystem>
 
 #include "LoadFile.cpp"
 #include "ErrorCheck.hpp"
@@ -369,8 +370,12 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	// I. Skybox reflect pipeline
-	auto vertCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.vert.spv"); 
-	auto fragCubeMapShaderCode = enginetool::readFile("puffinEngine/shaders/skymap_shader.frag.spv"); 
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	std::filesystem::path vertCubeMapShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "skymap_shader.vert.spv";
+	std::filesystem::path fragCubeMapShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "skymap_shader.frag.spv";
+
+	auto vertCubeMapShaderCode = enginetool::readFile(vertCubeMapShaderCodePath.string());
+	auto fragCubeMapShaderCode = enginetool::readFile(fragCubeMapShaderCodePath.string()); 
 
 	VkShaderModule vertCubeMapShaderModule = logicalDevice->CreateShaderModule(vertCubeMapShaderCode);
 	VkShaderModule fragCubeMapShaderModule = logicalDevice->CreateShaderModule(fragCubeMapShaderCode);
@@ -411,8 +416,11 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertCubeMapShaderModule, nullptr);
 	
 	// II. Models pipeline
-	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.vert.spv");
-	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/pbr_shader.frag.spv");
+	std::filesystem::path vertModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "pbr_shader.vert.spv";
+	std::filesystem::path fragModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "pbr_shader.frag.spv";
+
+	auto vertModelsShaderCode = enginetool::readFile(vertModelsShaderCodePath.string());
+	auto fragModelsShaderCode = enginetool::readFile(fragModelsShaderCodePath.string());
 
 	VkShaderModule vertModelsShaderModule = logicalDevice->CreateShaderModule(vertModelsShaderCode);
 	VkShaderModule fragModelsShaderModule = logicalDevice->CreateShaderModule(fragModelsShaderCode);
@@ -456,8 +464,11 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.renderPass = logicalDevice->renderPass;
 
 	// III. Selection crystal pipeline
-	auto vertSelectionCrystalShaderCode = enginetool::readFile("puffinEngine/shaders/selectionCrystalShader.vert.spv");
-	auto fragSelectionCrystalShaderCode = enginetool::readFile("puffinEngine/shaders/selectionCrystalShader.frag.spv");
+	std::filesystem::path vertSelectionCrystalShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "selectionCrystalShader.vert.spv";
+	std::filesystem::path fragSelectionCrystalShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "selectionCrystalShader.frag.spv";
+
+	auto vertSelectionCrystalShaderCode = enginetool::readFile(vertSelectionCrystalShaderCodePath.string());
+	auto fragSelectionCrystalShaderCode = enginetool::readFile(fragSelectionCrystalShaderCodePath.string());
 
 	VkShaderModule vertSelectionCrystalShaderModule = logicalDevice->CreateShaderModule(vertSelectionCrystalShaderCode);
 	VkShaderModule fragSelectionCrystalShaderModule = logicalDevice->CreateShaderModule(fragSelectionCrystalShaderCode);
@@ -483,8 +494,11 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertSelectionCrystalShaderModule, nullptr);
 
 	// IV. Ocean pipeline
-	auto vertOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.vert.spv");
-	auto fragOceanShaderCode = enginetool::readFile("puffinEngine/shaders/ocean_shader.frag.spv");
+	std::filesystem::path vertOceanShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "ocean_shader.vert.spv";
+	std::filesystem::path fragOceanShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "ocean_shader.frag.spv";
+
+	auto vertOceanShaderCode = enginetool::readFile(vertOceanShaderCodePath.string());
+	auto fragOceanShaderCode = enginetool::readFile(fragOceanShaderCodePath.string());
 
 	VkShaderModule vertOceanShaderModule = logicalDevice->CreateShaderModule(vertOceanShaderCode);
 	VkShaderModule fragOceanShaderModule = logicalDevice->CreateShaderModule(fragOceanShaderCode);
@@ -515,8 +529,11 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertOceanShaderModule, nullptr);
 	
 	// V. Line pipeline
-	auto vertLineShaderCode = enginetool::readFile("puffinEngine/shaders/lineShader.vert.spv");
-	auto fragLineShaderCode = enginetool::readFile("puffinEngine/shaders/lineShader.frag.spv");
+	std::filesystem::path vertLineShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "lineShader.vert.spv";
+	std::filesystem::path fragLineShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "lineShader.frag.spv";
+
+	auto vertLineShaderCode = enginetool::readFile(vertLineShaderCodePath.string());
+	auto fragLineShaderCode = enginetool::readFile(fragLineShaderCodePath.string());
 
 	VkShaderModule vertLineShaderModule = logicalDevice->CreateShaderModule(vertLineShaderCode);
 	VkShaderModule fragLineShaderModule = logicalDevice->CreateShaderModule(fragLineShaderCode);
@@ -548,9 +565,11 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertLineShaderModule, nullptr); 
 
 	// VI. Aabb pipeline
+	std::filesystem::path vertAabbShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "aabbShader.vert.spv";
+	std::filesystem::path fragAabbShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "aabbShader.frag.spv";
 
-	auto vertAabbShaderCode = enginetool::readFile("puffinEngine/shaders/aabbShader.vert.spv");
-	auto fragAabbShaderCode = enginetool::readFile("puffinEngine/shaders/aabbShader.frag.spv");
+	auto vertAabbShaderCode = enginetool::readFile(vertAabbShaderCodePath.string());
+	auto fragAabbShaderCode = enginetool::readFile(fragAabbShaderCodePath.string());
 
 	VkShaderModule vertAabbShaderModule = logicalDevice->CreateShaderModule(vertAabbShaderCode);
 	VkShaderModule fragAabbShaderModule = logicalDevice->CreateShaderModule(fragAabbShaderCode);
@@ -580,8 +599,11 @@ void Scene::CreateGraphicsPipeline() {
 	vkDestroyShaderModule(logicalDevice->device, vertAabbShaderModule, nullptr); 
 
 	// VI. Clouds pipeline
-	auto vertCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.vert.spv");
-	auto fragCloudsShaderCode = enginetool::readFile("puffinEngine/shaders/clouds_shader.frag.spv");
+	std::filesystem::path vertCloudsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "clouds_shader.vert.spv";
+	std::filesystem::path fragCloudsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "clouds_shader.frag.spv";
+
+	auto vertCloudsShaderCode = enginetool::readFile(vertCloudsShaderCodePath.string());
+	auto fragCloudsShaderCode = enginetool::readFile(fragCloudsShaderCodePath.string());
 
 	VkShaderModule vertCloudsShaderModule = logicalDevice->CreateShaderModule(vertCloudsShaderCode);
 	VkShaderModule fragCloudsShaderModule = logicalDevice->CreateShaderModule(fragCloudsShaderCode);

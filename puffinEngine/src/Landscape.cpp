@@ -93,9 +93,9 @@ void Sea::CreateMesh() {
 	vertices.resize(6*(vSize-1)*(vSize-1));
 
         // create local vertices
-        for (uint z = 0; z < vSize; ++z) {
-            for (uint x = 0; x < vSize; ++x) {
-                uint index = z * vSize + x;
+        for (uint32_t z = 0; z < vSize; ++z) {
+            for (uint32_t x = 0; x < vSize; ++x) {
+				uint32_t index = z * vSize + x;
 
 				vertices[index].pos.x = scale*(float)x - offset;
 				vertices[index].pos.y =  0.0f;

@@ -1,6 +1,10 @@
 #include <gli/gli.hpp>
 #include <iostream>
+
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb_image.h>
+
+#include <filesystem>
 
 #include "LoadTexture.cpp"
 #include "MaterialLibrary.hpp"
@@ -26,7 +30,7 @@ void MaterialLibrary::Init(Device* device) {
 	logicalDevice = device;
 
 	CreateCommandPool();
-  FillLibrary();  
+    FillLibrary();  
 }
 
 void MaterialLibrary::CreateCommandPool() {
@@ -55,23 +59,49 @@ void MaterialLibrary::FillLibrary() {
 			{"chrome", chrome}
     };
 
-    for (auto& m : materials) {
-		m.second.name = m.first;
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Albedo.jpg", m.second.albedo);
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Metallic.jpg", m.second.metallic); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Roughness.jpg", m.second.roughness); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Normal.jpg", m.second.normal); 
-        LoadTexture("puffinEngine/assets/textures/" + m.first + "Ao.jpg", m.second.ambientOcclucion);     
-    }
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
 
-		enginetool::SceneMaterial character; 
-		LoadTexture("puffinEngine/assets/textures/icons/characterIcon.jpg",  character.albedo);
-		LoadTexture("puffinEngine/assets/textures/defaultMetallic.jpg", character.metallic); 
-    LoadTexture("puffinEngine/assets/textures/defaultRoughness.jpg", character.roughness); 
-    LoadTexture("puffinEngine/assets/textures/defaultNormal.jpg", character.normal); 
-    LoadTexture("puffinEngine/assets/textures/defaultAo.jpg", character.ambientOcclucion);
+	for (auto& m : materials) {
+		std::filesystem::path albedoFileName(m.first + "Albedo.jpg");
+		std::filesystem::path metallicFileName(m.first + "Metallic.jpg");
+		std::filesystem::path roughnessFileName(m.first + "Roughness.jpg");
+		std::filesystem::path normalFileName(m.first + "Normal.jpg");
+		std::filesystem::path ambientOcclucionFileName(m.first + "Ao.jpg");
 
-		materials.insert(std::make_pair("character", character));   
+		std::filesystem::path albedoFullPath = p / "puffinEngine" / "assets" / "textures" / albedoFileName;
+		LoadTexture(albedoFullPath.string(), m.second.albedo);
+
+		std::filesystem::path metallicFullPath = p / "puffinEngine" / "assets" / "textures" / metallicFileName;
+		LoadTexture(metallicFullPath.string(), m.second.metallic);
+
+		std::filesystem::path roughnessFullPath = p / "puffinEngine" / "assets" / "textures" / roughnessFileName;
+		LoadTexture(roughnessFullPath.string(), m.second.roughness);
+
+		std::filesystem::path normalFullPath = p / "puffinEngine" / "assets" / "textures" / normalFileName;
+		LoadTexture(normalFullPath.string(), m.second.normal);
+
+		std::filesystem::path ambientOcclucionFullPath = p / "puffinEngine" / "assets" / "textures" / ambientOcclucionFileName;
+		LoadTexture(ambientOcclucionFullPath.string(), m.second.ambientOcclucion);
+	}
+
+
+	enginetool::SceneMaterial character;
+	std::filesystem::path characterAlbedo = p / "puffinEngine" / "assets" / "textures" / "icons" / "characterIcon.jpg";
+	LoadTexture(characterAlbedo.string(),  character.albedo);
+
+	std::filesystem::path characterMetallic = p / "puffinEngine" / "assets" / "textures" / "defaultMetallic.jpg";
+	LoadTexture(characterMetallic.string(), character.metallic);
+
+	std::filesystem::path characterRoughness = p / "puffinEngine" / "assets" / "textures" / "defaultRoughness.jpg";
+	LoadTexture(characterRoughness.string(), character.roughness);
+
+	std::filesystem::path characterNormal = p / "puffinEngine" / "assets" / "textures" / "defaultNormal.jpg";
+	LoadTexture(characterNormal.string(), character.normal);
+
+	std::filesystem::path characterAo = p / "puffinEngine" / "assets" / "textures" / "defaultAo.jpg";
+	LoadTexture(characterAo.string(), character.ambientOcclucion);
+
+	materials.insert(std::make_pair("character", character));   
 }
 
 void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
@@ -99,8 +129,9 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 }
 
 void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
-	std::string texture = "puffinEngine/assets/skybox/car_cubemap.ktx";
-	gli::texture_cube texCube(gli::load(texture));
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	std::filesystem::path texture = p / "puffinEngine" / "assets" / "skybox" / "car_cubemap.ktx";
+	gli::texture_cube texCube(gli::load(texture.string()));
 	
 	layer.Init(logicalDevice, commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, texCube.levels(), 6);
 	layer.texWidth = texCube.extent().x;

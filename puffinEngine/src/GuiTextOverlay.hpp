@@ -23,7 +23,7 @@ public:
 	~GuiTextOverlay();
 
 	void BeginTextUpdate();
-    void CreateUniformBuffer(VkCommandBuffer);
+    void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
     void DeInit();
 	void EndTextUpdate();
 	void Init(Device* device, VkCommandPool& commandPool);

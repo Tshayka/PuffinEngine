@@ -2,9 +2,19 @@
 #include <array>
 #include <fstream>
 #include <iostream>
+#include <filesystem>
 
 #include "LoadFile.cpp"
 #include "GuiMainUi.hpp"
+
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
+
+#ifdef WIN32
+#define NOMINMAX
+#include <windows.h>
+#endif
+
 
 //---------- Constructors and dectructors ---------- //
 
@@ -24,8 +34,11 @@ void GuiMainUi::Init(Device* device, VkCommandPool& commandPool) {
 	logicalDevice = device;
 	this->commandPool = &commandPool; 
 
+	drawData.totalIndicesCount = 0;
+	drawData.totalVerticesCount = 0;
+
 	SetUp();
-	LoadImage();
+	LoadImGuiImage();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
@@ -36,7 +49,7 @@ void GuiMainUi::SetUp() {
 	GetDrawData();
 }
 
-void GuiMainUi::LoadImage() {
+void GuiMainUi::LoadImGuiImage() {
     ImGuiIO& io = ImGui::GetIO();
 
 	unsigned char* fontData;
@@ -243,8 +256,12 @@ void GuiMainUi::CreateGraphicsPipeline() {
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-	auto vertModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.vert.spv"); 
-	auto fragModelsShaderCode = enginetool::readFile("puffinEngine/shaders/imgui_menu_shader.frag.spv"); 
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	std::filesystem::path vertModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "imgui_menu_shader.vert.spv";
+	std::filesystem::path fragModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "imgui_menu_shader.frag.spv";
+
+	auto vertModelsShaderCode = enginetool::readFile(vertModelsShaderCodePath.string());
+	auto fragModelsShaderCode = enginetool::readFile(fragModelsShaderCodePath.string());
 
 	VkShaderModule vertModelsShaderModule = logicalDevice->CreateShaderModule(vertModelsShaderCode);
 	VkShaderModule fragModelsShaderModule = logicalDevice->CreateShaderModule(fragModelsShaderCode);
@@ -299,15 +316,16 @@ void GuiMainUi::GetDrawData() {
 
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++)
     {
-        drawData.totalVerticesCount += drawData.componentsToDraw[i].vertices.size();
-        drawData.totalIndicesCount += drawData.componentsToDraw[i].indices.size();
+        drawData.totalVerticesCount += (int)drawData.componentsToDraw[i].vertices.size();
+        drawData.totalIndicesCount += (int)drawData.componentsToDraw[i].indices.size();
     }
 }
 
 void GuiMainUi::UpdateDrawData() {
 
-	if (drawData.totalVerticesCount == 0)
+	if (drawData.totalVerticesCount == 0) {
 		return;
+	}
 	
 	// Note: Alignment is done inside buffer creation
 	VkDeviceSize vertexBufferSize = drawData.totalVerticesCount * sizeof(Vertex);
@@ -316,9 +334,11 @@ void GuiMainUi::UpdateDrawData() {
 	// Update buffers only if vertex or index count has been changed compared to current buffer size
 
 	// Vertex buffer
-	if ((vertexBuffer.buffer == VK_NULL_HANDLE) || (vertexCount != drawData.totalVerticesCount)) {
-		vertexBuffer.Unmap();
-		vertexBuffer.Destroy();
+	if (vertexCount != drawData.totalVerticesCount) {
+		if (vertexBuffer.buffer == VK_NULL_HANDLE) {
+			vertexBuffer.Unmap();
+			vertexBuffer.Destroy();
+		}
 
 		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
 		vertexBuffer.device = logicalDevice->device;
@@ -329,9 +349,11 @@ void GuiMainUi::UpdateDrawData() {
 
 	// Index buffer
 	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-	if ((indexBuffer.buffer == VK_NULL_HANDLE) || (indexCount < drawData.totalIndicesCount)) {
-		indexBuffer.Unmap();
-		indexBuffer.Destroy();
+	if (indexCount < drawData.totalIndicesCount) {
+		if (indexBuffer.buffer == VK_NULL_HANDLE) {
+			indexBuffer.Unmap();
+			indexBuffer.Destroy();
+		}
 
 		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
 		indexBuffer.device = logicalDevice->device;
@@ -381,10 +403,10 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	
 
 	for (int32_t i = 0; i < drawData.componentsToDraw.size(); i++) {
-		scissor.offset.x = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
-		scissor.offset.y = 0.0f;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
-		scissor.extent.width = (float)logicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
-		scissor.extent.height = (float)logicalDevice->swapchain_extent.height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
+		scissor.offset.x = 0;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
+		scissor.offset.y = 0;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
+		scissor.extent.width = logicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
+		scissor.extent.height = logicalDevice->swapchain_extent.height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
 		vkCmdSetScissor(command_buffer, 0, 1, &scissor);
 		vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(drawData.componentsToDraw[i].indices.size()), 1, indexOffset, vertexOffset, 0);
 		//vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
