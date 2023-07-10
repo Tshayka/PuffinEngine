@@ -5,21 +5,28 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(EXECUTABLE_OUTPUT_PATH ${CMAKE_ROOT_DIR}/bin)
 
-if(CMAKE_COMPILER_IS_GNUCXX)
 if(CMAKE_BUILD_TYPE MATCHES Debug)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic")
+if(UNIX)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic -Wextra")
+endif()
     set(CMAKE_CONFIGURATION_TYPES Debug)
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/PuffinEngine/work/debug)
+    add_definitions(-DDEBUG_VERSION)
     message("-- Debug build")
 elseif(CMAKE_BUILD_TYPE MATCHES Release)
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wextra -Wpedantic -O3")
+if(UNIX)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wpedantic -Wextra -O3 -pthread")
+endif()
     set(CMAKE_CONFIGURATION_TYPES Release)
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/PuffinEngine/work/release)
+    add_definitions(-DRELEASE_VERSION)
     message("-- Release build")
 endif()
-endif(CMAKE_COMPILER_IS_GNUCXX)
 
 project (PuffinEngine)
+set(VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
+SET(SOURCE_FILES                "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/Camera.cpp"
                                 "puffinEngine/src/Character.cpp"
@@ -43,7 +50,30 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Threads.cpp"
                                 "puffinEngine/src/Ui.cpp"
                                 "puffinEngine/src/WorldClock.cpp"
-                                "main.cpp")
+				"main.cpp")
+
+SET(HEADER_FILES 		"puffinEngine/src/Actor.hpp"
+                                "puffinEngine/src/Camera.hpp"
+                                "puffinEngine/src/Character.hpp"
+                                "puffinEngine/src/Device.hpp"
+                                "puffinEngine/src/ErrorCheck.hpp"
+                                "puffinEngine/src/GuiMainUi.hpp"
+                                "puffinEngine/src/GuiMainHub.hpp"
+                                "puffinEngine/src/GuiTextOverlay.hpp"
+                                "puffinEngine/src/Landscape.hpp"
+                                "puffinEngine/src/Light.hpp"
+                                "puffinEngine/src/MainCharacter.hpp"
+                                "puffinEngine/src/MaterialLibrary.hpp"
+                                "puffinEngine/src/MeshLibrary.hpp"
+                                "puffinEngine/src/MousePicker.hpp"
+                                "puffinEngine/src/PuffinEngine.hpp"
+                                "puffinEngine/src/Scene.hpp"
+                                "puffinEngine/src/Texture.hpp"
+                                "puffinEngine/src/Ui.hpp"
+                                "puffinEngine/src/WorldClock.hpp")
+
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
 
 add_subdirectory(puffinEngine/imgui)
 target_link_libraries(${PROJECT_NAME} imgui)
