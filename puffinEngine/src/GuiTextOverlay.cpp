@@ -58,13 +58,13 @@ void GuiTextOverlay::LoadImage() {
 	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingbuffer, &stbFontData);
 
 	VkDeviceSize indexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	stagingbuffer.Map(indexBufferSize, 0);
-	stagingbuffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
-	stagingbuffer.Unmap();
+	stagingbuffer.map(indexBufferSize, 0);
+	stagingbuffer.copyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
+	stagingbuffer.unmap();
 
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	font.CopyBufferToImage(stagingbuffer.buffer);
-	stagingbuffer.Destroy();
+	font.CopyBufferToImage(stagingbuffer.getBuffer());
+	stagingbuffer.destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 	
 	logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, memory);

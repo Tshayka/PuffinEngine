@@ -710,23 +710,23 @@ void Scene::CreateCommandBuffers() {
 			vkCmdPushConstants(commandBuffers[i], pipelineLayout, VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Constants), &pushConstants[0]);
 			
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 5, 1, &selectionIndicatorDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectionIndicatorPipeline);
 			vkCmdDrawIndexed(commandBuffers[i], selectionIndicatorMesh->indexCount, 1, 0,  selectionIndicatorMesh->indexBase, 0);
 		}
 
 		if (displaySkybox) {
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skybox_descriptor_set, 0, nullptr);
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.skybox.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.skybox.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.skybox.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (skyboxWireframePipeline) : (skyboxPipeline));
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displayMainCharacter) {
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			std::array<VkDescriptorSet, 1> descriptorSets;
 			descriptorSets[0] = mainCharacter->assignedMaterial->descriptorSet;
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, static_cast<uint32_t>(descriptorSets.size()), descriptorSets.data(), 0, nullptr);
@@ -739,15 +739,15 @@ void Scene::CreateCommandBuffers() {
 
 		if (displayOcean) {
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 3, 1, &oceanDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.ocean.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.ocean.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.ocean.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.ocean.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (oceanWireframePipeline) : (oceanPipeline));
 			vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(std::dynamic_pointer_cast<Sea>(seas[0])->indices.size()), 1, 0, 0, 0);
 		}
 
 		if (displaySceneGeometry) {
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 			for (const auto& a : actors) {
 				if(a->visible) {
@@ -764,8 +764,8 @@ void Scene::CreateCommandBuffers() {
 		}
 
 		if (displayClouds)	{
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.meshLibraryObjects.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, (displayWireframe) ? (cloudsWireframePipeline) : (cloudsPipeline));
 			
 			for (uint32_t k = 0; k < DYNAMIC_UB_OBJECTS; k++) {
@@ -778,15 +778,15 @@ void Scene::CreateCommandBuffers() {
 		if(displayWireframe) {
 			UpdateSelectRayDrawData();
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 4, 1, &lineDescriptorSet, 0, nullptr);
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.selectRay.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.selectRay.buffer, 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.selectRay.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.selectRay.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, selectRayPipeline);
 			vkCmdDrawIndexed(commandBuffers[i], 2, 1, 0, 0, 0);
 		}
 
 		if(displayAabb) {
-			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.aabb.buffer, offsets);
-			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.aabb.buffer , 0, VK_INDEX_TYPE_UINT32);
+			vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertex_buffers.aabb.getBuffer(), offsets);
+			vkCmdBindIndexBuffer(commandBuffers[i], index_buffers.aabb.getBuffer() , 0, VK_INDEX_TYPE_UINT32);
 			vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 6, 1, &aabbDescriptorSet, 0, nullptr);
 			vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, aabbPipeline);
 			for (const auto& a : actors) {
@@ -851,15 +851,15 @@ void Scene::CreateReflectionCommandBuffer() {
 	// Skybox
 	if (displaySkybox)	{
 		vkCmdBindDescriptorSets(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skyboxReflectionDescriptorSet, 0, nullptr);
-		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
-		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.skybox.getBuffer(), offsets);
+		vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.skybox.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(reflectionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxReflectionPipeline);
 		vkCmdDrawIndexed(reflectionCmdBuff, static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
-	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(reflectionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+	vkCmdBindIndexBuffer(reflectionCmdBuff, index_buffers.meshLibraryObjects.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
 	for (size_t j = 0; j < actors.size(); j++) {
 		// reflection
@@ -926,15 +926,15 @@ void Scene::CreateRefractionCommandBuffer() {
 	// Skybox
 	if (displaySkybox)	{
 		vkCmdBindDescriptorSets(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 1, 1, &skyboxRefractionDescriptorSet, 0, nullptr);
-		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.buffer, offsets);
-		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.buffer, 0, VK_INDEX_TYPE_UINT32);
+		vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.skybox.getBuffer(), offsets);
+		vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.skybox.getBuffer(), 0, VK_INDEX_TYPE_UINT32);
 		vkCmdBindPipeline(refractionCmdBuff, VK_PIPELINE_BIND_POINT_GRAPHICS, skyboxRefractionPipeline);
 		vkCmdDrawIndexed(refractionCmdBuff, static_cast<uint32_t>(std::dynamic_pointer_cast<Skybox>(skyboxes[0])->indices.size()), 1, 0, 0, 0);
 	}
 
 	// 3d object
-	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.buffer, offsets);
-	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.meshLibraryObjects.buffer , 0, VK_INDEX_TYPE_UINT32);
+	vkCmdBindVertexBuffers(refractionCmdBuff, 0, 1, &vertex_buffers.meshLibraryObjects.getBuffer(), offsets);
+	vkCmdBindIndexBuffer(refractionCmdBuff, index_buffers.meshLibraryObjects.getBuffer() , 0, VK_INDEX_TYPE_UINT32);
 
 	for (size_t j = 0; j < actors.size(); j++) {
 		std::array<VkDescriptorSet, 1> descriptorSets;
@@ -961,7 +961,7 @@ void Scene::CreateBuffers() {
 
 	// Ocean Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
-	uniform_buffers.ocean.Map();
+	uniform_buffers.ocean.map(sizeof(UboSea));
 	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
@@ -983,56 +983,56 @@ void Scene::CreateBuffers() {
 
 	std::cout << "minUniformBufferOffsetAlignment = " << minUboAlignment << std::endl;
 	std::cout << "dynamicAlignment = " << dynamicAlignment << std::endl;
+		
+    // Uniform buffer object with per-object matrices
+	logicalDevice->CreateUnstagedBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &uniform_buffers.clouds_dynamic);
+	uniform_buffers.clouds_dynamic.map(bufferSize);
 
 	// Static shared uniform buffer object with projection and view matrix
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboClouds), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.clouds);
-	uniform_buffers.clouds.Map();
-
-	// Uniform buffer object with per-object matrices
-	logicalDevice->CreateUnstagedBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &uniform_buffers.clouds_dynamic);
-	uniform_buffers.clouds_dynamic.Map();
+	uniform_buffers.clouds.map(sizeof(UboClouds));
 
 	// Rotating Objects Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSelectionIndicator), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.selectionIndicator);
-	uniform_buffers.selectionIndicator.Map();
+	uniform_buffers.selectionIndicator.map(sizeof(UboSelectionIndicator));
 
 	// Objects Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.stillObjects);
-	uniform_buffers.stillObjects.Map();
+	uniform_buffers.stillObjects.map(sizeof(UboStaticGeometry));
 
 	// Objects Uniform buffers for reflection rendering -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
-	uniform_buffers.reflection.Map();
+	uniform_buffers.reflection.map(sizeof(UboStaticGeometry));
 
 	// Objects Uniform buffers for refraction rendering -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
-	uniform_buffers.refraction.Map();
+	uniform_buffers.refraction.map(sizeof(UboStaticGeometry));
 
 	// Additional uniform bufer for parameters -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.parameters);
-	uniform_buffers.parameters.Map();
+	uniform_buffers.parameters.map(sizeof(UboParam));
 
 	// Additional uniform bufer parameters for reflection scene -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflectionParameters);
-	uniform_buffers.reflectionParameters.Map();
+	uniform_buffers.reflectionParameters.map(sizeof(UboParam));
 
 	// Additional uniform bufer parameters for refraction scene -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refractionParameters);
-	uniform_buffers.refractionParameters.Map();
+	uniform_buffers.refractionParameters.map(sizeof(UboParam));
 
 	// Skybox Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
-	uniform_buffers.skybox.Map();
+	uniform_buffers.skybox.map(sizeof(UboSkybox));
 
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
-	uniform_buffers.skyboxReflection.Map();
+	uniform_buffers.skyboxReflection.map(sizeof(UboSkybox));
 
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
-	uniform_buffers.skyboxRefraction.Map();
+	uniform_buffers.skyboxRefraction.map(sizeof(UboSkybox));
 
 	// Line uniform buffer -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
-	uniform_buffers.line.Map();
+	uniform_buffers.line.map(sizeof(UboStaticGeometry));
 
 	// Create random positions for dynamic uniform buffer
 	RandomPositions();
@@ -1124,8 +1124,8 @@ void Scene::UpdateStaticUniformBuffer() {
 	UBOSG.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSG.model = glm::mat4(1.0f);
 	UBOSG.cameraPos = glm::vec3(currentCamera->position);
-	memcpy(uniform_buffers.stillObjects.mapped, &UBOSG, sizeof(UBOSG));
-	memcpy(uniform_buffers.line.mapped, &UBOSG, sizeof(UBOSG));
+	memcpy(uniform_buffers.stillObjects.getMapped(), &UBOSG, sizeof(UBOSG));
+	memcpy(uniform_buffers.line.getMapped(), &UBOSG, sizeof(UBOSG));
 	mousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
 
 }
@@ -1140,7 +1140,7 @@ void Scene::UpdateCloudsUniformBuffer() {
 	UBOC.view[3][2] *= 0;
 	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
-	memcpy(uniform_buffers.clouds.mapped, &UBOC, sizeof(UBOC));	
+	memcpy(uniform_buffers.clouds.getMapped(), &UBOC, sizeof(UBOC));	
 } 
 
 void Scene::UpdateSelectionIndicatorUniformBuffer() {
@@ -1150,7 +1150,7 @@ void Scene::UpdateSelectionIndicatorUniformBuffer() {
 	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalTime * glm::radians(90.0f), currentCamera->up);
 	UBOSI.cameraPos = glm::vec3(currentCamera->position);
 	UBOSI.time = (float)mainClock->totalTime;
-	memcpy(uniform_buffers.selectionIndicator.mapped, &UBOSI, sizeof(UBOSI));
+	memcpy(uniform_buffers.selectionIndicator.getMapped(), &UBOSI, sizeof(UBOSI));
 }
 
 void Scene::UpdateOffscreenUniformBuffer() {
@@ -1159,23 +1159,23 @@ void Scene::UpdateOffscreenUniformBuffer() {
 	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOO.model = glm::mat4(1.0f);
 	UBOO.cameraPos = glm::vec3(currentCamera->position);
-	memcpy(uniform_buffers.refraction.mapped, &UBOO, sizeof(UBOO));
+	memcpy(uniform_buffers.refraction.getMapped(), &UBOO, sizeof(UBOO));
 	UBOO.view[1][0] *= -1;
 	UBOO.view[1][1] *= -1;
 	UBOO.view[1][2] *= -1;
 	UBOO.cameraPos *= glm::vec3(1.0f, -1.0f, 1.0f);
-	memcpy(uniform_buffers.reflection.mapped, &UBOO, sizeof(UBOO));
+	memcpy(uniform_buffers.reflection.getMapped(), &UBOO, sizeof(UBOO));
 }
 
 void Scene::UpdateUniformBufferParameters() {
 	UBOP.light_col = std::dynamic_pointer_cast<SphereLight>(actors[2])->GetLightColor();
 	UBOP.exposure = 2.5f;
 	UBOP.light_pos[0] = actors[2]->position;
-	memcpy(uniform_buffers.parameters.mapped, &UBOP, sizeof(UBOP));
-	memcpy(uniform_buffers.refractionParameters.mapped, &UBOP, sizeof(UBOP));
+	memcpy(uniform_buffers.parameters.getMapped(), &UBOP, sizeof(UBOP));
+	memcpy(uniform_buffers.refractionParameters.getMapped(), &UBOP, sizeof(UBOP));
 
 	UBOP.light_pos[0]*= glm::vec3(1.0f, -1.0f, 1.0f);
-	memcpy(uniform_buffers.reflectionParameters.mapped, &UBOP, sizeof(UBOP));
+	memcpy(uniform_buffers.reflectionParameters.getMapped(), &UBOP, sizeof(UBOP));
 }
 
 void Scene::UpdateDynamicUniformBuffer() {
@@ -1183,43 +1183,42 @@ void Scene::UpdateDynamicUniformBuffer() {
 	glm::vec3 offset(cloudsVisibDist, cloudsVisibDist/10, cloudsVisibDist);
 	cloudsPos+=0.01f;
 	
-		for (uint32_t x = 0; x < dim; x++) {
-			for (uint32_t y = 0; y < dim; y++) {
-				for (uint32_t z = 0; z < dim; z++) {
-					uint32_t index = x * dim * dim + y * dim + z;
+	for (uint32_t x = 0; x < dim; x++) {
+		for (uint32_t y = 0; y < dim; y++) {
+			for (uint32_t z = 0; z < dim; z++) {
+				uint32_t index = x * dim * dim + y * dim + z;
 
-					// Aligned offset
-					glm::mat4* modelMat = (glm::mat4*)(((uint64_t)uboDataDynamic.model + (index * dynamicAlignment)));
+				// Aligned offset
+				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)uboDataDynamic.model + (index * dynamicAlignment)));
 					
-					// Update matrices
-					glm::vec3 pos = glm::vec3(-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x, -((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y, -((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z);
+				// Update matrices
+				glm::vec3 pos = glm::vec3(-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x, -((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y, -((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z);
 					
-					pos += rnd_pos[index];
+				pos += rnd_pos[index];
 				
-					if(cloudsPos>cloudsVisibDist*2){
-						cloudsPos=-cloudsVisibDist*2;
-					} 
+				if(cloudsPos>cloudsVisibDist*2){
+					cloudsPos=-cloudsVisibDist*2;
+				} 
 
-					*modelMat = glm::translate(glm::mat4(1.0f), pos);
-					*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist*2, 0.0f));
-					//*modelMat = glm::scale(*modelMat,  glm::vec3(55.0f, 55.0f, 55.0f));
+				*modelMat = glm::translate(glm::mat4(1.0f), pos);
+				*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist*2, 0.0f));
+				//*modelMat = glm::scale(*modelMat,  glm::vec3(55.0f, 55.0f, 55.0f));
 
-					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-					//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-				}
+				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 			}
 		}
+	}
 
-		memcpy(uniform_buffers.clouds_dynamic.mapped, uboDataDynamic.model, uniform_buffers.clouds_dynamic.size);
+	memcpy(uniform_buffers.clouds_dynamic.getMapped(), uboDataDynamic.model, sizeof(uboDataDynamic));
 
-		// Flush to make changes visible to the host 
-		VkMappedMemoryRange memoryRange = {};
-		memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-		memoryRange.memory = uniform_buffers.clouds_dynamic.memory;
-		memoryRange.size = uniform_buffers.clouds_dynamic.size;
-		
-		vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange);
+	// Flush to make changes visible to the host 
+	VkMappedMemoryRange memoryRange = {};
+	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	memoryRange.memory = uniform_buffers.clouds_dynamic.m_Memory;
+	memoryRange.size = sizeof(uboDataDynamic);	
+	vkFlushMappedMemoryRanges(logicalDevice->device, 1, &memoryRange);
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
@@ -1230,13 +1229,13 @@ void Scene::UpdateSkyboxUniformBuffer() {
 	UBOSB.view[3][1] *= 0;
 	UBOSB.view[3][2] *= 0;
 	UBOSB.time = (float)mainClock->totalTime;
-	memcpy(uniform_buffers.skybox.mapped, &UBOSB, sizeof(UBOSB));
-	memcpy(uniform_buffers.skyboxRefraction.mapped, &UBOSB, sizeof(UBOSB));
+	memcpy(uniform_buffers.skybox.getMapped(), &UBOSB, sizeof(UBOSB));
+	memcpy(uniform_buffers.skyboxRefraction.getMapped(), &UBOSB, sizeof(UBOSB));
 
 	UBOSB.view[1][0] *= -1;
 	UBOSB.view[1][1] *= -1;
 	UBOSB.view[1][2] *= -1;
-	memcpy(uniform_buffers.skyboxReflection.mapped, &UBOSB, sizeof(UBOSB));
+	memcpy(uniform_buffers.skyboxReflection.getMapped(), &UBOSB, sizeof(UBOSB));
 }
 
 void Scene::UpdateOceanUniformBuffer() {
@@ -1246,7 +1245,7 @@ void Scene::UpdateOceanUniformBuffer() {
 	UBOSE.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSE.cameraPos = currentCamera->position;
 	UBOSE.time = (float)mainClock->totalTime;
-	memcpy(uniform_buffers.ocean.mapped, &UBOSE, sizeof(UBOSE));
+	memcpy(uniform_buffers.ocean.getMapped(), &UBOSE, sizeof(UBOSE));
 }
 
 // ------ Text overlay - performance statistics ----- //
@@ -1540,12 +1539,12 @@ void Scene::CreateDescriptorSet() {
 		ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &m.second.refractDescriptorSet));
 
 		VkDescriptorBufferInfo BufferInfo = {};
-		BufferInfo.buffer = uniform_buffers.stillObjects.buffer;
+		BufferInfo.buffer = uniform_buffers.stillObjects.getBuffer();
 		BufferInfo.offset = 0;
 		BufferInfo.range = sizeof(UboStaticGeometry);
 		
 		VkDescriptorBufferInfo ObjectBufferParametersInfo = {};
-		ObjectBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+		ObjectBufferParametersInfo.buffer = uniform_buffers.parameters.getBuffer();
 		ObjectBufferParametersInfo.offset = 0;
 		ObjectBufferParametersInfo.range = sizeof(UboParam);
 
@@ -1620,12 +1619,12 @@ void Scene::CreateDescriptorSet() {
 		// Copy above descriptor set values to reflection ad refracion
 
 		VkDescriptorBufferInfo reflectBufferInfo = {};
-		reflectBufferInfo.buffer = uniform_buffers.reflection.buffer;
+		reflectBufferInfo.buffer = uniform_buffers.reflection.getBuffer();
 		reflectBufferInfo.offset = 0;
 		reflectBufferInfo.range = sizeof(UboOffscreen);
 
 		VkDescriptorBufferInfo reflectParametersInfo = {};
-		reflectParametersInfo.buffer = uniform_buffers.reflectionParameters.buffer;
+		reflectParametersInfo.buffer = uniform_buffers.reflectionParameters.getBuffer();
 		reflectParametersInfo.offset = 0;
 		reflectParametersInfo.range = sizeof(UboParam);
 
@@ -1647,12 +1646,12 @@ void Scene::CreateDescriptorSet() {
 		vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(reflectDescriptorWrites.size()), reflectDescriptorWrites.data(), 0, nullptr);
 
 		VkDescriptorBufferInfo refractBufferInfo = {};
-		refractBufferInfo.buffer = uniform_buffers.refraction.buffer;
+		refractBufferInfo.buffer = uniform_buffers.refraction.getBuffer();
 		refractBufferInfo.offset = 0;
 		refractBufferInfo.range = sizeof(UboOffscreen);
 
 		VkDescriptorBufferInfo refractParametersInfo = {};
-		refractParametersInfo.buffer = uniform_buffers.refractionParameters.buffer;
+		refractParametersInfo.buffer = uniform_buffers.refractionParameters.getBuffer();
 		refractParametersInfo.offset = 0;
 		refractParametersInfo.range = sizeof(UboParam);
 
@@ -1686,12 +1685,12 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &allocInfo, &skyboxRefractionDescriptorSet));
 
 	VkDescriptorBufferInfo SkyboxBufferInfo = {};
-	SkyboxBufferInfo.buffer = uniform_buffers.skybox.buffer;
+	SkyboxBufferInfo.buffer = uniform_buffers.skybox.getBuffer();
 	SkyboxBufferInfo.offset = 0;
 	SkyboxBufferInfo.range = sizeof(UboSkybox);
 
 	VkDescriptorBufferInfo SkyboxBufferParametersInfo = {};
-	SkyboxBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	SkyboxBufferParametersInfo.buffer = uniform_buffers.parameters.getBuffer();
 	SkyboxBufferParametersInfo.offset = 0;
 	SkyboxBufferParametersInfo.range = sizeof(UboParam);
 
@@ -1729,12 +1728,12 @@ void Scene::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(skyboxDescriptorWrites.size()), skyboxDescriptorWrites.data(), 0, nullptr);
 
 	VkDescriptorBufferInfo skyboxReflectBufferInfo = {};
-	skyboxReflectBufferInfo.buffer = uniform_buffers.skyboxReflection.buffer;
+	skyboxReflectBufferInfo.buffer = uniform_buffers.skyboxReflection.getBuffer();
 	skyboxReflectBufferInfo.offset = 0;
 	skyboxReflectBufferInfo.range = sizeof(UboSkybox);
 
 	VkDescriptorBufferInfo skyboxReflectBufferParametersInfo = {};
-	skyboxReflectBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	skyboxReflectBufferParametersInfo.buffer = uniform_buffers.parameters.getBuffer();
 	skyboxReflectBufferParametersInfo.offset = 0;
 	skyboxReflectBufferParametersInfo.range = sizeof(UboParam);
 
@@ -1749,12 +1748,12 @@ void Scene::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(skyboxReflectionDescriptorWrites.size()), skyboxReflectionDescriptorWrites.data(), 0, nullptr);
 
 	VkDescriptorBufferInfo skyboxRefractionBufferInfo = {};
-	skyboxRefractionBufferInfo.buffer = uniform_buffers.skyboxRefraction.buffer;
+	skyboxRefractionBufferInfo.buffer = uniform_buffers.skyboxRefraction.getBuffer();
 	skyboxRefractionBufferInfo.offset = 0;
 	skyboxRefractionBufferInfo.range = sizeof(UboSkybox);
 
 	VkDescriptorBufferInfo skyboxRefractionBufferParametersInfo = {};
-	skyboxRefractionBufferParametersInfo.buffer = uniform_buffers.parameters.buffer;
+	skyboxRefractionBufferParametersInfo.buffer = uniform_buffers.parameters.getBuffer();
 	skyboxRefractionBufferParametersInfo.offset = 0;
 	skyboxRefractionBufferParametersInfo.range = sizeof(UboParam);
 
@@ -1778,14 +1777,14 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &CloudsAllocInfo, &cloudDescriptorSet));
 
 	VkDescriptorBufferInfo CloudsBufferInfo = {};
-	CloudsBufferInfo.buffer = uniform_buffers.clouds.buffer;
+	CloudsBufferInfo.buffer = uniform_buffers.clouds.getBuffer();
 	CloudsBufferInfo.offset = 0;
 	CloudsBufferInfo.range = sizeof(UboClouds);
 
 	VkDescriptorBufferInfo CloudsDynamicBufferInfo = {};
-	CloudsDynamicBufferInfo.buffer = uniform_buffers.clouds_dynamic.buffer;
+	CloudsDynamicBufferInfo.buffer = uniform_buffers.clouds_dynamic.getBuffer();
 	CloudsDynamicBufferInfo.offset = 0;
-	CloudsDynamicBufferInfo.range = sizeof(UboCloudsMatrices);
+	CloudsDynamicBufferInfo.range = sizeof(UboDataDynamic);
 
 	std::array<VkWriteDescriptorSet, 2> cloudsDescriptorWrites = {};
 
@@ -1817,7 +1816,7 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &oceanAllocInfo, &oceanDescriptorSet));
 
 	VkDescriptorBufferInfo oceanBufferInfo = {};
-	oceanBufferInfo.buffer = uniform_buffers.ocean.buffer;
+	oceanBufferInfo.buffer = uniform_buffers.ocean.getBuffer();
 	oceanBufferInfo.offset = 0;
 	oceanBufferInfo.range = sizeof(UboSea);
 
@@ -1882,7 +1881,7 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &LineAllocInfo, &lineDescriptorSet));
 
 	VkDescriptorBufferInfo LineBufferInfo = {};
-	LineBufferInfo.buffer = uniform_buffers.line.buffer;
+	LineBufferInfo.buffer = uniform_buffers.line.getBuffer();
 	LineBufferInfo.offset = 0;
 	LineBufferInfo.range = sizeof(UboStaticGeometry);
 
@@ -1908,7 +1907,7 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &SelectionIndicatorAllocInfo, &selectionIndicatorDescriptorSet));
 
 	VkDescriptorBufferInfo SelectionIndicatorBufferInfo = {};
-	SelectionIndicatorBufferInfo.buffer = uniform_buffers.selectionIndicator.buffer;
+	SelectionIndicatorBufferInfo.buffer = uniform_buffers.selectionIndicator.getBuffer();
 	SelectionIndicatorBufferInfo.offset = 0;
 	SelectionIndicatorBufferInfo.range = sizeof(UboSelectionIndicator);
 
@@ -1947,7 +1946,7 @@ void Scene::CreateDescriptorSet() {
 	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AabbAllocInfo, &aabbDescriptorSet));
 
 	VkDescriptorBufferInfo AabbBufferInfo = {};
-	AabbBufferInfo.buffer = uniform_buffers.line.buffer;
+	AabbBufferInfo.buffer = uniform_buffers.line.getBuffer();
 	AabbBufferInfo.offset = 0;
 	AabbBufferInfo.range = sizeof(UboStaticGeometry);
 
@@ -1966,7 +1965,7 @@ void Scene::CreateDescriptorSet() {
 
 void Scene::UpdateDescriptorSet() {
 	VkDescriptorBufferInfo oceanBufferInfo = {};
-	oceanBufferInfo.buffer = uniform_buffers.ocean.buffer;
+	oceanBufferInfo.buffer = uniform_buffers.ocean.getBuffer();
 	oceanBufferInfo.offset = 0;
 	oceanBufferInfo.range = sizeof(UboSea);
 
@@ -2036,13 +2035,13 @@ void Scene::UpdateSelectRayDrawData() {
 		{ mousePicker->hitPoint, {1.0f, 0.0f, 0.0f}, {1.0f, 1.0f}, {0.0f, 1.0f, 0.0f}}
 	};
 
-	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.mapped;
+	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.getMapped();
 	memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
-	vertex_buffers.selectRay.Flush();
+	vertex_buffers.selectRay.flush(VK_WHOLE_SIZE);
 	
-	uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.mapped;
+	uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.getMapped();
 	memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
-	index_buffers.selectRay.Flush();
+	index_buffers.selectRay.flush(VK_WHOLE_SIZE);
 }
 
 void Scene::CreateSelectRay() {
@@ -2167,8 +2166,8 @@ void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, 
 	enginetool::Buffer vertexStagingBuffer;
 	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
 	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer);
-	CopyBuffer(vertexStagingBuffer.buffer, vertexBuffer.buffer, vertexBufferSize);
-	vertexStagingBuffer.Destroy();
+	CopyBuffer(vertexStagingBuffer.getBuffer(), vertexBuffer.getBuffer(), vertexBufferSize);
+	vertexStagingBuffer.destroy();
 }
 
 void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer) {
@@ -2176,24 +2175,24 @@ void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer
 	enginetool::Buffer indexStagingBuffer;
 	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, indices.data());
 	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer);
-	CopyBuffer(indexStagingBuffer.buffer, indexBuffer.buffer, indexBufferSize);
-	indexStagingBuffer.Destroy();
+	CopyBuffer(indexStagingBuffer.getBuffer(), indexBuffer.getBuffer(), indexBufferSize);
+	indexStagingBuffer.destroy();
 }
 
 void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
-	logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
-	vertexBuffer.device = logicalDevice->device;
-	vertexBuffer.Unmap();
-	vertexBuffer.Map();
+	logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getBuffer(), vertexBuffer.m_Memory);
+	vertexBuffer.m_Device = logicalDevice->device;
+	vertexBuffer.unmap();
+	vertexBuffer.map(vertexBufferSize);
 }
 
 void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer){
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
-	logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
-	indexBuffer.device = logicalDevice->device;
-	indexBuffer.Unmap();
-	indexBuffer.Map();
+	logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.getBuffer(), indexBuffer.m_Memory);
+	indexBuffer.m_Device = logicalDevice->device;
+	indexBuffer.unmap();
+	indexBuffer.map(indexBufferSize);
 };
 
 
@@ -2311,16 +2310,16 @@ void Scene::CleanUpOffscreenImage() {
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
-	index_buffers.meshLibraryObjects.Destroy();
-	vertex_buffers.meshLibraryObjects.Destroy();
-	index_buffers.ocean.Destroy();
-	vertex_buffers.ocean.Destroy();
-	index_buffers.skybox.Destroy();
-	vertex_buffers.skybox.Destroy();
-	index_buffers.selectRay.Destroy();
-	vertex_buffers.selectRay.Destroy();
-	index_buffers.aabb.Destroy();
-	vertex_buffers.aabb.Destroy();
+	index_buffers.meshLibraryObjects.destroy();
+	vertex_buffers.meshLibraryObjects.destroy();
+	index_buffers.ocean.destroy();
+	vertex_buffers.ocean.destroy();
+	index_buffers.skybox.destroy();
+	vertex_buffers.skybox.destroy();
+	index_buffers.selectRay.destroy();
+	vertex_buffers.selectRay.destroy();
+	index_buffers.aabb.destroy();
+	vertex_buffers.aabb.destroy();
 }
 
 void Scene::DeInitScene() {
@@ -2359,20 +2358,20 @@ void Scene::DeInitUniformBuffer() {
 		alignedFree(uboDataDynamic.model);
 	}
 
-	uniform_buffers.line.Destroy();
-	uniform_buffers.skybox.Destroy();
-	uniform_buffers.skyboxReflection.Destroy();
-	uniform_buffers.skyboxRefraction.Destroy();
-	uniform_buffers.ocean.Destroy();
-	uniform_buffers.selectionIndicator.Destroy();
-	uniform_buffers.stillObjects.Destroy();
-	uniform_buffers.parameters.Destroy();
-	uniform_buffers.clouds.Destroy();
-	uniform_buffers.clouds_dynamic.Destroy();
-	uniform_buffers.reflection.Destroy();
-	uniform_buffers.reflectionParameters.Destroy();
-	uniform_buffers.refraction.Destroy();
-	uniform_buffers.refractionParameters.Destroy();
+	uniform_buffers.line.destroy();
+	uniform_buffers.skybox.destroy();
+	uniform_buffers.skyboxReflection.destroy();
+	uniform_buffers.skyboxRefraction.destroy();
+	uniform_buffers.ocean.destroy();
+	uniform_buffers.selectionIndicator.destroy();
+	uniform_buffers.stillObjects.destroy();
+	uniform_buffers.parameters.destroy();
+	uniform_buffers.clouds.destroy();
+	uniform_buffers.clouds_dynamic.destroy();
+	uniform_buffers.reflection.destroy();
+	uniform_buffers.reflectionParameters.destroy();
+	uniform_buffers.refraction.destroy();
+	uniform_buffers.refractionParameters.destroy();
 }
 
 void Scene::DestroyPipeline() {

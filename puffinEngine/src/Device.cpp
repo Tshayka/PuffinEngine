@@ -503,7 +503,7 @@ uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags prope
 
 void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, enginetool::Buffer *buffer, void *data = nullptr)
 {
-	buffer->device = device;
+	buffer->m_Device = device;
 
 	VkBufferCreateInfo BufferInfo = {};
 	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -511,10 +511,10 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	BufferInfo.usage = usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer));
+	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->getBuffer()));
 
 	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements(device, buffer->buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements(device, buffer->getBuffer(), &memory_requirements);
 
 	VkMemoryAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
@@ -522,31 +522,31 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	// Find a memory type index that fits the properties of the buffer
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
 	
-	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->m_Memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 
-	buffer->alignment = memory_requirements.alignment;
-	buffer->size = AllocInfo.allocationSize;
-	buffer->usage_flags = usage;
-	buffer->memory_property_flags = properties;
+	buffer->m_Alignment = memory_requirements.alignment;
+	//buffer->size = AllocInfo.allocationSize;
+	buffer->m_UsageFlags = usage;
+	buffer->m_MemoryPropertyFags = properties;
 
 	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 	if (data != nullptr)
 	{
-		buffer->Map();
-		buffer->Copy(data);
-		buffer->Unmap();
+		buffer->map(size);
+		buffer->copy(AllocInfo.allocationSize, data);
+		buffer->unmap();
 	}
 
 	// Initialize a default descriptor that covers the whole buffer size
-	buffer->SetupDescriptor();
+	buffer->setupDescriptor(size);
 
 	// Attach the memory to the buffer object
-	buffer->Bind();
+	buffer->bind();
 }
 
 void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, enginetool::Buffer *buffer)
 {
-	buffer->device = device;
+	buffer->m_Device = device;
 
 	VkBufferCreateInfo BufferInfo = {};
 	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -554,28 +554,28 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	BufferInfo.usage = usage;
 	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->buffer));
+	ErrorCheck(vkCreateBuffer(device, &BufferInfo, nullptr, &buffer->getBuffer()));
 
 	VkMemoryRequirements memory_requirements;
-	vkGetBufferMemoryRequirements(device, buffer->buffer, &memory_requirements);
+	vkGetBufferMemoryRequirements(device, buffer->getBuffer(), &memory_requirements);
 
 	VkMemoryAllocateInfo AllocInfo = {};
 	AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
 	AllocInfo.allocationSize = memory_requirements.size;
 	// Find a memory type index that fits the properties of the buffer
 	AllocInfo.memoryTypeIndex = FindMemoryType(memory_requirements.memoryTypeBits, properties);
-	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+	ErrorCheck(vkAllocateMemory(device, &AllocInfo, nullptr, &buffer->m_Memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
 	
-	buffer->alignment = memory_requirements.alignment;
-	buffer->size = AllocInfo.allocationSize;
-	buffer->usage_flags = usage;
-	buffer->memory_property_flags = properties;
+	buffer->m_Alignment = memory_requirements.alignment;
+	//buffer->size = AllocInfo.allocationSize;
+	buffer->m_UsageFlags = usage;
+	buffer->m_MemoryPropertyFags = properties;
 
 	// Initialize a default descriptor that covers the whole buffer size
-	buffer->SetupDescriptor();
+	buffer->setupDescriptor(size);
 
 	// Attach the memory to the buffer object
-	buffer->Bind();
+	buffer->bind();
 }
 
 // ----------------- Render pass -------------------- //

@@ -112,8 +112,8 @@ void GuiElement::LoadImage() {
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	font.CopyBufferToImage(stagingBuffer.buffer);
-	stagingBuffer.Destroy();
+	font.CopyBufferToImage(stagingBuffer.getBuffer());
+	stagingBuffer.destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	// Store our identifier
@@ -457,35 +457,35 @@ void GuiElement::RenderDrawData() {
 
 	// Vertex buffer
 	if (vertexCount != draw_data->TotalVtxCount) {
-		if (vertexBuffer.buffer == VK_NULL_HANDLE) {
-			vertexBuffer.Unmap();
-			vertexBuffer.Destroy();
+		if (vertexBuffer.getBuffer() == VK_NULL_HANDLE) {
+			vertexBuffer.unmap();
+			vertexBuffer.destroy();
 		}
 
-		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.buffer, vertexBuffer.memory);
-		vertexBuffer.device = logicalDevice->device;
+		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getBuffer(), vertexBuffer.m_Memory);
+		vertexBuffer.m_Device = logicalDevice->device;
 		vertexCount = draw_data->TotalVtxCount;
-		vertexBuffer.Unmap();
-		vertexBuffer.Map();
+		vertexBuffer.unmap();
+		vertexBuffer.map(vertexBufferSize);
 	}
 
 	// Index buffer
 	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if (indexCount < draw_data->TotalIdxCount) {
-		if (indexBuffer.buffer == VK_NULL_HANDLE) {
-			indexBuffer.Unmap();
-			indexBuffer.Destroy();
+		if (indexBuffer.getBuffer() == VK_NULL_HANDLE) {
+			indexBuffer.unmap();
+			indexBuffer.destroy();
 		}
 
-		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.buffer, indexBuffer.memory);
-		indexBuffer.device = logicalDevice->device;
+		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.getBuffer(), indexBuffer.m_Memory);
+		indexBuffer.m_Device = logicalDevice->device;
 		indexCount = draw_data->TotalIdxCount;
-		indexBuffer.Map();
+		indexBuffer.map(indexBufferSize);
 	}
 
 	// Upload data
-	ImDrawVert* vtxDst = (ImDrawVert*)vertexBuffer.mapped;
-	ImDrawIdx* idxDst = (ImDrawIdx*)indexBuffer.mapped;
+	ImDrawVert* vtxDst = (ImDrawVert*)vertexBuffer.getMapped();
+	ImDrawIdx* idxDst = (ImDrawIdx*)indexBuffer.getMapped();
 
 	for (int n = 0; n < draw_data->CmdListsCount; n++) {
 		const ImDrawList* cmd_list = draw_data->CmdLists[n];
@@ -496,8 +496,8 @@ void GuiElement::RenderDrawData() {
 	}
 
 	// Flush to make writes visible to GPU
-	vertexBuffer.Flush();
-	indexBuffer.Flush();
+	vertexBuffer.flush(VK_WHOLE_SIZE);
+	indexBuffer.flush(VK_WHOLE_SIZE);
 }
 
 void GuiElement::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
@@ -522,8 +522,8 @@ void GuiElement::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
 	VkDeviceSize offsets[1] = { 0 };
 
 	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.buffer, offsets);
-	vkCmdBindIndexBuffer(command_buffer, indexBuffer.buffer, 0, VK_INDEX_TYPE_UINT16);
+	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer.getBuffer(), offsets);
+	vkCmdBindIndexBuffer(command_buffer, indexBuffer.getBuffer(), 0, VK_INDEX_TYPE_UINT16);
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 	// Render the command lists:
@@ -554,8 +554,8 @@ void GuiElement::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
 }
 
 void GuiElement::DeInit() {
-	indexBuffer.Destroy();
-	vertexBuffer.Destroy();
+	indexBuffer.destroy();
+	vertexBuffer.destroy();
 	font.DeInit();
 	vkDestroyPipelineCache(logicalDevice->device, pipelineCache, nullptr);
 	vkDestroyPipeline(logicalDevice->device, pipeline, nullptr);

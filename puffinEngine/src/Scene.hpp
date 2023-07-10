@@ -240,7 +240,7 @@ private:
 	} UBOC;
 
 	// UBO Dynamic that contains all clouds matrices
-	struct UboCloudsMatrices {
+	struct UboDataDynamic {
 		glm::mat4 *model = nullptr;
 	} uboDataDynamic;
 

@@ -123,8 +123,8 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	layer.CopyBufferToImage(stagingBuffer.buffer);
-	stagingBuffer.Destroy();
+	layer.CopyBufferToImage(stagingBuffer.getBuffer());
+	stagingBuffer.destroy();
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
@@ -166,9 +166,9 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 		}
 	}
 
-	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.buffer, layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
+	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.getBuffer(), layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
 	layer.EndSingleTimeCommands(command_buffer);
-	stagingBuffer.Destroy();
+	stagingBuffer.destroy();
 
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
