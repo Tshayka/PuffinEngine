@@ -124,7 +124,7 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	layer.CopyBufferToImage(stagingBuffer.getBuffer());
-	stagingBuffer.destroy();
+	stagingBuffer.Destroy();
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
@@ -168,7 +168,7 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 
 	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.getBuffer(), layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
 	layer.EndSingleTimeCommands(command_buffer);
-	stagingBuffer.destroy();
+	stagingBuffer.Destroy();
 
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }

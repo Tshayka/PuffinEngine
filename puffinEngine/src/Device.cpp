@@ -532,16 +532,16 @@ void Device::CreateStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkM
 	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
 	if (data != nullptr)
 	{
-		buffer->map(size);
-		buffer->copy(AllocInfo.allocationSize, data);
-		buffer->unmap();
+		buffer->Map(size);
+		buffer->Copy(AllocInfo.allocationSize, data);
+		buffer->Unmap();
 	}
 
 	// Initialize a default descriptor that covers the whole buffer size
-	buffer->setupDescriptor(size);
+	buffer->SetupDescriptor(size);
 
 	// Attach the memory to the buffer object
-	buffer->bind();
+	buffer->Bind();
 }
 
 void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, enginetool::Buffer *buffer)
@@ -572,10 +572,10 @@ void Device::CreateUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, V
 	buffer->m_MemoryPropertyFags = properties;
 
 	// Initialize a default descriptor that covers the whole buffer size
-	buffer->setupDescriptor(size);
+	buffer->SetupDescriptor(size);
 
 	// Attach the memory to the buffer object
-	buffer->bind();
+	buffer->Bind();
 }
 
 // ----------------- Render pass -------------------- //

@@ -66,7 +66,7 @@ void GuiMainUi::LoadImGuiImage() {
 	
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	font.CopyBufferToImage(stagingBuffer.getBuffer());
-	stagingBuffer.destroy();
+	stagingBuffer.Destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
@@ -336,29 +336,29 @@ void GuiMainUi::UpdateDrawData() {
 	// Vertex buffer
 	if (vertexCount != drawData.totalVerticesCount) {
 		if (vertexBuffer.getBuffer() == VK_NULL_HANDLE) {
-			vertexBuffer.unmap();
-			vertexBuffer.destroy();
+			vertexBuffer.Unmap();
+			vertexBuffer.Destroy();
 		}
 
 		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getBuffer(), vertexBuffer.m_Memory);
 		vertexBuffer.m_Device = logicalDevice->device;
 		vertexCount = drawData.totalVerticesCount;
-		vertexBuffer.unmap();
-		vertexBuffer.map(vertexBufferSize);
+		vertexBuffer.Unmap();
+		vertexBuffer.Map(vertexBufferSize);
 	}
 
 	// Index buffer
 	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if (indexCount < drawData.totalIndicesCount) {
 		if (indexBuffer.getBuffer() == VK_NULL_HANDLE) {
-			indexBuffer.unmap();
-			indexBuffer.destroy();
+			indexBuffer.Unmap();
+			indexBuffer.Destroy();
 		}
 
 		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.getBuffer(), indexBuffer.m_Memory);
 		indexBuffer.m_Device = logicalDevice->device;
 		indexCount = drawData.totalIndicesCount;
-		indexBuffer.map(indexBufferSize);
+		indexBuffer.Map(indexBufferSize);
 	}
 
 	 Vertex* vtxDst = (Vertex*)vertexBuffer.getMapped();
@@ -371,8 +371,8 @@ void GuiMainUi::UpdateDrawData() {
 	 	idxDst += drawData.componentsToDraw[i].indices.size();
 	}
 
-	vertexBuffer.flush(VK_WHOLE_SIZE);
-	indexBuffer.flush(VK_WHOLE_SIZE);
+	vertexBuffer.Flush(VK_WHOLE_SIZE);
+	indexBuffer.Flush(VK_WHOLE_SIZE);
 }
 
 void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
@@ -420,8 +420,8 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 }
 
 void GuiMainUi::DeInit() {
-	indexBuffer.destroy();
-	vertexBuffer.destroy();
+	indexBuffer.Destroy();
+	vertexBuffer.Destroy();
 	font.DeInit();
 	vkDestroyPipelineCache(logicalDevice->device, pipelineCache, nullptr);
 	vkDestroyPipeline(logicalDevice->device, pipeline, nullptr);

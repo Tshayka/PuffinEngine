@@ -961,7 +961,7 @@ void Scene::CreateBuffers() {
 
 	// Ocean Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSea), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.ocean);
-	uniform_buffers.ocean.map(sizeof(UboSea));
+	uniform_buffers.ocean.Map(sizeof(UboSea));
 	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
@@ -986,53 +986,53 @@ void Scene::CreateBuffers() {
 		
     // Uniform buffer object with per-object matrices
 	logicalDevice->CreateUnstagedBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, &uniform_buffers.clouds_dynamic);
-	uniform_buffers.clouds_dynamic.map(bufferSize);
+	uniform_buffers.clouds_dynamic.Map(bufferSize);
 
 	// Static shared uniform buffer object with projection and view matrix
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboClouds), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.clouds);
-	uniform_buffers.clouds.map(sizeof(UboClouds));
+	uniform_buffers.clouds.Map(sizeof(UboClouds));
 
 	// Rotating Objects Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSelectionIndicator), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.selectionIndicator);
-	uniform_buffers.selectionIndicator.map(sizeof(UboSelectionIndicator));
+	uniform_buffers.selectionIndicator.Map(sizeof(UboSelectionIndicator));
 
 	// Objects Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.stillObjects);
-	uniform_buffers.stillObjects.map(sizeof(UboStaticGeometry));
+	uniform_buffers.stillObjects.Map(sizeof(UboStaticGeometry));
 
 	// Objects Uniform buffers for reflection rendering -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflection);
-	uniform_buffers.reflection.map(sizeof(UboStaticGeometry));
+	uniform_buffers.reflection.Map(sizeof(UboStaticGeometry));
 
 	// Objects Uniform buffers for refraction rendering -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refraction);
-	uniform_buffers.refraction.map(sizeof(UboStaticGeometry));
+	uniform_buffers.refraction.Map(sizeof(UboStaticGeometry));
 
 	// Additional uniform bufer for parameters -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.parameters);
-	uniform_buffers.parameters.map(sizeof(UboParam));
+	uniform_buffers.parameters.Map(sizeof(UboParam));
 
 	// Additional uniform bufer parameters for reflection scene -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.reflectionParameters);
-	uniform_buffers.reflectionParameters.map(sizeof(UboParam));
+	uniform_buffers.reflectionParameters.Map(sizeof(UboParam));
 
 	// Additional uniform bufer parameters for refraction scene -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboParam), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.refractionParameters);
-	uniform_buffers.refractionParameters.map(sizeof(UboParam));
+	uniform_buffers.refractionParameters.Map(sizeof(UboParam));
 
 	// Skybox Uniform buffers memory -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skybox);
-	uniform_buffers.skybox.map(sizeof(UboSkybox));
+	uniform_buffers.skybox.Map(sizeof(UboSkybox));
 
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxReflection);
-	uniform_buffers.skyboxReflection.map(sizeof(UboSkybox));
+	uniform_buffers.skyboxReflection.Map(sizeof(UboSkybox));
 
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboSkybox), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.skyboxRefraction);
-	uniform_buffers.skyboxRefraction.map(sizeof(UboSkybox));
+	uniform_buffers.skyboxRefraction.Map(sizeof(UboSkybox));
 
 	// Line uniform buffer -> static
 	logicalDevice->CreateUnstagedBuffer(sizeof(UboStaticGeometry), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &uniform_buffers.line);
-	uniform_buffers.line.map(sizeof(UboStaticGeometry));
+	uniform_buffers.line.Map(sizeof(UboStaticGeometry));
 
 	// Create random positions for dynamic uniform buffer
 	RandomPositions();
@@ -2037,11 +2037,11 @@ void Scene::UpdateSelectRayDrawData() {
 
 	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)vertex_buffers.selectRay.getMapped();
 	memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
-	vertex_buffers.selectRay.flush(VK_WHOLE_SIZE);
+	vertex_buffers.selectRay.Flush(VK_WHOLE_SIZE);
 	
 	uint32_t* idxDst = (uint32_t*)index_buffers.selectRay.getMapped();
 	memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
-	index_buffers.selectRay.flush(VK_WHOLE_SIZE);
+	index_buffers.selectRay.Flush(VK_WHOLE_SIZE);
 }
 
 void Scene::CreateSelectRay() {
@@ -2167,7 +2167,7 @@ void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, 
 	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &vertexStagingBuffer, vertices.data());
 	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &vertexBuffer);
 	CopyBuffer(vertexStagingBuffer.getBuffer(), vertexBuffer.getBuffer(), vertexBufferSize);
-	vertexStagingBuffer.destroy();
+	vertexStagingBuffer.Destroy();
 }
 
 void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer) {
@@ -2176,23 +2176,23 @@ void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer
 	logicalDevice->CreateStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &indexStagingBuffer, indices.data());
 	logicalDevice->CreateUnstagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &indexBuffer);
 	CopyBuffer(indexStagingBuffer.getBuffer(), indexBuffer.getBuffer(), indexBufferSize);
-	indexStagingBuffer.destroy();
+	indexStagingBuffer.Destroy();
 }
 
 void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
 	logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getBuffer(), vertexBuffer.m_Memory);
 	vertexBuffer.m_Device = logicalDevice->device;
-	vertexBuffer.unmap();
-	vertexBuffer.map(vertexBufferSize);
+	vertexBuffer.Unmap();
+	vertexBuffer.Map(vertexBufferSize);
 }
 
 void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer){
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 	logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.getBuffer(), indexBuffer.m_Memory);
 	indexBuffer.m_Device = logicalDevice->device;
-	indexBuffer.unmap();
-	indexBuffer.map(indexBufferSize);
+	indexBuffer.Unmap();
+	indexBuffer.Map(indexBufferSize);
 };
 
 
@@ -2310,16 +2310,16 @@ void Scene::CleanUpOffscreenImage() {
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
-	index_buffers.meshLibraryObjects.destroy();
-	vertex_buffers.meshLibraryObjects.destroy();
-	index_buffers.ocean.destroy();
-	vertex_buffers.ocean.destroy();
-	index_buffers.skybox.destroy();
-	vertex_buffers.skybox.destroy();
-	index_buffers.selectRay.destroy();
-	vertex_buffers.selectRay.destroy();
-	index_buffers.aabb.destroy();
-	vertex_buffers.aabb.destroy();
+	index_buffers.meshLibraryObjects.Destroy();
+	vertex_buffers.meshLibraryObjects.Destroy();
+	index_buffers.ocean.Destroy();
+	vertex_buffers.ocean.Destroy();
+	index_buffers.skybox.Destroy();
+	vertex_buffers.skybox.Destroy();
+	index_buffers.selectRay.Destroy();
+	vertex_buffers.selectRay.Destroy();
+	index_buffers.aabb.Destroy();
+	vertex_buffers.aabb.Destroy();
 }
 
 void Scene::DeInitScene() {
@@ -2358,20 +2358,20 @@ void Scene::DeInitUniformBuffer() {
 		alignedFree(uboDataDynamic.model);
 	}
 
-	uniform_buffers.line.destroy();
-	uniform_buffers.skybox.destroy();
-	uniform_buffers.skyboxReflection.destroy();
-	uniform_buffers.skyboxRefraction.destroy();
-	uniform_buffers.ocean.destroy();
-	uniform_buffers.selectionIndicator.destroy();
-	uniform_buffers.stillObjects.destroy();
-	uniform_buffers.parameters.destroy();
-	uniform_buffers.clouds.destroy();
-	uniform_buffers.clouds_dynamic.destroy();
-	uniform_buffers.reflection.destroy();
-	uniform_buffers.reflectionParameters.destroy();
-	uniform_buffers.refraction.destroy();
-	uniform_buffers.refractionParameters.destroy();
+	uniform_buffers.line.Destroy();
+	uniform_buffers.skybox.Destroy();
+	uniform_buffers.skyboxReflection.Destroy();
+	uniform_buffers.skyboxRefraction.Destroy();
+	uniform_buffers.ocean.Destroy();
+	uniform_buffers.selectionIndicator.Destroy();
+	uniform_buffers.stillObjects.Destroy();
+	uniform_buffers.parameters.Destroy();
+	uniform_buffers.clouds.Destroy();
+	uniform_buffers.clouds_dynamic.Destroy();
+	uniform_buffers.reflection.Destroy();
+	uniform_buffers.reflectionParameters.Destroy();
+	uniform_buffers.refraction.Destroy();
+	uniform_buffers.refractionParameters.Destroy();
 }
 
 void Scene::DestroyPipeline() {

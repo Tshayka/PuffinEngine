@@ -15,37 +15,36 @@ namespace enginetool {
 			return p_Mapped.get();
 		}
 
-		void copy(VkDeviceSize size, void* data) {
+		void Copy(VkDeviceSize size, void* data) {
 			memcpy(p_Mapped.get(), data, size);
 		}
 
-		void map(VkDeviceSize size, VkDeviceSize offset = 0) {
-			vkMapMemory(m_Device, m_Memory, offset, size, 0, p_Mapped.get());
+		VkResult Map(VkDeviceSize size, VkDeviceSize offset = 0) {
+			return vkMapMemory(m_Device, m_Memory, offset, size, 0, p_Mapped.get());
 		}
 
-		void unmap() {
+		void Unmap() {
 			if (p_Mapped) {
 				vkUnmapMemory(m_Device, m_Memory);
-				p_Mapped = nullptr;
 			}
 		}
 
-		VkResult bind(VkDeviceSize offset = 0) {
+		VkResult Bind(VkDeviceSize offset = 0) {
 			return vkBindBufferMemory(m_Device, m_Buffer, m_Memory, offset);
 		}
 
-		void setupDescriptor(VkDeviceSize size, VkDeviceSize offset = 0) {
+		void SetupDescriptor(VkDeviceSize size, VkDeviceSize offset = 0) {
 			m_Descriptor.offset = offset;
 			m_Descriptor.buffer = m_Buffer;
 			m_Descriptor.range = size;
 		}
 
-		void copyTo(void* data, VkDeviceSize size) {
+		void CopyTo(void* data, VkDeviceSize size) {
 			assert(p_Mapped);
 			memcpy(p_Mapped.get(), data, size);
 		}
 
-		VkResult flush(VkDeviceSize size, VkDeviceSize offset = 0) {
+		VkResult Flush(VkDeviceSize size, VkDeviceSize offset = 0) {
 			VkMappedMemoryRange MappedRange = {};
 			MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 			MappedRange.memory = m_Memory;
@@ -54,7 +53,7 @@ namespace enginetool {
 			return vkFlushMappedMemoryRanges(m_Device, 1, &MappedRange);
 		}
 
-		VkResult invalidate(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0)	{
+		VkResult Invalidate(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0)	{
 			VkMappedMemoryRange MappedRange = {};
 			MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 			MappedRange.memory = m_Memory;
@@ -63,7 +62,7 @@ namespace enginetool {
 			return vkInvalidateMappedMemoryRanges(m_Device, 1, &MappedRange);
 		}
 
-		void destroy() {
+		void Destroy() {
 			if (m_Buffer) {
 				vkDestroyBuffer(m_Device, m_Buffer, nullptr);
 			}
@@ -74,7 +73,7 @@ namespace enginetool {
 
 		VkDevice m_Device;
 		VkDeviceMemory m_Memory;
-		VkDeviceSize m_Alignment;
+		VkDeviceSize m_Alignment = 0;
 
 		VkDescriptorBufferInfo m_Descriptor;
 		VkBufferUsageFlags m_UsageFlags;
