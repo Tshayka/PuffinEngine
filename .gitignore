@@ -4,5 +4,6 @@ build/
 build64d/
 puffinEngine/lib/
 puffinEngine/3rdParty/
+puffinEngine/work/
 .vscode/
 imgui.ini
