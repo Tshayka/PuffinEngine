@@ -149,7 +149,7 @@ void PuffinEngine::MainLoop() {
 		DrawFrame();	
 	}
 
-	vkDeviceWaitIdle(worldDevice->device);
+	vkDeviceWaitIdle(worldDevice->get());
 }
 
 void PuffinEngine::UpdateGui(){
@@ -160,15 +160,15 @@ void PuffinEngine::CreateSemaphores() {
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &imageAvailableSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &renderFinishedSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &reflectRenderSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &refractRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->get(), &semaphore_info, nullptr, &imageAvailableSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->get(), &semaphore_info, nullptr, &renderFinishedSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->get(), &semaphore_info, nullptr, &reflectRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(worldDevice->get(), &semaphore_info, nullptr, &refractRenderSemaphore));
 }
 
 void PuffinEngine::DrawFrame() {
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(worldDevice->device, worldDevice->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(worldDevice->get(), worldDevice->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)	{
 		RecreateSwapChain();
@@ -234,7 +234,7 @@ void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
 	if (width == 0 || height == 0) return;
 
-	vkDeviceWaitIdle(worldDevice->device);
+	vkDeviceWaitIdle(worldDevice->get());
 
 	CleanUpSwapChain();
 
@@ -570,10 +570,10 @@ void PuffinEngine::CleanUpSwapChain() {
 }
 
 void PuffinEngine::DeInitSemaphores() {
-	vkDestroySemaphore(worldDevice->device, renderFinishedSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, reflectRenderSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, refractRenderSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->get(), renderFinishedSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->get(), imageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->get(), reflectRenderSemaphore, nullptr);
+	vkDestroySemaphore(worldDevice->get(), refractRenderSemaphore, nullptr);
 }
 
 void PuffinEngine::DestroyDevice() {

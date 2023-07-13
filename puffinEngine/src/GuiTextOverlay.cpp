@@ -29,7 +29,10 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
 	logical_device = device;
-	this->commandPool = &commandPool; 
+	this->commandPool = &commandPool;
+
+	mapped = (glm::vec4*)m_VertexBuffer.getMapped();
+	m_VertexBuffer.m_Device = device;
 	
 	SetUp();
 	LoadImage();
@@ -54,20 +57,20 @@ void GuiTextOverlay::LoadImage() {
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
-	enginetool::Buffer stagingbuffer;
-	logical_device->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingbuffer, &stbFontData);
+	enginetool::Buffer stagingbuffer(logical_device);
+	stagingbuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stbFontData);
 
-	VkDeviceSize indexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	stagingbuffer.Map(indexBufferSize, 0);
-	stagingbuffer.CopyTo(&font24pixels[0][0], STB_FONT_WIDTH * STB_FONT_HEIGHT);
+	stagingbuffer.map(uploadSize, 0);
+	stagingbuffer.Copy(STB_FONT_WIDTH * STB_FONT_HEIGHT, &font24pixels[0][0]);
 	stagingbuffer.Unmap();
 
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	font.CopyBufferToImage(stagingbuffer.getBuffer());
 	stagingbuffer.Destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-	
-	logical_device->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertexBuffer, memory);
+
+	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
+	m_VertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
 void GuiTextOverlay::CreateDescriptorSetLayout()
@@ -86,7 +89,7 @@ void GuiTextOverlay::CreateDescriptorSetLayout()
 	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
 	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->device, &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
+	ErrorCheck(vkCreateDescriptorSetLayout(logical_device->get(), &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
 }
 
 void GuiTextOverlay::CreateDescriptorPool() {
@@ -101,7 +104,7 @@ void GuiTextOverlay::CreateDescriptorPool() {
 	PoolInfo.pPoolSizes = PoolSizes.data();
 	PoolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(logical_device->device, &PoolInfo, nullptr, &descriptorPool));
+	ErrorCheck(vkCreateDescriptorPool(logical_device->get(), &PoolInfo, nullptr, &descriptorPool));
 }
 
 void GuiTextOverlay::CreateDescriptorSet() {
@@ -111,7 +114,7 @@ void GuiTextOverlay::CreateDescriptorSet() {
 		AllocInfo.descriptorSetCount = 1;
 		AllocInfo.pSetLayouts = &descriptorSetLayout;
 
-		ErrorCheck(vkAllocateDescriptorSets(logical_device->device, &AllocInfo, &descriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(logical_device->get(), &AllocInfo, &descriptorSet));
 
 		VkDescriptorImageInfo ImageInfo = {};
 		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -128,13 +131,13 @@ void GuiTextOverlay::CreateDescriptorSet() {
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pImageInfo = &ImageInfo;
 
-		vkUpdateDescriptorSets(logical_device->device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(logical_device->get(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
 void GuiTextOverlay::CreateGraphicsPipeline() {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	ErrorCheck(vkCreatePipelineCache(logical_device->device, &pipelineCacheCreateInfo, nullptr, &pipelineCache));
+	ErrorCheck(vkCreatePipelineCache(logical_device->get(), &pipelineCacheCreateInfo, nullptr, &pipelineCache));
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -231,7 +234,7 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	PipelineLayoutInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(logical_device->device, &PipelineLayoutInfo, nullptr, &pipelineLayout));
+	ErrorCheck(vkCreatePipelineLayout(logical_device->get(), &PipelineLayoutInfo, nullptr, &pipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -277,14 +280,14 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logical_device->device, pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logical_device->get(), pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
 
-	vkDestroyShaderModule(logical_device->device, fragModelsShaderModule, nullptr);
-	vkDestroyShaderModule(logical_device->device, vertModelsShaderModule, nullptr);
+	vkDestroyShaderModule(logical_device->get(), fragModelsShaderModule, nullptr);
+	vkDestroyShaderModule(logical_device->get(), vertModelsShaderModule, nullptr);
 }
 
 void GuiTextOverlay::BeginTextUpdate() {
-	ErrorCheck(vkMapMemory(logical_device->device, memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
+	ErrorCheck(vkMapMemory(logical_device->get(), m_VertexBuffer.m_Memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
 	num_letters = 0;
 }
 
@@ -352,7 +355,7 @@ void GuiTextOverlay::RenderText(std::string text, float x, float y, TextAlignmen
 
 // Unmap buffer and update command buffers
 void GuiTextOverlay::EndTextUpdate() {
-	vkUnmapMemory(logical_device->device, memory);
+	m_VertexBuffer.Unmap();
 	mapped = nullptr;
 }
 
@@ -373,8 +376,8 @@ void GuiTextOverlay::CreateUniformBuffer(const VkCommandBuffer& command_buffer) 
 	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSet, 0, nullptr);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &vertexBuffer, offsets);
-	vkCmdBindVertexBuffers(command_buffer, 1, 1, &vertexBuffer, offsets);
+	vkCmdBindVertexBuffers(command_buffer, 0, 1, &m_VertexBuffer.getBuffer(), offsets);
+	vkCmdBindVertexBuffers(command_buffer, 1, 1, &m_VertexBuffer.getBuffer(), offsets);
 
 	for (uint32_t j = 0; j < num_letters; j++) {
 		vkCmdDraw(command_buffer, 4, 1, j * 4, 0);
@@ -382,16 +385,14 @@ void GuiTextOverlay::CreateUniformBuffer(const VkCommandBuffer& command_buffer) 
 }
 
 void GuiTextOverlay::DeInit() {
-	vkDestroyBuffer(logical_device->device, vertexBuffer, nullptr);
-	vkFreeMemory(logical_device->device, memory, nullptr);
+	m_VertexBuffer.Destroy();
 	font.DeInit();
-	vkDestroyPipelineCache(logical_device->device, pipelineCache, nullptr);
-	vkDestroyPipeline(logical_device->device, pipeline, nullptr);
-	vkDestroyPipelineLayout(logical_device->device, pipelineLayout, nullptr);
-	vkDestroyDescriptorPool(logical_device->device, descriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(logical_device->device, descriptorSetLayout, nullptr);
+	vkDestroyPipelineCache(logical_device->get(), pipelineCache, nullptr);
+	vkDestroyPipeline(logical_device->get(), pipeline, nullptr);
+	vkDestroyPipelineLayout(logical_device->get(), pipelineLayout, nullptr);
+	vkDestroyDescriptorPool(logical_device->get(), descriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(logical_device->get(), descriptorSetLayout, nullptr);
 
-	mapped = nullptr;
 	logical_device = nullptr;
 	commandPool = nullptr;
 }

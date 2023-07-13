@@ -23,7 +23,10 @@ GuiElement::~GuiElement() {
 
 void GuiElement::Init(Device* device, VkCommandPool& commandPool) {
 	logicalDevice = device;
-	this->commandPool = &commandPool; 
+	this->commandPool = &commandPool;
+
+	vertexBuffer.setDevice(device);
+	indexBuffer.setDevice(device);
 
 	SetUp();
 	LoadImage();
@@ -100,11 +103,11 @@ void GuiElement::LoadImage() {
 	ImGuiIO& io = ImGui::GetIO();
 
 	unsigned char* fontData;
-	io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
+	io.Fonts->GetTexDataAsRGBA32(&fontData, &font.texWidth, &font.texHeight);
+	VkDeviceSize uploadSize = static_cast<uint64_t>(font.texWidth) * static_cast<uint64_t>(font.texHeight) * 4 * sizeof(char);
 	
-	VkDeviceSize uploadSize = font.texWidth * font.texHeight * 4 * sizeof(char);
-	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, fontData);
+	enginetool::Buffer stagingBuffer(logicalDevice);
+	stagingBuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -117,7 +120,7 @@ void GuiElement::LoadImage() {
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	// Store our identifier
-	io.Fonts->TexID = (void *)(intptr_t)font.texture;	
+	io.Fonts->TexID = (void *)(intptr_t)font.m_FontImage;	
 }
 
 void GuiElement::CreateDescriptorSetLayout() {
@@ -135,7 +138,7 @@ void GuiElement::CreateDescriptorSetLayout() {
 	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
 	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->device, &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
+	ErrorCheck(vkCreateDescriptorSetLayout(logicalDevice->get(), &SceneObjectsLayoutInfo, nullptr, &descriptorSetLayout));
 }
 
 
@@ -151,7 +154,7 @@ void GuiElement::CreateDescriptorPool() {
 	PoolInfo.pPoolSizes = PoolSizes.data();
 	PoolInfo.maxSets = 2; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(logicalDevice->device, &PoolInfo, nullptr, &descriptorPool));
+	ErrorCheck(vkCreateDescriptorPool(logicalDevice->get(), &PoolInfo, nullptr, &descriptorPool));
 }
 
 void GuiElement::CreateDescriptorSet() {
@@ -161,7 +164,7 @@ void GuiElement::CreateDescriptorSet() {
 	AllocInfo.descriptorSetCount = 1;
 	AllocInfo.pSetLayouts = &descriptorSetLayout;
 
-	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->device, &AllocInfo, &descriptorSet));
+	ErrorCheck(vkAllocateDescriptorSets(logicalDevice->get(), &AllocInfo, &descriptorSet));
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -178,7 +181,7 @@ void GuiElement::CreateDescriptorSet() {
 	WriteDescriptorSets[0].descriptorCount = 1;
 	WriteDescriptorSets[0].pImageInfo = &ImageInfo;
 
-	vkUpdateDescriptorSets(logicalDevice->device, static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
+	vkUpdateDescriptorSets(logicalDevice->get(), static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
 }
 
 static uint32_t __glsl_shader_vert_spv[] =
@@ -262,7 +265,7 @@ VkShaderModule GuiElement::CreateVertShaderModule() {
 	vert_info.pCode = (uint32_t*)__glsl_shader_vert_spv;
 
 	VkShaderModule shaderModule;
-	ErrorCheck(vkCreateShaderModule(logicalDevice->device, &vert_info, nullptr, &shaderModule));
+	ErrorCheck(vkCreateShaderModule(logicalDevice->get(), &vert_info, nullptr, &shaderModule));
 
 	return shaderModule;
 }
@@ -274,7 +277,7 @@ VkShaderModule GuiElement::CreateFragShaderModule() {
 	frag_info.pCode = (uint32_t*)__glsl_shader_frag_spv;
 
 	VkShaderModule shaderModule;
-	ErrorCheck(vkCreateShaderModule(logicalDevice->device, &frag_info, nullptr, &shaderModule));
+	ErrorCheck(vkCreateShaderModule(logicalDevice->get(), &frag_info, nullptr, &shaderModule));
 
 	return shaderModule;
 }
@@ -282,7 +285,7 @@ VkShaderModule GuiElement::CreateFragShaderModule() {
 void GuiElement::CreateGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	ErrorCheck(vkCreatePipelineCache(logicalDevice->device, &PipelineCacheCreateInfo, nullptr, &pipelineCache));
+	ErrorCheck(vkCreatePipelineCache(logicalDevice->get(), &PipelineCacheCreateInfo, nullptr, &pipelineCache));
 
 	VkPushConstantRange PushConstantRange = {};
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -383,7 +386,7 @@ void GuiElement::CreateGraphicsPipeline() {
 	PipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());;
 	PipelineLayoutCreateInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(logicalDevice->device, &PipelineLayoutCreateInfo, nullptr, &pipelineLayout));
+	ErrorCheck(vkCreatePipelineLayout(logicalDevice->get(), &PipelineLayoutCreateInfo, nullptr, &pipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -431,10 +434,10 @@ void GuiElement::CreateGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->device, pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(logicalDevice->get(), pipelineCache, 1, &PipelineInfo, nullptr, &pipeline));
 
-	vkDestroyShaderModule(logicalDevice->device, fragModelsShaderModule, nullptr);
-	vkDestroyShaderModule(logicalDevice->device, vertModelsShaderModule, nullptr); 
+	vkDestroyShaderModule(logicalDevice->get(), fragModelsShaderModule, nullptr);
+	vkDestroyShaderModule(logicalDevice->get(), vertModelsShaderModule, nullptr); 
 }
 
 void GuiElement::NewFrame() {
@@ -462,11 +465,10 @@ void GuiElement::RenderDrawData() {
 			vertexBuffer.Destroy();
 		}
 
-		logicalDevice->CreateBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, vertexBuffer.getBuffer(), vertexBuffer.m_Memory);
-		vertexBuffer.m_Device = logicalDevice->device;
+		vertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		vertexCount = draw_data->TotalVtxCount;
 		vertexBuffer.Unmap();
-		vertexBuffer.Map(vertexBufferSize);
+		vertexBuffer.map(vertexBufferSize);
 	}
 
 	// Index buffer
@@ -477,10 +479,10 @@ void GuiElement::RenderDrawData() {
 			indexBuffer.Destroy();
 		}
 
-		logicalDevice->CreateBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, indexBuffer.getBuffer(), indexBuffer.m_Memory);
-		indexBuffer.m_Device = logicalDevice->device;
+		indexBuffer.createUnstagedBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		indexCount = draw_data->TotalIdxCount;
-		indexBuffer.Map(indexBufferSize);
+		indexBuffer.Unmap();
+		indexBuffer.map(indexBufferSize);
 	}
 
 	// Upload data
@@ -557,11 +559,11 @@ void GuiElement::DeInit() {
 	indexBuffer.Destroy();
 	vertexBuffer.Destroy();
 	font.DeInit();
-	vkDestroyPipelineCache(logicalDevice->device, pipelineCache, nullptr);
-	vkDestroyPipeline(logicalDevice->device, pipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice->device, pipelineLayout, nullptr);
-	vkDestroyDescriptorPool(logicalDevice->device, descriptorPool, nullptr);
-	vkDestroyDescriptorSetLayout(logicalDevice->device, descriptorSetLayout, nullptr);
+	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
+	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);
+	vkDestroyPipelineLayout(logicalDevice->get(), pipelineLayout, nullptr);
+	vkDestroyDescriptorPool(logicalDevice->get(), descriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice->get(), descriptorSetLayout, nullptr);
 
 	logicalDevice = nullptr;
 	commandPool = nullptr; 

@@ -1,86 +1,176 @@
-#include <assert.h>
-#include <cstring>
-#include <string>
-#include <memory>
-#include <vulkan/vulkan.h>
+#pragma once
 
-namespace enginetool {
-	class Buffer {
-	public:
-		VkBuffer& getBuffer() {
-			return m_Buffer;
-		}
+#include "Buffer.hpp"
+#include "ErrorCheck.hpp"
 
-		void* getMapped() const {
-			return p_Mapped.get();
-		}
+using namespace enginetool;
 
-		void Copy(VkDeviceSize size, void* data) {
-			memcpy(p_Mapped.get(), data, size);
-		}
+Buffer::Buffer() {
+	m_Descriptor = { 0,0,0 };
+	m_UsageFlags = 0;
+	m_MemoryPropertyFags = 0;
+	m_Device = 0;
+	m_Alignment = 0;
+	m_Memory = 0;
+	m_Buffer = VK_NULL_HANDLE;
+};
 
-		VkResult Map(VkDeviceSize size, VkDeviceSize offset = 0) {
-			return vkMapMemory(m_Device, m_Memory, offset, size, 0, p_Mapped.get());
-		}
+Buffer::Buffer(Device* device) {
+	m_Descriptor = {0,0,0};
+	m_UsageFlags = 0;
+	m_MemoryPropertyFags = 0;
+	m_Device = device;
+	m_Alignment = 0;
+	m_Memory = 0;
+	m_Buffer = VK_NULL_HANDLE;
 
-		void Unmap() {
-			if (p_Mapped) {
-				vkUnmapMemory(m_Device, m_Memory);
-			}
-		}
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Buffer object created\n";
+#endif 
+}
 
-		VkResult Bind(VkDeviceSize offset = 0) {
-			return vkBindBufferMemory(m_Device, m_Buffer, m_Memory, offset);
-		}
+Buffer::~Buffer() {
+#if BUILD_ENABLE_VULKAN_DEBUG
+	std::cout << "Buffer object destroyed\n";
+#endif 
+}
 
-		void SetupDescriptor(VkDeviceSize size, VkDeviceSize offset = 0) {
-			m_Descriptor.offset = offset;
-			m_Descriptor.buffer = m_Buffer;
-			m_Descriptor.range = size;
-		}
+// TODO rule of five
 
-		void CopyTo(void* data, VkDeviceSize size) {
-			assert(p_Mapped);
-			memcpy(p_Mapped.get(), data, size);
-		}
+VkBuffer& Buffer::getBuffer() {
+	return m_Buffer;
+}
 
-		VkResult Flush(VkDeviceSize size, VkDeviceSize offset = 0) {
-			VkMappedMemoryRange MappedRange = {};
-			MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-			MappedRange.memory = m_Memory;
-			MappedRange.offset = offset;
-			MappedRange.size = size;
-			return vkFlushMappedMemoryRanges(m_Device, 1, &MappedRange);
-		}
+void* Buffer::getMapped() const {
+	return p_Mapped;
+}
 
-		VkResult Invalidate(VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0)	{
-			VkMappedMemoryRange MappedRange = {};
-			MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-			MappedRange.memory = m_Memory;
-			MappedRange.offset = offset;
-			MappedRange.size = size;
-			return vkInvalidateMappedMemoryRanges(m_Device, 1, &MappedRange);
-		}
+void Buffer::setMapped(void* map) {
+	p_Mapped = map;
+}
 
-		void Destroy() {
-			if (m_Buffer) {
-				vkDestroyBuffer(m_Device, m_Buffer, nullptr);
-			}
-			if (m_Memory) {
-				vkFreeMemory(m_Device, m_Memory, nullptr);
-			}
-		}
+void Buffer::setDevice (Device *device) {
+	m_Device = device;
+}
 
-		VkDevice m_Device;
-		VkDeviceMemory m_Memory;
-		VkDeviceSize m_Alignment = 0;
+void Buffer::Copy(VkDeviceSize size, void* data) {
+	memcpy(p_Mapped, data, size);
+}
 
-		VkDescriptorBufferInfo m_Descriptor;
-		VkBufferUsageFlags m_UsageFlags;
-		VkMemoryPropertyFlags m_MemoryPropertyFags;
+void Buffer::map(VkDeviceSize size, VkDeviceSize offset) {
+	vkMapMemory(m_Device->get(), m_Memory, offset, size, 0, &p_Mapped);
+}
 
-	private:
-		VkBuffer m_Buffer;
-		std::unique_ptr<void*> p_Mapped;
-	};
+void Buffer::Unmap() {
+	if (p_Mapped) {
+		vkUnmapMemory(m_Device->get(), m_Memory);
+		p_Mapped = nullptr;
+	}
+}
+
+VkResult Buffer::Bind(VkDeviceSize offset) {
+	return vkBindBufferMemory(m_Device->get(), m_Buffer, m_Memory, offset);
+}
+
+void Buffer::SetupDescriptor(VkDeviceSize size, VkDeviceSize offset) {
+	m_Descriptor.offset = offset;
+	m_Descriptor.buffer = m_Buffer;
+	m_Descriptor.range = size;
+}
+
+VkResult Buffer::Flush(VkDeviceSize size, VkDeviceSize offset) {
+	VkMappedMemoryRange MappedRange = {};
+	MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	MappedRange.memory = m_Memory;
+	MappedRange.offset = offset;
+	MappedRange.size = size;
+	return vkFlushMappedMemoryRanges(m_Device->get(), 1, &MappedRange);
+}
+
+VkResult Buffer::Invalidate(VkDeviceSize size, VkDeviceSize offset)	{
+	VkMappedMemoryRange MappedRange = {};
+	MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
+	MappedRange.memory = m_Memory;
+	MappedRange.offset = offset;
+	MappedRange.size = size;
+	return vkInvalidateMappedMemoryRanges(m_Device->get(), 1, &MappedRange);
+}
+
+void Buffer::Destroy() {
+	if (m_Buffer) {
+		vkDestroyBuffer(m_Device->get(), m_Buffer, nullptr);
+	}
+	if (m_Memory) {
+		vkFreeMemory(m_Device->get(), m_Memory, nullptr);
+	}
+}
+
+void Buffer::createStagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, void* data) {
+	VkBufferCreateInfo BufferInfo = {};
+	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	BufferInfo.size = size;
+	BufferInfo.usage = usage;
+	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	ErrorCheck(vkCreateBuffer(m_Device->get(), &BufferInfo, nullptr, &m_Buffer));
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(m_Device->get(), m_Buffer, &memory_requirements);
+
+	VkMemoryAllocateInfo AllocInfo = {};
+	AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	AllocInfo.allocationSize = memory_requirements.size;
+	// Find a memory type index that fits the properties of the buffer
+	AllocInfo.memoryTypeIndex = m_Device->FindMemoryType(memory_requirements.memoryTypeBits, properties);
+
+	ErrorCheck(vkAllocateMemory(m_Device->get(), &AllocInfo, nullptr, &m_Memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+
+	m_Alignment = memory_requirements.alignment;
+	//buffer->size = AllocInfo.allocationSize;
+	m_UsageFlags = usage;
+	m_MemoryPropertyFags = properties;
+
+	// If a pointer to the buffer data has been passed, map the buffer and copy over the data
+	if (data != nullptr) {
+		map(size);
+		Copy(size, data);
+		Unmap();
+	}
+
+	// Initialize a default descriptor that covers the whole buffer size
+	SetupDescriptor(size);
+
+	// Attach the memory to the buffer object
+	Bind();
+}
+
+void Buffer::createUnstagedBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties) {
+	VkBufferCreateInfo BufferInfo = {};
+	BufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	BufferInfo.size = size;
+	BufferInfo.usage = usage;
+	BufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+	ErrorCheck(vkCreateBuffer(m_Device->get(), &BufferInfo, nullptr, &m_Buffer));
+
+	VkMemoryRequirements memory_requirements;
+	vkGetBufferMemoryRequirements(m_Device->get(), m_Buffer, &memory_requirements);
+
+	VkMemoryAllocateInfo AllocInfo = {};
+	AllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	AllocInfo.allocationSize = memory_requirements.size;
+	// Find a memory type index that fits the properties of the buffer
+	AllocInfo.memoryTypeIndex = m_Device->FindMemoryType(memory_requirements.memoryTypeBits, properties);
+	ErrorCheck(vkAllocateMemory(m_Device->get(), &AllocInfo, nullptr, &m_Memory)); // in a real world application, you're not supposed to call vkAllocateMemory for every individual buffer! use VulkanMemoryAllocator
+
+	m_Alignment = memory_requirements.alignment;
+	//buffer->size = AllocInfo.allocationSize;
+	m_UsageFlags = usage;
+	m_MemoryPropertyFags = properties;
+
+	// Initialize a default descriptor that covers the whole buffer size
+	SetupDescriptor(size);
+
+	// Attach the memory to the buffer object
+	Bind();
 }

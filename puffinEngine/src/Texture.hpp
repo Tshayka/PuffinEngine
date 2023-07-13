@@ -19,14 +19,14 @@ class TextureLayout {
 
         std::vector<VkBufferImageCopy> bufferCopyRegions;//private?
 
-        VkImage texture;
+        VkImage m_FontImage;
 		VkImageView view;
-		VkDeviceMemory memory;
+		VkDeviceMemory m_FontMemory;
 		VkSampler sampler = nullptr;
         VkFormat format;
         VkDeviceSize size;
-		uint32_t texWidth; 
-        uint32_t texHeight; 
+		int texWidth; 
+        int texHeight;
         uint32_t baseMipLevel; 
         uint32_t mipLevels;
         uint32_t layers; 

@@ -8,7 +8,7 @@
 
 #include "Character.hpp"
 #include "Camera.hpp"
-#include "Device.hpp"
+#include "Buffer.hpp"
 #include "Landscape.hpp"
 #include "Light.hpp"
 #include "GuiMainHub.hpp"
@@ -109,7 +109,7 @@ private:
 	void CheckIfItIsVisible(std::shared_ptr<Actor>& actorToCheck);
 	void CleanUpDepthResources();
 	void CleanUpOffscreenImage(); 
-	void CopyBuffer(const VkBuffer& srcBuffer, const VkBuffer& dstBuffer, const VkDeviceSize& size);
+	void copyBuffer(enginetool::Buffer* srcBuffer, enginetool::Buffer* dstBuffer, const VkDeviceSize size);
 	void CreateActorsBuffers();
 	void CreateBuffers();	
 	void CreateCamera(std::string name, std::string description, glm::vec3 position, enginetool::ScenePart &mesh, enginetool::SceneMaterial &material);
@@ -253,38 +253,32 @@ private:
 		//alignas(16) glm::vec2
 	};
 
-	struct {
-		enginetool::Buffer line;
-		enginetool::Buffer skybox;
-		enginetool::Buffer skyboxReflection;
-		enginetool::Buffer skyboxRefraction;
-		enginetool::Buffer clouds;
-		enginetool::Buffer clouds_dynamic;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectionIndicator;
-		enginetool::Buffer stillObjects;
-		enginetool::Buffer parameters;
-		enginetool::Buffer reflection;
-		enginetool::Buffer reflectionParameters;
-		enginetool::Buffer refraction;
-		enginetool::Buffer refractionParameters;
-	} uniform_buffers;
+	enginetool::Buffer m_UboLine;
+	enginetool::Buffer m_UboSkybox;
+	enginetool::Buffer m_UboSkyboxReflection;
+	enginetool::Buffer m_UboSkyboxRefraction;
+	enginetool::Buffer m_UboClouds;
+	enginetool::Buffer m_UboCloudsDynamic;
+	enginetool::Buffer m_UboOcean;
+	enginetool::Buffer m_UboSlectionIndicator;
+	enginetool::Buffer m_UboStillObjects;
+	enginetool::Buffer m_UboParameters;
+	enginetool::Buffer m_UboReflection;
+	enginetool::Buffer m_UboReflectionParameters;
+	enginetool::Buffer m_UboRefraction;
+	enginetool::Buffer m_UboRefractionParameters;
 
-	struct {
-		enginetool::Buffer meshLibraryObjects;
-		enginetool::Buffer skybox;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectRay;
-		enginetool::Buffer aabb;
-	} vertex_buffers;
+	enginetool::Buffer m_VertexBuffersMeshLibraryObjects;
+	enginetool::Buffer m_VertexBuffersSkybox;
+	enginetool::Buffer m_VertexBuffersOcean;
+	enginetool::Buffer m_VertexBuffersSelectRay;
+	enginetool::Buffer m_VertexBuffersAABB;
 
-	struct {
-		enginetool::Buffer meshLibraryObjects;
-		enginetool::Buffer skybox;
-		enginetool::Buffer ocean;
-		enginetool::Buffer selectRay;
-		enginetool::Buffer aabb;
-	} index_buffers;
+	enginetool::Buffer m_IndexBuffersMeshLibraryObjects;
+	enginetool::Buffer m_IndexBuffersSkybox;
+	enginetool::Buffer m_IndexBuffersOcean;
+	enginetool::Buffer m_IndexBuffersSelectRay;
+	enginetool::Buffer m_IndexBuffersAABB;
 
 	std::unique_ptr<TextureLayout> reflectionImage = std::make_unique<TextureLayout>();
 	std::unique_ptr<TextureLayout> refractionImage = std::make_unique<TextureLayout>();

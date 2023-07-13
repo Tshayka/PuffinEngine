@@ -41,7 +41,7 @@ void MaterialLibrary::CreateCommandPool() {
 		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 	
-		ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+		ErrorCheck(vkCreateCommandPool(logicalDevice->get(), &poolInfo, nullptr, &commandPool));
 }
 
 void MaterialLibrary::FillLibrary() {
@@ -113,8 +113,8 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	}
 
 	VkDeviceSize imageSize = layer.texWidth * layer.texHeight * 4;
-	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, pixels);
+	enginetool::Buffer stagingBuffer(logicalDevice);
+	stagingBuffer.createStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pixels);
 
 	stbi_image_free(pixels);
 	
@@ -122,6 +122,7 @@ void MaterialLibrary::LoadTexture(std::string texture, TextureLayout& layer) {
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
+	
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	layer.CopyBufferToImage(stagingBuffer.getBuffer());
 	stagingBuffer.Destroy();
@@ -139,11 +140,12 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 	layer.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT);
 	layer.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_CUBE);
 	layer.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+	
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
 	VkDeviceSize imageSize = texCube.size();
-	enginetool::Buffer stagingBuffer;
-	logicalDevice->CreateStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stagingBuffer, texCube.data());
+	enginetool::Buffer stagingBuffer(logicalDevice);
+	stagingBuffer.createStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, texCube.data());
 
 	VkCommandBuffer command_buffer = layer.BeginSingleTimeCommands();
 	uint32_t offset = 0;
@@ -166,10 +168,9 @@ void MaterialLibrary::LoadSkyboxTexture(TextureLayout& layer) {
 		}
 	}
 
-	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.getBuffer(), layer.texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
+	vkCmdCopyBufferToImage(command_buffer, stagingBuffer.getBuffer(), layer.m_FontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(layer.bufferCopyRegions.size()), layer.bufferCopyRegions.data());
 	layer.EndSingleTimeCommands(command_buffer);
 	stagingBuffer.Destroy();
-
 	layer.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
@@ -182,7 +183,7 @@ void MaterialLibrary::DeInit() {
 		m.second.ambientOcclucion.DeInit();
 	}
 
-	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
+	vkDestroyCommandPool(logicalDevice->get(), commandPool, nullptr);
 	
 	logicalDevice = nullptr;
 }

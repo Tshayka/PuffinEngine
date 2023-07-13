@@ -10,7 +10,6 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
 
-#include "Buffer.cpp"
 #include "Threads.cpp"
 #include "WorldClock.hpp"
 
@@ -35,12 +34,15 @@ public:
 	Device();
 	~Device();
 
+	// TODO rule of 5!
+
+	VkDevice get() const {
+		return device;
+	}
+
 	void DeInitDevice();
 	void CreateOffscreenRenderPass(VkFormat format);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void CreateStagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*, void*);
-	void CreateUnstagedBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, enginetool::Buffer*);
-	void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&);
 	uint32_t FindMemoryType(uint32_t, VkMemoryPropertyFlags);
 	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice);
 	void InitDevice(GLFWwindow*);
@@ -51,7 +53,6 @@ public:
 	void DestroySwapchainKHR();
 	VkFormat FindDepthFormat();
 
-	VkDevice device = VK_NULL_HANDLE;
 	VkPhysicalDevice gpu = VK_NULL_HANDLE;
 	VkPhysicalDeviceProperties gpu_properties = {};
 	VkQueue present_queue = VK_NULL_HANDLE;
@@ -79,6 +80,8 @@ public:
 	VkFramebuffer refractionFramebuffer;
 
 private:
+	VkDevice device = VK_NULL_HANDLE;
+
 	GLFWwindow* window;	
 	bool CheckDeviceExtensionSupport(VkPhysicalDevice);
 	void CreateInstance();

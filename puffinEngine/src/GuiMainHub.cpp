@@ -139,7 +139,7 @@ void GuiMainHub::CreateRenderPass() {
 	renderPass_info.dependencyCount = 2;
 	renderPass_info.pDependencies = SubpassDependencies;
 
-	ErrorCheck(vkCreateRenderPass(logicalDevice->device, &renderPass_info, nullptr, &renderPass));
+	ErrorCheck(vkCreateRenderPass(logicalDevice->get(), &renderPass_info, nullptr, &renderPass));
 }
 
 void GuiMainHub::CreateCommandPool() {
@@ -150,7 +150,7 @@ void GuiMainHub::CreateCommandPool() {
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
-	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+	ErrorCheck(vkCreateCommandPool(logicalDevice->get(), &poolInfo, nullptr, &commandPool));
 }
 
 void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
@@ -197,7 +197,7 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, command_buffers.data()));
+	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->get(), &allocInfo, command_buffers.data()));
 	
 	// starting command buffer recording
 	for (size_t i = 0; i < command_buffers.size(); i++) {
@@ -224,6 +224,6 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 }
 
 void GuiMainHub::DeInit() {
-	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
-	vkDestroyRenderPass(logicalDevice->device, renderPass, nullptr);
+	vkDestroyCommandPool(logicalDevice->get(), commandPool, nullptr);
+	vkDestroyRenderPass(logicalDevice->get(), renderPass, nullptr);
 }

@@ -3,7 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp> 
 
 #include "ErrorCheck.hpp"
-#include "Device.hpp"
+#include "Buffer.hpp"
 #include "Texture.hpp"
 
 // Defines for the STB font used
@@ -42,8 +42,8 @@ private:
 	stb_fontchar stbFontData[STB_NUM_CHARS];
 	uint32_t num_letters;
 
-	VkBuffer vertexBuffer; // mapping the vertex data
-	VkDeviceMemory memory;
+	enginetool::Buffer m_VertexBuffer; // mapping the vertex data
+	//VkDeviceMemory memory;
 
 	TextureLayout font;
 	VkDescriptorPool descriptorPool;

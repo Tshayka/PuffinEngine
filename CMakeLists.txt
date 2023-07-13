@@ -53,6 +53,7 @@ SET(SOURCE_FILES                "puffinEngine/src/Actor.cpp"
 				"main.cpp")
 
 SET(HEADER_FILES 		"puffinEngine/src/Actor.hpp"
+				"puffinEngine/src/Buffer.hpp"
                                 "puffinEngine/src/Camera.hpp"
                                 "puffinEngine/src/Character.hpp"
                                 "puffinEngine/src/Device.hpp"
