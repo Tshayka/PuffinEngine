@@ -610,7 +610,7 @@ void PuffinEngine::DestroyGUI() {
 	delete mainUi;
 	mainUi = nullptr;
 
-	guiStatistics->DeInit();
+	guiStatistics->deInit();
 	delete guiStatistics;
 	guiStatistics = nullptr;
 

@@ -22,38 +22,39 @@ public:
 	GuiTextOverlay();
 	~GuiTextOverlay();
 
-	void Init(Device* device, VkCommandPool& commandPool);
-    void DeInit();
+	void init(Device* device, VkCommandPool& commandPool);
+    void deInit();
 	
-	void BeginTextUpdate();
-    void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
-	void EndTextUpdate();
-	void RenderText(std::string, float, float, enum TextAlignment);
+	void createUniformBuffer(const VkCommandBuffer& command_buffer);
+
+	void beginTextUpdate();
+	void renderText(std::string, float, float, enum TextAlignment);
+	void endTextUpdate();
 
 private:
-	void CreateDescriptorPool();
-	void CreateDescriptorSet();
-	void CreateDescriptorSetLayout();
-	void CreateGraphicsPipeline();
-	void LoadFontImage();
-
-	glm::vec4 *mapped = nullptr;
-	stb_fontchar stbFontData[STB_NUM_CHARS];
-	uint32_t num_letters;
-
-	enginetool::Buffer m_VertexBuffer; // mapping the vertex data
-
-	TextureLayout font;
-	VkDescriptorPool descriptorPool;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet descriptorSet;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline pipeline;
-	VkPipelineCache pipelineCache;
+	void createDescriptorPool();
+	void createDescriptorSet();
+	void createDescriptorSetLayout();
+	void createGraphicsPipeline();
+	void loadFontImage();
 	
-	VkRect2D scissor = {};
-	VkViewport viewport = {}; 
+	stb_fontchar m_StbFontData[STB_NUM_CHARS];
+	uint32_t m_NumLetters;
+	TextureLayout m_Font;
 
-	Device* logical_device = nullptr;
-	VkCommandPool* commandPool = nullptr;
+	VkDescriptorPool m_DescriptorPool;
+	VkDescriptorSetLayout m_DescriptorSetLayout;
+	VkDescriptorSet m_DescriptorSet;
+	VkPipelineLayout m_PipelineLayout;
+	VkPipeline m_Pipeline;
+	VkPipelineCache m_PipelineCache;
+
+	VkRect2D m_Scissor = {};
+	VkViewport m_Viewport = {};
+
+	glm::vec4* p_Mapped = nullptr;
+	enginetool::Buffer m_VertexBuffer;
+
+	Device* p_LogicalDevice = nullptr;
+	VkCommandPool* p_CommandPool = nullptr;
 };

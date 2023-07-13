@@ -41,7 +41,7 @@ void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textO
 	CreateCommandPool();
 
 	console->Init(logicalDevice, commandPool);
-	textOverlay->Init(logicalDevice, commandPool);
+	textOverlay->init(logicalDevice, commandPool);
 	mainUi->Init(logicalDevice, commandPool);
 }
 
@@ -154,19 +154,19 @@ void GuiMainHub::CreateCommandPool() {
 }
 
 void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
-	textOverlay->BeginTextUpdate();
-	textOverlay->RenderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
+	textOverlay->beginTextUpdate();
+	textOverlay->renderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
 	std::stringstream ss;
 	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
-	textOverlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
-	textOverlay->EndTextUpdate();
+	textOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
+	textOverlay->renderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
+	textOverlay->endTextUpdate();
 
 	mainUi->NewFrame();
 	mainUi->UpdateDrawData();
@@ -211,7 +211,7 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 		}
 
 		if (ui_settings.display_stats_overlay) {
-			textOverlay->CreateUniformBuffer(command_buffers[i]);
+			textOverlay->createUniformBuffer(command_buffers[i]);
 		}
 
 		if (ui_settings.display_imgui) {
