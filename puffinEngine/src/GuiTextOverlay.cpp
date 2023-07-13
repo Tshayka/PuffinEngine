@@ -31,21 +31,17 @@ void GuiTextOverlay::Init(Device* device, VkCommandPool& commandPool) {
 	logical_device = device;
 	this->commandPool = &commandPool;
 
+	m_VertexBuffer.setDevice(device);
 	mapped = (glm::vec4*)m_VertexBuffer.getMapped();
-	m_VertexBuffer.m_Device = device;
 	
-	SetUp();
-	LoadImage();
+	LoadFontImage();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
 	CreateGraphicsPipeline();
 }
 
-void GuiTextOverlay::SetUp(){
-}
-
-void GuiTextOverlay::LoadImage() {
+void GuiTextOverlay::LoadFontImage() {
 	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(stbFontData, font24pixels, STB_FONT_HEIGHT);
 
@@ -57,16 +53,17 @@ void GuiTextOverlay::LoadImage() {
 	font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
 	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
-	enginetool::Buffer stagingbuffer(logical_device);
-	stagingbuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stbFontData);
+	enginetool::Buffer stagingBuffer;
+	stagingBuffer.setDevice(logical_device);
+	stagingBuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &stbFontData);
 
-	stagingbuffer.map(uploadSize, 0);
-	stagingbuffer.Copy(STB_FONT_WIDTH * STB_FONT_HEIGHT, &font24pixels[0][0]);
-	stagingbuffer.Unmap();
+	stagingBuffer.map(uploadSize, 0);
+	stagingBuffer.copy(STB_FONT_WIDTH * STB_FONT_HEIGHT, &font24pixels[0][0]);
+	stagingBuffer.unmap();
 
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-	font.CopyBufferToImage(stagingbuffer.getBuffer());
-	stagingbuffer.Destroy();
+	font.CopyBufferToImage(stagingBuffer.getBuffer());
+	stagingBuffer.destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
@@ -287,7 +284,7 @@ void GuiTextOverlay::CreateGraphicsPipeline() {
 }
 
 void GuiTextOverlay::BeginTextUpdate() {
-	ErrorCheck(vkMapMemory(logical_device->get(), m_VertexBuffer.m_Memory, 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
+	ErrorCheck(vkMapMemory(logical_device->get(), m_VertexBuffer.getMemory(), 0, VK_WHOLE_SIZE, 0, (void **)&mapped));
 	num_letters = 0;
 }
 
@@ -355,8 +352,7 @@ void GuiTextOverlay::RenderText(std::string text, float x, float y, TextAlignmen
 
 // Unmap buffer and update command buffers
 void GuiTextOverlay::EndTextUpdate() {
-	m_VertexBuffer.Unmap();
-	mapped = nullptr;
+	m_VertexBuffer.unmap();
 }
 
 void GuiTextOverlay::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
@@ -385,7 +381,7 @@ void GuiTextOverlay::CreateUniformBuffer(const VkCommandBuffer& command_buffer) 
 }
 
 void GuiTextOverlay::DeInit() {
-	m_VertexBuffer.Destroy();
+	m_VertexBuffer.destroy();
 	font.DeInit();
 	vkDestroyPipelineCache(logical_device->get(), pipelineCache, nullptr);
 	vkDestroyPipeline(logical_device->get(), pipeline, nullptr);

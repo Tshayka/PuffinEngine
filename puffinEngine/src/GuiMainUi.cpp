@@ -59,7 +59,8 @@ void GuiMainUi::LoadImGuiImage() {
 	io.Fonts->GetTexDataAsRGBA32(&fontData, (int*)&font.texWidth, (int*)&font.texHeight);
 	
 	VkDeviceSize imageSize = font.texWidth * font.texHeight * 4 * sizeof(char);
-	enginetool::Buffer stagingBuffer(logicalDevice);
+	enginetool::Buffer stagingBuffer;
+	stagingBuffer.setDevice(logicalDevice);
 	stagingBuffer.createStagedBuffer(imageSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
 	font.Init(logicalDevice, *commandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
@@ -69,7 +70,7 @@ void GuiMainUi::LoadImGuiImage() {
 	
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 	font.CopyBufferToImage(stagingBuffer.getBuffer());
-	stagingBuffer.Destroy();
+	stagingBuffer.destroy();
 	font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 }
 
@@ -338,13 +339,13 @@ void GuiMainUi::UpdateDrawData() {
 	// Vertex buffer
 	if (vertexCount != drawData.totalVerticesCount) {
 		if (vertexBuffer.getBuffer() == VK_NULL_HANDLE) {
-			vertexBuffer.Unmap();
-			vertexBuffer.Destroy();
+			vertexBuffer.unmap();
+			vertexBuffer.destroy();
 		}
 
 		vertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 		vertexCount = drawData.totalVerticesCount;
-		vertexBuffer.Unmap();
+		vertexBuffer.unmap();
 		vertexBuffer.map(vertexBufferSize);
 	}
 
@@ -352,8 +353,8 @@ void GuiMainUi::UpdateDrawData() {
 	//VkDeviceSize indexSize = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
 	if (indexCount < drawData.totalIndicesCount) {
 		if (indexBuffer.getBuffer() == VK_NULL_HANDLE) {
-			indexBuffer.Unmap();
-			indexBuffer.Destroy();
+			indexBuffer.unmap();
+			indexBuffer.destroy();
 		}
 
 		indexBuffer.createUnstagedBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
@@ -371,8 +372,8 @@ void GuiMainUi::UpdateDrawData() {
 	 	idxDst += drawData.componentsToDraw[i].indices.size();
 	}
 
-	vertexBuffer.Flush(VK_WHOLE_SIZE);
-	indexBuffer.Flush(VK_WHOLE_SIZE);
+	vertexBuffer.flush(VK_WHOLE_SIZE);
+	indexBuffer.flush(VK_WHOLE_SIZE);
 }
 
 void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
@@ -420,8 +421,8 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 }
 
 void GuiMainUi::DeInit() {
-	indexBuffer.Destroy();
-	vertexBuffer.Destroy();
+	indexBuffer.destroy();
+	vertexBuffer.destroy();
 	font.DeInit();
 	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
 	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);

@@ -1244,7 +1244,7 @@ void Scene::UpdateDynamicUniformBuffer() {
 	// Flush to make changes visible to the host 
 	VkMappedMemoryRange memoryRange = {};
 	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	memoryRange.memory = m_UboCloudsDynamic.m_Memory;
+	memoryRange.memory = m_UboCloudsDynamic.getMemory();
 	memoryRange.size = sizeof(uboDataDynamic);	
 	vkFlushMappedMemoryRanges(logicalDevice->get(), 1, &memoryRange);
 }
@@ -2065,11 +2065,11 @@ void Scene::UpdateSelectRayDrawData() {
 
 	enginetool::VertexLayout* vtxDst = (enginetool::VertexLayout*)m_VertexBuffersSelectRay.getMapped();
 	memcpy(vtxDst, rayVertices.data(), 2 * sizeof(enginetool::VertexLayout));
-	m_VertexBuffersSelectRay.Flush(VK_WHOLE_SIZE);
+	m_VertexBuffersSelectRay.flush(VK_WHOLE_SIZE);
 	
 	uint32_t* idxDst = (uint32_t*)m_IndexBuffersSelectRay.getMapped();
 	memcpy(idxDst, rayIndices.data(), 2 * sizeof(uint32_t));
-	m_IndexBuffersSelectRay.Flush(VK_WHOLE_SIZE);
+	m_IndexBuffersSelectRay.flush(VK_WHOLE_SIZE);
 }
 
 void Scene::CreateSelectRay() {
@@ -2191,33 +2191,35 @@ void Scene::CreateSkybox(std::string name, std::string description, glm::vec3 po
 
 void Scene::CreateVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
-	enginetool::Buffer vertexStagingBuffer(logicalDevice);
-	vertexStagingBuffer.createStagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices.data());
+	enginetool::Buffer stagingBuffer;
+	stagingBuffer.setDevice(logicalDevice);
+	stagingBuffer.createStagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, vertices.data());
 	vertexBuffer.createUnstagedBuffer(static_cast<uint32_t>(vertexBufferSize), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	copyBuffer(&vertexStagingBuffer, &vertexBuffer, vertexBufferSize);
-	vertexStagingBuffer.Destroy();
+	copyBuffer(&stagingBuffer, &vertexBuffer, vertexBufferSize);
+	stagingBuffer.destroy();
 }
 
 void Scene::CreateIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer) {
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
-	enginetool::Buffer indexStagingBuffer(logicalDevice);
-	indexStagingBuffer.createStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices.data());
+	enginetool::Buffer stagingBuffer;
+	stagingBuffer.setDevice(logicalDevice);
+	stagingBuffer.createStagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, indices.data());
 	indexBuffer.createUnstagedBuffer(static_cast<uint32_t>(indexBufferSize), VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-	copyBuffer(&indexStagingBuffer, &indexBuffer, indexBufferSize);
-	indexStagingBuffer.Destroy();
+	copyBuffer(&stagingBuffer, &indexBuffer, indexBufferSize);
+	stagingBuffer.destroy();
 }
 
 void Scene::CreateMappedVertexBuffer(std::vector<enginetool::VertexLayout>& vertices, enginetool::Buffer& vertexBuffer) {
 	VkDeviceSize vertexBufferSize = sizeof(enginetool::VertexLayout) * vertices.size();
 	vertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	vertexBuffer.Unmap();
+	vertexBuffer.unmap();
 	vertexBuffer.map(vertexBufferSize);
 }
 
 void Scene::CreateMappedIndexBuffer(std::vector<uint32_t>& indices, enginetool::Buffer& indexBuffer){
 	VkDeviceSize indexBufferSize = sizeof(uint32_t) * indices.size();
 	indexBuffer.createUnstagedBuffer(indexBufferSize, VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-	indexBuffer.Unmap();
+	indexBuffer.unmap();
 	indexBuffer.map(indexBufferSize);
 };
 
@@ -2335,16 +2337,16 @@ void Scene::CleanUpOffscreenImage() {
 }
 
 void Scene::DeInitIndexAndVertexBuffer() {
-	m_IndexBuffersMeshLibraryObjects.Destroy();
-	m_VertexBuffersMeshLibraryObjects.Destroy();
-	m_IndexBuffersOcean.Destroy();
-	m_VertexBuffersOcean.Destroy();
-	m_IndexBuffersSkybox.Destroy();
-	m_VertexBuffersSkybox.Destroy();
-	m_IndexBuffersSelectRay.Destroy();
-	m_VertexBuffersSelectRay.Destroy();
-	m_IndexBuffersAABB.Destroy();
-	m_VertexBuffersAABB.Destroy();
+	m_IndexBuffersMeshLibraryObjects.destroy();
+	m_VertexBuffersMeshLibraryObjects.destroy();
+	m_IndexBuffersOcean.destroy();
+	m_VertexBuffersOcean.destroy();
+	m_IndexBuffersSkybox.destroy();
+	m_VertexBuffersSkybox.destroy();
+	m_IndexBuffersSelectRay.destroy();
+	m_VertexBuffersSelectRay.destroy();
+	m_IndexBuffersAABB.destroy();
+	m_VertexBuffersAABB.destroy();
 }
 
 void Scene::DeInitScene() {
@@ -2383,20 +2385,20 @@ void Scene::DeInitUniformBuffer() {
 		alignedFree(uboDataDynamic.model);
 	}
 
-	m_UboLine.Destroy();
-	m_UboSkybox.Destroy();
-	m_UboSkyboxReflection.Destroy();
-	m_UboSkyboxRefraction.Destroy();
-	m_UboOcean.Destroy();
-	m_UboSlectionIndicator.Destroy();
-	m_UboStillObjects.Destroy();
-	m_UboParameters.Destroy();
-	m_UboClouds.Destroy();
-	m_UboCloudsDynamic.Destroy();
-	m_UboReflection.Destroy();
-	m_UboReflectionParameters.Destroy();
-	m_UboRefraction.Destroy();
-	m_UboRefractionParameters.Destroy();
+	m_UboLine.destroy();
+	m_UboSkybox.destroy();
+	m_UboSkyboxReflection.destroy();
+	m_UboSkyboxRefraction.destroy();
+	m_UboOcean.destroy();
+	m_UboSlectionIndicator.destroy();
+	m_UboStillObjects.destroy();
+	m_UboParameters.destroy();
+	m_UboClouds.destroy();
+	m_UboCloudsDynamic.destroy();
+	m_UboReflection.destroy();
+	m_UboReflectionParameters.destroy();
+	m_UboRefraction.destroy();
+	m_UboRefractionParameters.destroy();
 }
 
 void Scene::DestroyPipeline() {

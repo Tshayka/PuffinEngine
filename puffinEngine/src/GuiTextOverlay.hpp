@@ -22,28 +22,26 @@ public:
 	GuiTextOverlay();
 	~GuiTextOverlay();
 
+	void Init(Device* device, VkCommandPool& commandPool);
+    void DeInit();
+	
 	void BeginTextUpdate();
     void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
-    void DeInit();
 	void EndTextUpdate();
-	void Init(Device* device, VkCommandPool& commandPool);
 	void RenderText(std::string, float, float, enum TextAlignment);
-	void SetUp();
 
 private:
 	void CreateDescriptorPool();
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
 	void CreateGraphicsPipeline();
-	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void LoadImage();
+	void LoadFontImage();
 
 	glm::vec4 *mapped = nullptr;
 	stb_fontchar stbFontData[STB_NUM_CHARS];
 	uint32_t num_letters;
 
 	enginetool::Buffer m_VertexBuffer; // mapping the vertex data
-	//VkDeviceMemory memory;
 
 	TextureLayout font;
 	VkDescriptorPool descriptorPool;
