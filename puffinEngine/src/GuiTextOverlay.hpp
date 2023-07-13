@@ -25,10 +25,10 @@ public:
 	void init(Device* device, VkCommandPool& commandPool);
     void deInit();
 	
-	void createUniformBuffer(const VkCommandBuffer& command_buffer);
+	void createUniformBuffer(const VkCommandBuffer& commandBuffer);
 
 	void beginTextUpdate();
-	void renderText(std::string, float, float, enum TextAlignment);
+	void renderText(const std::string& text, float x, float y, const TextAlignment& align);
 	void endTextUpdate();
 
 private:

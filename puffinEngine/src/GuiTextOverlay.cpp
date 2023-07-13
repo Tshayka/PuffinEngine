@@ -29,10 +29,8 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 void GuiTextOverlay::init(Device* device, VkCommandPool& commandPool) {
 	p_LogicalDevice = device;
-	this->p_CommandPool = &commandPool;
-
-	m_VertexBuffer.setDevice(device);
-	p_Mapped = (glm::vec4*)m_VertexBuffer.getMapped();
+	p_CommandPool = &commandPool;
+	p_Mapped = static_cast<glm::vec4*>(m_VertexBuffer.getMapped());
 	
 	loadFontImage();
 	createDescriptorSetLayout();
@@ -67,6 +65,7 @@ void GuiTextOverlay::loadFontImage() {
 	m_Font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
+	m_VertexBuffer.setDevice(p_LogicalDevice);
 	m_VertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
@@ -90,32 +89,32 @@ void GuiTextOverlay::createDescriptorSetLayout() {
 
 void GuiTextOverlay::createDescriptorPool() {
 	// Don't forget to rise this numbers when you add bindings
-	std::array<VkDescriptorPoolSize, 1> PoolSizes = {};
-	PoolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-	PoolSizes[0].descriptorCount = 1;
+	std::array<VkDescriptorPoolSize, 1> poolSizes = {};
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+	poolSizes[0].descriptorCount = 1;
 
-	VkDescriptorPoolCreateInfo PoolInfo = {};
-	PoolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-	PoolInfo.poolSizeCount = static_cast<uint32_t>(PoolSizes.size());
-	PoolInfo.pPoolSizes = PoolSizes.data();
-	PoolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
+	VkDescriptorPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+	poolInfo.pPoolSizes = poolSizes.data();
+	poolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(p_LogicalDevice->get(), &PoolInfo, nullptr, &m_DescriptorPool));
+	ErrorCheck(vkCreateDescriptorPool(p_LogicalDevice->get(), &poolInfo, nullptr, &m_DescriptorPool));
 }
 
 void GuiTextOverlay::createDescriptorSet() {
-		VkDescriptorSetAllocateInfo AllocInfo = {};
-		AllocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-		AllocInfo.descriptorPool = m_DescriptorPool;
-		AllocInfo.descriptorSetCount = 1;
-		AllocInfo.pSetLayouts = &m_DescriptorSetLayout;
+		VkDescriptorSetAllocateInfo allocInfo = {};
+		allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+		allocInfo.descriptorPool = m_DescriptorPool;
+		allocInfo.descriptorSetCount = 1;
+		allocInfo.pSetLayouts = &m_DescriptorSetLayout;
 
-		ErrorCheck(vkAllocateDescriptorSets(p_LogicalDevice->get(), &AllocInfo, &m_DescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(p_LogicalDevice->get(), &allocInfo, &m_DescriptorSet));
 
-		VkDescriptorImageInfo ImageInfo = {};
-		ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-		ImageInfo.imageView = m_Font.view;
-		ImageInfo.sampler = m_Font.sampler;
+		VkDescriptorImageInfo imageInfo = {};
+		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+		imageInfo.imageView = m_Font.view;
+		imageInfo.sampler = m_Font.sampler;
 
 		std::array<VkWriteDescriptorSet, 1> descriptorWrites = {};
 
@@ -125,7 +124,7 @@ void GuiTextOverlay::createDescriptorSet() {
 		descriptorWrites[0].dstArrayElement = 0;
 		descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
 		descriptorWrites[0].descriptorCount = 1;
-		descriptorWrites[0].pImageInfo = &ImageInfo;
+		descriptorWrites[0].pImageInfo = &imageInfo;
 
 		vkUpdateDescriptorSets(p_LogicalDevice->get(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
@@ -140,15 +139,15 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP; // triangle from every 3 vertices with reuse
 	inputAssembly.primitiveRestartEnable = VK_FALSE;
 
-	VkPipelineRasterizationStateCreateInfo Rasterization = {}; // takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader
-	Rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-	Rasterization.depthClampEnable = VK_FALSE;
-	Rasterization.rasterizerDiscardEnable = VK_FALSE; // geometry never passes through the rasterizer stage
-	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; // determines how fragments are generated for geometry
-	Rasterization.lineWidth = 1.0f;
-	Rasterization.cullMode = VK_CULL_MODE_NONE;
-	Rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;
-	Rasterization.depthBiasEnable = VK_FALSE;
+	VkPipelineRasterizationStateCreateInfo rasterization = {}; // takes the geometry that is shaped by the vertices from the vertex shader and turns it into fragments to be colored by the fragment shader
+	rasterization.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterization.depthClampEnable = VK_FALSE;
+	rasterization.rasterizerDiscardEnable = VK_FALSE; // geometry never passes through the rasterizer stage
+	rasterization.polygonMode = VK_POLYGON_MODE_FILL; // determines how fragments are generated for geometry
+	rasterization.lineWidth = 1.0f;
+	rasterization.cullMode = VK_CULL_MODE_NONE;
+	rasterization.frontFace = VK_FRONT_FACE_CLOCKWISE;
+	rasterization.depthBiasEnable = VK_FALSE;
 
 	VkPipelineColorBlendAttachmentState colorBlendAttachment = {}; // Enable blending
 	colorBlendAttachment.blendEnable = VK_TRUE;
@@ -160,96 +159,96 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
 	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
-	VkPipelineColorBlendStateCreateInfo ColorBlending = {};
-	ColorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-	ColorBlending.logicOpEnable = VK_FALSE;
-	ColorBlending.logicOp = VK_LOGIC_OP_COPY;
-	ColorBlending.attachmentCount = 1;
-	ColorBlending.pAttachments = &colorBlendAttachment;
-	ColorBlending.blendConstants[0] = 0.0f;
-	ColorBlending.blendConstants[1] = 0.0f;
-	ColorBlending.blendConstants[2] = 0.0f;
-	ColorBlending.blendConstants[3] = 0.0f;
+	VkPipelineColorBlendStateCreateInfo colorBlending = {};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE;
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
 
-	VkPipelineViewportStateCreateInfo ViewportState = {};
-	ViewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-	ViewportState.viewportCount = 1;
-	ViewportState.pViewports = &m_Viewport;
-	ViewportState.scissorCount = 1;
-	ViewportState.pScissors = &m_Scissor;
+	VkPipelineViewportStateCreateInfo viewportState = {};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &m_Viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &m_Scissor;
 
-	VkPipelineMultisampleStateCreateInfo Multisample = {}; // configures multisampling, is one of the ways to perform anti-aliasing
-	Multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-	Multisample.sampleShadingEnable = VK_FALSE;
-	Multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	VkPipelineMultisampleStateCreateInfo multisample = {}; // configures multisampling, is one of the ways to perform anti-aliasing
+	multisample.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisample.sampleShadingEnable = VK_FALSE;
+	multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
-	VkPipelineDepthStencilStateCreateInfo DepthStencil = {};
-	DepthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-	DepthStencil.depthTestEnable = VK_TRUE;
-	DepthStencil.depthWriteEnable = VK_TRUE;
-	DepthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+	VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+	depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+	depthStencil.depthTestEnable = VK_TRUE;
+	depthStencil.depthWriteEnable = VK_TRUE;
+	depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
 
 	std::vector<VkDynamicState> dynamicStateEnables = { VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR };
 
-	VkPipelineDynamicStateCreateInfo ViewportDynamic = {};
-	ViewportDynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-	ViewportDynamic.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
-	ViewportDynamic.pDynamicStates = dynamicStateEnables.data();
+	VkPipelineDynamicStateCreateInfo viewportDynamic = {};
+	viewportDynamic.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
+	viewportDynamic.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
+	viewportDynamic.pDynamicStates = dynamicStateEnables.data();
 
-	std::array<VkVertexInputBindingDescription, 2> vertex_bindings = {};
-	vertex_bindings[0].binding = 0;
-	vertex_bindings[0].stride = sizeof(glm::vec4);
-	vertex_bindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	std::array<VkVertexInputBindingDescription, 2> vertexBindings = {};
+	vertexBindings[0].binding = 0;
+	vertexBindings[0].stride = sizeof(glm::vec4);
+	vertexBindings[0].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 	
-	vertex_bindings[1].binding = 1;
-	vertex_bindings[1].stride = sizeof(glm::vec4);
-	vertex_bindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	vertexBindings[1].binding = 1;
+	vertexBindings[1].stride = sizeof(glm::vec4);
+	vertexBindings[1].inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
 
-	std::array<VkVertexInputAttributeDescription, 2> vertex_attributes = {};
-	vertex_attributes[0].binding = 0;
-	vertex_attributes[0].location = 0;
-	vertex_attributes[0].format = VK_FORMAT_R32G32_SFLOAT;
-	vertex_attributes[0].offset = 0;
+	std::array<VkVertexInputAttributeDescription, 2> vertexAttributes = {};
+	vertexAttributes[0].binding = 0;
+	vertexAttributes[0].location = 0;
+	vertexAttributes[0].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexAttributes[0].offset = 0;
 	
-	vertex_attributes[1].binding = 1;
-	vertex_attributes[1].location = 1;
-	vertex_attributes[1].format = VK_FORMAT_R32G32_SFLOAT;
-	vertex_attributes[1].offset = sizeof(glm::vec2);
+	vertexAttributes[1].binding = 1;
+	vertexAttributes[1].location = 1;
+	vertexAttributes[1].format = VK_FORMAT_R32G32_SFLOAT;
+	vertexAttributes[1].offset = sizeof(glm::vec2);
 
-	VkPipelineVertexInputStateCreateInfo VertexInputInfo = {};
-	VertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-	VertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertex_bindings.size());
-	VertexInputInfo.pVertexBindingDescriptions = vertex_bindings.data();
-	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertex_attributes.size());
-	VertexInputInfo.pVertexAttributeDescriptions = vertex_attributes.data();
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	vertexInputInfo.vertexBindingDescriptionCount = static_cast<uint32_t>(vertexBindings.size());
+	vertexInputInfo.pVertexBindingDescriptions = vertexBindings.data();
+	vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(vertexAttributes.size());
+	vertexInputInfo.pVertexAttributeDescriptions = vertexAttributes.data();
 
 	std::array<VkDescriptorSetLayout, 1> layouts = {m_DescriptorSetLayout};
 
-	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
-	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-	PipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
-	PipelineLayoutInfo.pSetLayouts = layouts.data();
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
+	pipelineLayoutInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(p_LogicalDevice->get(), &PipelineLayoutInfo, nullptr, &m_PipelineLayout));
+	ErrorCheck(vkCreatePipelineLayout(p_LogicalDevice->get(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
-	VkGraphicsPipelineCreateInfo PipelineInfo = {};
-	PipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-	PipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
-	PipelineInfo.pStages = shaderStages.data();
-	PipelineInfo.pVertexInputState = &VertexInputInfo;
-	PipelineInfo.pInputAssemblyState = &inputAssembly;	
-	PipelineInfo.pViewportState = &ViewportState;
-	PipelineInfo.pRasterizationState = &Rasterization;
-	PipelineInfo.pMultisampleState = &Multisample;
-	PipelineInfo.pDepthStencilState = &DepthStencil;
-	PipelineInfo.pColorBlendState = &ColorBlending;
-	PipelineInfo.pDynamicState = &ViewportDynamic;	
-	PipelineInfo.layout = m_PipelineLayout;
-	PipelineInfo.renderPass = p_LogicalDevice->renderPass;
-	PipelineInfo.subpass = 0;
-	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	VkGraphicsPipelineCreateInfo pipelineInfo = {};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
+	pipelineInfo.pStages = shaderStages.data();
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;	
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterization;
+	pipelineInfo.pMultisampleState = &multisample;
+	pipelineInfo.pDepthStencilState = &depthStencil;
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = &viewportDynamic;	
+	pipelineInfo.layout = m_PipelineLayout;
+	pipelineInfo.renderPass = p_LogicalDevice->renderPass;
+	pipelineInfo.subpass = 0;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
 	std::filesystem::path p = std::filesystem::current_path().parent_path();
 	std::filesystem::path vertModelsShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "perform_stats.vert.spv";
@@ -276,7 +275,7 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(p_LogicalDevice->get(), m_PipelineCache, 1, &PipelineInfo, nullptr, &m_Pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(p_LogicalDevice->get(), m_PipelineCache, 1, &pipelineInfo, nullptr, &m_Pipeline));
 
 	vkDestroyShaderModule(p_LogicalDevice->get(), fragModelsShaderModule, nullptr);
 	vkDestroyShaderModule(p_LogicalDevice->get(), vertModelsShaderModule, nullptr);
@@ -287,11 +286,11 @@ void GuiTextOverlay::beginTextUpdate() {
 	m_NumLetters = 0;
 }
 
-void GuiTextOverlay::renderText(std::string text, float x, float y, TextAlignment align) {
-	assert(p_Mapped != nullptr);
+void GuiTextOverlay::renderText(const std::string& text, float x, float y, const TextAlignment& align) {
+	assert(p_Mapped != nullptr); // try-catch
 
-	float fbW = (float)p_LogicalDevice->swapchain_extent.width;
-	float fbH = (float)p_LogicalDevice->swapchain_extent.height;
+	float fbW = static_cast<float>(p_LogicalDevice->swapchain_extent.width);
+	float fbH = static_cast<float>(p_LogicalDevice->swapchain_extent.height);
 
 	const float charW = 1.5f / fbW;
 	const float charH = 1.5f / fbH;
@@ -302,7 +301,7 @@ void GuiTextOverlay::renderText(std::string text, float x, float y, TextAlignmen
 	// Calculate text width
 	float textWidth = 0;
 	for (auto letter : text) {
-		stb_fontchar *charData = &m_StbFontData[(uint32_t)letter - STB_FIRST_CHAR];
+		stb_fontchar *charData = &m_StbFontData[static_cast<uint32_t>(letter) - STB_FIRST_CHAR];
 		textWidth += charData->advance * charW;
 	}
 
@@ -316,8 +315,8 @@ void GuiTextOverlay::renderText(std::string text, float x, float y, TextAlignmen
 	}
 
 	// Generate a uv mapped quad per char in the new text
-	for (auto letter : text) {
-		stb_fontchar *charData = &m_StbFontData[(uint32_t)letter - STB_FIRST_CHAR];
+	for (const auto &letter : text) {
+		stb_fontchar *charData = &m_StbFontData[static_cast<uint32_t>(letter) - STB_FIRST_CHAR];
 
 		p_Mapped->x = (x + (float)charData->x0 * charW);
 		p_Mapped->y = (y + (float)charData->y0 * charH);
@@ -354,34 +353,35 @@ void GuiTextOverlay::endTextUpdate() {
 	m_VertexBuffer.unmap();
 }
 
-void GuiTextOverlay::createUniformBuffer(const VkCommandBuffer& command_buffer) {
+void GuiTextOverlay::createUniformBuffer(const VkCommandBuffer& commandBuffer) {
 	m_Viewport.x = 0.0f;
 	m_Viewport.y = 0.0f;
-	m_Viewport.width = (float)p_LogicalDevice->swapchain_extent.width;
-	m_Viewport.height = (float)p_LogicalDevice->swapchain_extent.height;
+	m_Viewport.width = static_cast<float>(p_LogicalDevice->swapchain_extent.width);
+	m_Viewport.height = static_cast<float>(p_LogicalDevice->swapchain_extent.height);
 	m_Viewport.minDepth = 0.0f;
 	m_Viewport.maxDepth = 1.0f;
-	vkCmdSetViewport(command_buffer, 0, 1, &m_Viewport);
+	vkCmdSetViewport(commandBuffer, 0, 1, &m_Viewport);
 
 	m_Scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
 	m_Scissor.extent = p_LogicalDevice->swapchain_extent;	
-	vkCmdSetScissor(command_buffer, 0, 1, &m_Scissor);
+	vkCmdSetScissor(commandBuffer, 0, 1, &m_Scissor);
 	
-	vkCmdBindPipeline(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
-	vkCmdBindDescriptorSets(command_buffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_DescriptorSet, 0, nullptr);
+	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
+	vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_PipelineLayout, 0, 1, &m_DescriptorSet, 0, nullptr);
 
 	VkDeviceSize offsets[1] = { 0 };
-	vkCmdBindVertexBuffers(command_buffer, 0, 1, &m_VertexBuffer.getBuffer(), offsets);
-	vkCmdBindVertexBuffers(command_buffer, 1, 1, &m_VertexBuffer.getBuffer(), offsets);
+	vkCmdBindVertexBuffers(commandBuffer, 0, 1, &m_VertexBuffer.getBuffer(), offsets);
+	vkCmdBindVertexBuffers(commandBuffer, 1, 1, &m_VertexBuffer.getBuffer(), offsets);
 
 	for (uint32_t j = 0; j < m_NumLetters; j++) {
-		vkCmdDraw(command_buffer, 4, 1, j * 4, 0);
+		vkCmdDraw(commandBuffer, 4, 1, j * 4, 0);
 	}
 }
 
 void GuiTextOverlay::deInit() {
 	m_VertexBuffer.destroy();
 	m_Font.DeInit();
+
 	vkDestroyPipelineCache(p_LogicalDevice->get(), m_PipelineCache, nullptr);
 	vkDestroyPipeline(p_LogicalDevice->get(), m_Pipeline, nullptr);
 	vkDestroyPipelineLayout(p_LogicalDevice->get(), m_PipelineLayout, nullptr);
