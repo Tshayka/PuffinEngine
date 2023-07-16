@@ -32,7 +32,7 @@ public:
 private:
     void CreateCommandPool();
 	void CreateRenderPass();
-	void UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime);
+	void updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double& fps);
 
 	uint32_t bufferIndex;
 	VkRenderPass renderPass;

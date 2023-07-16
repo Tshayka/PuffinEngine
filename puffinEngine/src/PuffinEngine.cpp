@@ -115,38 +115,59 @@ void PuffinEngine::InitVulkan() {
 }
 
 void PuffinEngine::MainLoop() {
-	mainClock->currentTime = glfwGetTime();
-	
-	const double MAX_ACCUMULATED_TIME = 1.0;
+	const double maxAccumulatedTime = 1.0;
+	mainClock->fixedTimeValue = 0.015;
+	const double maxFrameTime = 0.15;
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
+	int frameCount = 0;
+	const int frameHistorySize = 60;
+	double frameTimes[frameHistorySize] = { 0.0 };
+	int frameIndex = 0;
 
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
-		double frameTime = newTime - mainClock->currentTime;
-		if (frameTime > 0.15)
-			frameTime = 0.15;
-		mainClock->currentTime = newTime;
-		
-		mainClock->accumulator += frameTime;
-		mainClock->accumulator = clamp(mainClock->accumulator, 0.0, MAX_ACCUMULATED_TIME);
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+
+		// Limit frame time to avoid spiral of death
+		if (frameTime > maxFrameTime)
+			frameTime = maxFrameTime;
+
+		accumulator += frameTime;
 
 		glfwPollEvents();
 		glfwGetCursorPos(window, &xpos, &ypos);
 		glfwGetFramebufferSize(window, &fb_width, &fb_height);
 		glfwGetWindowSize(window, &width, &height);
 
-		ImGuiIO& io = ImGui::GetIO(); 
-		io.DisplaySize = ImVec2((float)width, (float)height);
-		io.DisplayFramebufferScale = ImVec2(width > 0 ? ((float)fb_width / width) : 0, height > 0 ? ((float)fb_height / height) : 0);
-		io.DeltaTime = (float)frameTime;	
+		ImGuiIO& io = ImGui::GetIO();
+		io.DisplaySize = ImVec2(static_cast<float>(width), static_cast<float>(height));
+		io.DisplayFramebufferScale = ImVec2(width > 0 ? (static_cast<float>(fb_width) / width) : 0,
+			height > 0 ? (static_cast<float>(fb_height) / height) : 0);
+		io.DeltaTime = static_cast<float>(frameTime);
 
-		while (mainClock->accumulator >= mainClock->fixedTimeValue) {
+		while (accumulator >= mainClock->fixedTimeValue) {
 			threadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
 			scene_1->UpdateScene();
-			mainClock->totalTime += mainClock->fixedTimeValue;
-			mainClock->accumulator -= mainClock->fixedTimeValue;
+			mainClock->totalElapsedTime += mainClock->fixedTimeValue;
+			accumulator -= mainClock->fixedTimeValue;
 		}
-		
-		DrawFrame();	
+
+		DrawFrame();
+
+		// Calculate average frame time and FPS
+		// frameTimes - bumber of frames to consider for FPS calculation
+		frameTimes[frameIndex] = frameTime;
+		frameIndex = (frameIndex + 1) % frameHistorySize;
+		double avgFrameTime = 0.0;
+		for (int i = 0; i < frameHistorySize; i++) {
+			avgFrameTime += frameTimes[i];
+		}
+
+		avgFrameTime /= frameHistorySize;
+		mainClock->fps = 1.0 / avgFrameTime;
+		mainClock->frameTime = frameTime;
 	}
 
 	vkDeviceWaitIdle(worldDevice->get());

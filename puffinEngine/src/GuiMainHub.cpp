@@ -46,7 +46,7 @@ void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textO
 }
 
 void GuiMainHub::UpdateGui() {
-	UpdateCommandBuffers((float)mainClock->accumulator, (uint32_t)mainClock->totalTime);
+	updateCommandBuffers(mainClock->frameTime, (uint32_t)mainClock->totalElapsedTime, mainClock->fps);
 }
 
 void GuiMainHub::CleanUpForSwapchain() {}
@@ -153,11 +153,11 @@ void GuiMainHub::CreateCommandPool() {
 	ErrorCheck(vkCreateCommandPool(logicalDevice->get(), &poolInfo, nullptr, &commandPool));
 }
 
-void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
+void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double &fps) {
 	textOverlay->beginTextUpdate();
 	textOverlay->renderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
 	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
+	ss << std::fixed << std::setprecision(4) << "Frame Time : " << (frameTime) << "ms | " << " elapsed time : " << elapsedTime << "s | " << fps << " FPS)";
 	textOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
 	textOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
 	textOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);

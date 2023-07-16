@@ -1162,22 +1162,22 @@ void Scene::UpdateCloudsUniformBuffer() {
 	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBOC.time = (float)mainClock->totalTime;
+	UBOC.time = (float)mainClock->totalElapsedTime;
 	UBOC.view[3][0] *= 0;
 	UBOC.view[3][1] *= 0;
 	UBOC.view[3][2] *= 0;
 	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
-	memcpy(m_UboClouds.getMapped(), &UBOC, sizeof(UBOC));	
+	m_UboClouds.copy(sizeof(UBOC), &UBOC);
 } 
 
 void Scene::UpdateSelectionIndicatorUniformBuffer() {
 	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)logicalDevice->swapchain_extent.width / (float)logicalDevice->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSI.proj[1][1] *= -1; 
 	UBOSI.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
-	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalTime * glm::radians(90.0f), currentCamera->up);
+	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalElapsedTime * glm::radians(90.0f), currentCamera->up);
 	UBOSI.cameraPos = glm::vec3(currentCamera->position);
-	UBOSI.time = (float)mainClock->totalTime;
+	UBOSI.time = (float)mainClock->totalElapsedTime;
 	memcpy(m_UboSlectionIndicator.getMapped(), &UBOSI, sizeof(UBOSI));
 }
 
@@ -1239,14 +1239,8 @@ void Scene::UpdateDynamicUniformBuffer() {
 		}
 	}
 
-	memcpy(m_UboCloudsDynamic.getMapped(), uboDataDynamic.model, sizeof(uboDataDynamic));
-
-	// Flush to make changes visible to the host 
-	VkMappedMemoryRange memoryRange = {};
-	memoryRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
-	memoryRange.memory = m_UboCloudsDynamic.getMemory();
-	memoryRange.size = sizeof(uboDataDynamic);	
-	vkFlushMappedMemoryRanges(logicalDevice->get(), 1, &memoryRange);
+	m_UboCloudsDynamic.copy(sizeof(uboDataDynamic), uboDataDynamic.model);
+	m_UboCloudsDynamic.flush(sizeof(uboDataDynamic));
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
@@ -1256,14 +1250,15 @@ void Scene::UpdateSkyboxUniformBuffer() {
 	UBOSB.view[3][0] *= 0;
 	UBOSB.view[3][1] *= 0;
 	UBOSB.view[3][2] *= 0;
-	UBOSB.time = (float)mainClock->totalTime;
-	memcpy(m_UboSkybox.getMapped(), &UBOSB, sizeof(UBOSB));
-	memcpy(m_UboSkyboxRefraction.getMapped(), &UBOSB, sizeof(UBOSB));
+	UBOSB.time = (float)mainClock->totalElapsedTime;
+
+	m_UboSkybox.copy(sizeof(UBOSB), &UBOSB);
+	m_UboSkyboxRefraction.copy(sizeof(UBOSB), &UBOSB);
 
 	UBOSB.view[1][0] *= -1;
 	UBOSB.view[1][1] *= -1;
 	UBOSB.view[1][2] *= -1;
-	memcpy(m_UboSkyboxReflection.getMapped(), &UBOSB, sizeof(UBOSB));
+	m_UboSkyboxReflection.copy(sizeof(UBOSB), &UBOSB);
 }
 
 void Scene::UpdateOceanUniformBuffer() {
@@ -1272,7 +1267,7 @@ void Scene::UpdateOceanUniformBuffer() {
 	UBOSE.proj[1][1] *= -1;
 	UBOSE.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSE.cameraPos = currentCamera->position;
-	UBOSE.time = (float)mainClock->totalTime;
+	UBOSE.time = (float)mainClock->totalElapsedTime;
 	memcpy(m_UboOcean.getMapped(), &UBOSE, sizeof(UBOSE));
 }
 

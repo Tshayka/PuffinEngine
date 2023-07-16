@@ -4,7 +4,7 @@
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/gtc/matrix_transform.hpp> 
 
-#define DYNAMIC_UB_OBJECTS 216 // Clouds
+#define DYNAMIC_UB_OBJECTS 125 // Clouds
 
 #include "Character.hpp"
 #include "Camera.hpp"
