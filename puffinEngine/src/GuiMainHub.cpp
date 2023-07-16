@@ -12,13 +12,13 @@
 //---------- Constructors and dectructors ---------- //
 
 GuiMainHub::GuiMainHub() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main hub - created\n";
 #endif 
 }
 
 GuiMainHub::~GuiMainHub() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main hub - destroyed\n";
 #endif
 }
@@ -29,20 +29,22 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
+void GuiMainHub::init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
 	p_LogicalDevice = device; 
-	this->p_MainUi = mainUi;
-	this->p_Console = console;
-	this->p_TextOverlay = textOverlay;
-	this->p_ThreadPool = &threadPool;
-	this->p_MainClock = mainClock;
+	p_MainUi = mainUi;
+	p_Console = console;
+	p_TextOverlay = textOverlay;
+	p_ThreadPool = threadPool;
+	p_MainClock = mainClock;
 		
 	createRenderPass();
 	createCommandPool();
 
-	console->init(p_LogicalDevice, m_CommandPool);
-	textOverlay->init(p_LogicalDevice, m_CommandPool);
-	mainUi->init(p_LogicalDevice, m_CommandPool);
+	p_Console->init(p_LogicalDevice, &m_CommandPool);
+	p_TextOverlay->init(p_LogicalDevice, &m_CommandPool);
+	p_MainUi->init(p_LogicalDevice, &m_CommandPool);
+
+	m_Initialized = true;
 }
 
 void GuiMainHub::updateGui() {
@@ -236,7 +238,7 @@ void GuiMainHub::freeCommandBuffers() {
 	vkFreeCommandBuffers(p_LogicalDevice->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
 }
 
-void GuiMainHub::deInit() {
+void GuiMainHub::deinit() {
 	vkDestroyCommandPool(p_LogicalDevice->get(), m_CommandPool, nullptr);
 	vkDestroyRenderPass(p_LogicalDevice->get(), m_RenderPass, nullptr);
 }

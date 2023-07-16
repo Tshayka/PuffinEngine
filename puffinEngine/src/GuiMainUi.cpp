@@ -19,20 +19,20 @@
 //---------- Constructors and dectructors ---------- //
 
 GuiMainUi::GuiMainUi() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main ui - created\n";
 #endif 
 }
 
 GuiMainUi::~GuiMainUi() {	
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main ui - destroyed\n";
 #endif
 }
 
-void GuiMainUi::init(Device* device, VkCommandPool& commandPool) {
+void GuiMainUi::init(Device* device, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
-	this->p_CommandPool = &commandPool; 
+	p_CommandPool = commandPool; 
 
 	m_DrawData.totalIndicesCount = 0;
 	m_DrawData.totalVerticesCount = 0;

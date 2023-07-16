@@ -10,20 +10,20 @@
 //---------- Constructors and dectructors ---------- //
 
 GuiElement::GuiElement() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - imgui element - created\n";
 #endif 
 }
 
 GuiElement::~GuiElement() {	
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - imgui element - destroyed\n";
 #endif
 }
 
-void GuiElement::init(Device* device, VkCommandPool& commandPool) {
+void GuiElement::init(Device* device, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
-	this->p_CommandPool = &commandPool;
+	p_CommandPool = commandPool;
 
 	m_VertexBuffer.setDevice(device);
 	m_IndexBuffer.setDevice(device);

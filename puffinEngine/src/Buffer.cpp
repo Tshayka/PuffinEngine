@@ -17,13 +17,13 @@ Buffer::Buffer() {
 	m_Buffer = VK_NULL_HANDLE;
 	p_Mapped = nullptr;
 
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Buffer object created\n";
 #endif 
 };
 
 Buffer::~Buffer() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Buffer object destroyed\n";
 #endif 
 }

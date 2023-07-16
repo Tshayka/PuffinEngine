@@ -13,13 +13,13 @@
 // ------- Constructors and dectructors ------------- //
 
 MaterialLibrary::MaterialLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Material library created\n";
 #endif
 }
 
 MaterialLibrary::~MaterialLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Material library destroyed\n";
 #endif 
 }

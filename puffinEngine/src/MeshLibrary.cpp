@@ -13,13 +13,13 @@
 // ------- Constructors and dectructors ------------- //
 
 MeshLibrary::MeshLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Mesh library created\n";
 #endif
 }
 
 MeshLibrary::~MeshLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Mesh library destroyed\n";
 #endif 
 }

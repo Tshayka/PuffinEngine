@@ -22,7 +22,7 @@ public:
 	GuiTextOverlay();
 	~GuiTextOverlay();
 
-	void init(Device* device, VkCommandPool& commandPool);
+	void init(Device* device, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
     void deInit();

@@ -40,12 +40,12 @@ public:
 		return device;
 	}
 
-	void DeInitDevice();
+	void deinit();
 	void CreateOffscreenRenderPass(VkFormat format);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	uint32_t FindMemoryType(uint32_t, VkMemoryPropertyFlags);
 	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice);
-	void InitDevice(GLFWwindow*);
+	void init(GLFWwindow*);
 	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
 	void DeInitSwapchainImageViews();
 	void DestroyOffscreenRenderPass();

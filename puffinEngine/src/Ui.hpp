@@ -11,7 +11,7 @@ public:
 	GuiElement();
 	~GuiElement();
 
-	void init(Device* logiclDevice, VkCommandPool& commandPool);
+	void init(Device* logiclDevice, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();

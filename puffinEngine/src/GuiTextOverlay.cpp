@@ -10,13 +10,13 @@
 //---------- Constructors and dectructors ---------- //
 
 GuiTextOverlay::GuiTextOverlay() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - text overlay - created\n";
 #endif 
 }
 
 GuiTextOverlay::~GuiTextOverlay() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - text overlay - destroyed\n";
 #endif
 }
@@ -27,9 +27,9 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiTextOverlay::init(Device* device, VkCommandPool& commandPool) {
+void GuiTextOverlay::init(Device* device, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
-	p_CommandPool = &commandPool;
+	p_CommandPool = commandPool;
 	p_Mapped = static_cast<glm::vec4*>(m_VertexBuffer.getMapped());
 	
 	loadFontImage();

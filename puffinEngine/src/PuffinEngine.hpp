@@ -7,23 +7,27 @@
 #include "Scene.hpp"
 #include "GuiMainHub.hpp"
 
-const int FRAMES_PER_SECOND = 25;
-const int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
-const int MAX_FRAMESKIP = 5;
+//const int FRAMES_PER_SECOND = 25;
+//const int SKIP_TICKS = 1000 / FRAMES_PER_SECOND;
+//const int MAX_FRAMESKIP = 5;
+
+typedef std::pair<std::function<void(puffinengine::tool::Scene*)>, std::function<void(puffinengine::tool::Scene*)>> FuncPair;
 
 class PuffinEngine {
-    public:
+public:
     PuffinEngine();
 	~PuffinEngine();
 
-    void Run();
-
-    std::string isUppercase(char l);
+    void run();
 
     int width = 800;
 	int height = 600; // relative to the monitor and/or the window and are given in artificial units that do not necessarily correspond to real screen pixels
 
-    private:
+private:
+     bool initAllSystems();
+     bool initWindow();
+     bool initDefaultKeysBindings(std::map<int, FuncPair>& functions);
+     void createWorldClock();
 
     // ----------- Callbacks of ImGui and GLFW ------------------- //
     GLFWwindow* window;
@@ -39,10 +43,10 @@ class PuffinEngine {
 
     // ---------------- Main functions ------------------ //
     
-    typedef std::pair<std::function<void (Scene*)>, std::function<void (Scene*)>> FuncPair;
+    
 
     //void ConnectGamepad();
-    void CreateDevice();
+    void initDevice();
     void CreateGuiTextOverlay();
     void CreateImGuiMenu();
     void CreateMainCharacter();
@@ -53,29 +57,27 @@ class PuffinEngine {
     void CreateMaterialLibrary();
     void CreateMeshLibrary();
     void CreateSemaphores();
-    void CreateWorldClock();
+
     void DrawFrame();
     void GatherThreadInfo();
-    void InitDefaultKeysBindings(std::map<int, FuncPair>& functions);
-    void InitVulkan();
-    void InitWindow();
-    void MainLoop();
+
+    void mainLoop();
     void PressKey(int key);
 	void RecreateSwapChain();
     void UpdateGui();
    
     std::map<int, FuncPair> functions;
-
     std::unique_ptr<Actor> mainCharacter;
     
-    Device* worldDevice = nullptr;
-    MaterialLibrary* materialLibrary = nullptr;
-    MeshLibrary* meshLibrary = nullptr;
-    MousePicker* mousePicker = nullptr;
-    Scene* scene_1 = nullptr;
-    WorldClock* mainClock = nullptr;
+    puffinengine::tool::Scene scene_1;
+    Device m_Device;
+    puffinengine::tool::WorldClock m_MainClock;
 
-    GuiMainHub* guiMainHub = nullptr;
+    MaterialLibrary m_MaterialLibrary;
+    MeshLibrary m_MeshLibrary;
+    MousePicker m_MousePicker;
+
+    GuiMainHub m_GUIMainHub;
     GuiElement* console = nullptr;
     GuiMainUi* mainUi = nullptr;
     GuiTextOverlay* guiStatistics = nullptr;
@@ -86,21 +88,20 @@ class PuffinEngine {
     VkSemaphore refractRenderSemaphore;
 
     uint32_t numThreads;
-    enginetool::ThreadPool threadPool;
+    enginetool::ThreadPool m_ThreadPool;
 
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.
 
     // ---------------- Deinitialisation ---------------- //
 
-    void CleanUp();
+    void cleanUp();
     void CleanUpSwapChain();
     void DestroyGUI();
     void DeInitSemaphores();
-    void DestroyDevice();
     void DestroyMaterialLibrary();
-    void DestroyMeshLibrary();
-    void DestroyMousePicker();
+    void destroyMeshLibrary();
+    void deinitMousePicker();
     void DestroyScene();
-    void DestroyWorldClock();
+    void deinitWorldClock();
 };

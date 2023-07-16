@@ -5,13 +5,13 @@
 //---------- Constructors and dectructors ---------- //
 
 TextureLayout::TextureLayout() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Texture created\n";
 #endif 
 }
 
 TextureLayout::~TextureLayout() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Texture destroyed\n";
 #endif
 }

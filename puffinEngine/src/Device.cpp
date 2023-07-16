@@ -18,21 +18,21 @@
 
 Device::Device() 
 {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Device object created\n";
 #endif 
 }
 
 Device::~Device()
 {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Device object destroyed\n";
 #endif 
 }
 
 // ---------------- Main functions ------------------ //
 
-void Device::InitDevice(GLFWwindow* window)
+void Device::init(GLFWwindow* window)
 {
 	this->window = window;
 
@@ -48,7 +48,7 @@ void Device::InitDevice(GLFWwindow* window)
 	CreateOffscreenRenderPass(VK_FORMAT_R8G8B8A8_UNORM);  
 }
 
-void Device::DeInitDevice(){
+void Device::deinit(){
 	DestroyOffscreenRenderPass();
 	DestroyRenderPass();
     DeInitDebug();
@@ -252,7 +252,7 @@ void Device::CreateInstance()
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
     createInfo.ppEnabledExtensionNames = extensions.data();
 	
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 	createInfo.ppEnabledLayerNames = validationLayers.data();
 #else 
@@ -274,7 +274,7 @@ std::vector<const char*> Device::GetRequiredExtensions()
 		extensions.push_back(glfwExtensions[i]);
 	}
 
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 		extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
 #else 
 #endif 
@@ -377,7 +377,7 @@ void Device::CreateLogicalDevice() // init device
 	device_create_info.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
 	device_create_info.ppEnabledExtensionNames = extensions.data();
 	
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	device_create_info.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
 	device_create_info.ppEnabledLayerNames = validationLayers.data();
 #else 
@@ -675,7 +675,7 @@ void Device::CreateOffscreenRenderPass(VkFormat format) {
 
 // --------------------- DEBUG ---------------------- //
 
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 
 VKAPI_ATTR VkBool32 VKAPI_CALL VulkanDebugCallback(
 	VkDebugReportFlagsEXT flags,

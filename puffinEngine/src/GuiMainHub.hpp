@@ -18,14 +18,15 @@ public:
 	GuiMainHub();
 	~GuiMainHub();
 
-	void init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
+	void init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
-	void deInit();
+	void deinit();
 	
 	void submit(const VkQueue& queue, const int32_t& bufferIndex);
 	void updateGui(); 
 	
+	bool m_Initialized = false;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
 	bool guiOverlayVisible = true;
 
@@ -50,5 +51,5 @@ private:
 	GuiTextOverlay* p_TextOverlay = nullptr;
 	Device* p_LogicalDevice = nullptr;
 	enginetool::ThreadPool* p_ThreadPool = nullptr;
-	WorldClock* p_MainClock = nullptr;	
+	puffinengine::tool::WorldClock* p_MainClock = nullptr;
 };

@@ -7,13 +7,13 @@
 // ------- Constructors and dectructors ------------- //
 
 MousePicker::MousePicker() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "MousePicker created\n";
 #endif
 }
 
 MousePicker::~MousePicker() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "MousePicker destroyed\n";
 #endif
     currentCamera = nullptr; 
@@ -31,7 +31,7 @@ glm::vec3 MousePicker::GetRayOrigin() const {
 
 // ---------------- Main functions ------------------ //
 
-void MousePicker::Init(Device* device) {
+void MousePicker::init(Device* device) {
 	hitPoint = glm::vec3(0.0f, 0.0f, 0.0f);
 	width = 800;
 	height = 600;
@@ -61,6 +61,8 @@ void MousePicker::CalculateNormalisedDeviceCoordinates(const double& xpos, const
 	mousePositionNormalized = glm::vec2(x, y);
 }
 
-void MousePicker::DeInit() {
-
+void MousePicker::deinit() {
+	hitPoint = glm::vec3(0.0f, 0.0f, 0.0f);
+	width = 0;
+	height = 0;
 }
