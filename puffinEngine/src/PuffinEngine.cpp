@@ -91,7 +91,7 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateGuiMainHub() {
 	guiMainHub = new GuiMainHub();
-	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool);
+	guiMainHub->init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool);
 }
 
 void PuffinEngine::CreateScene() {
@@ -174,7 +174,7 @@ void PuffinEngine::MainLoop() {
 }
 
 void PuffinEngine::UpdateGui(){
-	guiMainHub->UpdateGui();
+	guiMainHub->updateGui();
 }
 
 void PuffinEngine::CreateSemaphores() {
@@ -226,7 +226,7 @@ void PuffinEngine::DrawFrame() {
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
 	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	guiMainHub->Submit(worldDevice->queue, imageIndex);
+	guiMainHub->submit(worldDevice->queue, imageIndex);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -625,7 +625,7 @@ void PuffinEngine::DestroyScene() {// can't see destructor working
 }
 
 void PuffinEngine::DestroyGUI() {
-	mainUi->DeInit();
+	mainUi->deInit();
 	delete mainUi;
 	mainUi = nullptr;
 
@@ -633,11 +633,11 @@ void PuffinEngine::DestroyGUI() {
 	delete guiStatistics;
 	guiStatistics = nullptr;
 
-	console->DeInit();
+	console->deInit();
 	delete console;
 	console = nullptr;
 
-	guiMainHub->DeInit();
+	guiMainHub->deInit();
 	delete guiMainHub;
 	guiMainHub = nullptr;
 }

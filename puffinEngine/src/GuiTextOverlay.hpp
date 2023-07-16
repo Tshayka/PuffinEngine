@@ -53,11 +53,11 @@ private:
 	VkPipeline m_Pipeline;
 	VkPipelineCache m_PipelineCache;
 
-	VkRect2D m_Scissor = {};
-	VkViewport m_Viewport = {};
-
 	glm::vec4* p_Mapped = nullptr;
 	enginetool::Buffer m_VertexBuffer;
+
+	VkRect2D m_Scissor = {};
+	VkViewport m_Viewport = {};
 
 	Device* p_LogicalDevice = nullptr;
 	VkCommandPool* p_CommandPool = nullptr;

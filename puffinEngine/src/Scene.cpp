@@ -1274,7 +1274,7 @@ void Scene::UpdateOceanUniformBuffer() {
 // ------ Text overlay - performance statistics ----- //
 
 void Scene::UpdateGUI() {
-	guiMainHub->UpdateGui();
+	guiMainHub->updateGui();
 }
 
 // ------------------ Descriptors ------------------- //
@@ -2304,10 +2304,10 @@ void Scene::StopSelectedActorUpDown() {if (selectedActor!=nullptr) {selectedActo
 void Scene::WireframeToggle() {displayWireframe = !displayWireframe;}
 void Scene::AabbToggle() {displayAabb = !displayAabb;}
 void Scene::SelectionIndicatorToggle() {displaySelectionIndicator = !displaySelectionIndicator;}
-void Scene::ConsoleToggle() {guiMainHub->ui_settings.display_imgui = !guiMainHub->ui_settings.display_imgui;}
+void Scene::ConsoleToggle() {guiMainHub->m_GUISettings.display_imgui = !guiMainHub->m_GUISettings.display_imgui;}
 void Scene::AllGuiToggle() {guiMainHub->guiOverlayVisible = !guiMainHub->guiOverlayVisible;}
-void Scene::MainUiToggle() {guiMainHub->ui_settings.display_main_ui = !guiMainHub->ui_settings.display_main_ui;}
-void Scene::TextOverlayToggle() {guiMainHub->ui_settings.display_stats_overlay = !guiMainHub->ui_settings.display_stats_overlay;}
+void Scene::MainUiToggle() {guiMainHub->m_GUISettings.display_main_ui = !guiMainHub->m_GUISettings.display_main_ui;}
+void Scene::TextOverlayToggle() {guiMainHub->m_GUISettings.display_stats_overlay = !guiMainHub->m_GUISettings.display_stats_overlay;}
 
 // ---------------- Deinitialisation ---------------- //
 
