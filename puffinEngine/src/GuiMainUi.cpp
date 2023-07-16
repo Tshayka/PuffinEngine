@@ -45,7 +45,7 @@ void GuiMainUi::Init(Device* device, VkCommandPool& commandPool) {
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
-	CreateGraphicsPipeline();
+	createGraphicsPipeline();
 }
 
 void GuiMainUi::SetUp() {
@@ -135,7 +135,7 @@ void GuiMainUi::CreateDescriptorSet() {
 	vkUpdateDescriptorSets(logicalDevice->get(), static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
 }
 
-void GuiMainUi::CreateGraphicsPipeline() {
+void GuiMainUi::createGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	ErrorCheck(vkCreatePipelineCache(logicalDevice->get(), &PipelineCacheCreateInfo, nullptr, &pipelineCache));
@@ -420,13 +420,24 @@ void GuiMainUi::CreateUniformBuffer(VkCommandBuffer command_buffer) {
 	//std::cout << scissor.extent.width << " " << scissor.extent.height << std::endl;
 }
 
+void GuiMainUi::cleanUpForSwapchain() {
+	destroyPipeline();
+}
+
+void GuiMainUi::recreateForSwapchain() {
+	createGraphicsPipeline();
+}
+
+void GuiMainUi::destroyPipeline() {
+	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
+	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);
+	vkDestroyPipelineLayout(logicalDevice->get(), pipelineLayout, nullptr);
+}
+
 void GuiMainUi::DeInit() {
 	indexBuffer.destroy();
 	vertexBuffer.destroy();
 	font.DeInit();
-	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
-	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice->get(), pipelineLayout, nullptr);
 	vkDestroyDescriptorPool(logicalDevice->get(), descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->get(), descriptorSetLayout, nullptr);
 

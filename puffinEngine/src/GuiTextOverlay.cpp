@@ -378,13 +378,23 @@ void GuiTextOverlay::createUniformBuffer(const VkCommandBuffer& commandBuffer) {
 	}
 }
 
-void GuiTextOverlay::deInit() {
-	m_VertexBuffer.destroy();
-	m_Font.DeInit();
+void GuiTextOverlay::cleanUpForSwapchain() {
+	destroyPipeline();
+}
 
+void GuiTextOverlay::recreateForSwapchain() {
+	createGraphicsPipeline();
+}
+
+void GuiTextOverlay::destroyPipeline(){
 	vkDestroyPipelineCache(p_LogicalDevice->get(), m_PipelineCache, nullptr);
 	vkDestroyPipeline(p_LogicalDevice->get(), m_Pipeline, nullptr);
 	vkDestroyPipelineLayout(p_LogicalDevice->get(), m_PipelineLayout, nullptr);
+}
+
+void GuiTextOverlay::deInit() {
+	m_VertexBuffer.destroy();
+	m_Font.DeInit();
 	vkDestroyDescriptorPool(p_LogicalDevice->get(), m_DescriptorPool, nullptr);
     vkDestroyDescriptorSetLayout(p_LogicalDevice->get(), m_DescriptorSetLayout, nullptr);
 

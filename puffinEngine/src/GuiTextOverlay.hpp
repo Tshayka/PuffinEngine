@@ -23,10 +23,11 @@ public:
 	~GuiTextOverlay();
 
 	void init(Device* device, VkCommandPool& commandPool);
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
     void deInit();
 	
 	void createUniformBuffer(const VkCommandBuffer& commandBuffer);
-
 	void beginTextUpdate();
 	void renderText(const std::string& text, float x, float y, const TextAlignment& align);
 	void endTextUpdate();
@@ -35,8 +36,11 @@ private:
 	void createDescriptorPool();
 	void createDescriptorSet();
 	void createDescriptorSetLayout();
-	void createGraphicsPipeline();
+
 	void loadFontImage();
+
+	void createGraphicsPipeline();
+	void destroyPipeline();
 	
 	stb_fontchar m_StbFontData[STB_NUM_CHARS];
 	uint32_t m_NumLetters;

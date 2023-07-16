@@ -253,7 +253,7 @@ void PuffinEngine::DrawFrame() {
 
 void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
-	if (width == 0 || height == 0) return;
+	if (width == 0 || height == 0) { return; }
 
 	vkDeviceWaitIdle(worldDevice->get());
 
@@ -261,16 +261,14 @@ void PuffinEngine::RecreateSwapChain() {
 
 	worldDevice->InitSwapChain();
 	scene_1->RecreateForSwapchain();
-	guiMainHub->RecreateForSwapchain();
+	guiMainHub->recreateForSwapchain();
 }
 
 
 // ----------- Callbacks and GLFW ------------------- //
 
 void PuffinEngine::InitWindow() {
-
 	glfwInit();
-
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
@@ -585,7 +583,7 @@ void PuffinEngine::CleanUp() {
 
 void PuffinEngine::CleanUpSwapChain() {
 	scene_1->CleanUpForSwapchain();
-	guiMainHub->CleanUpForSwapchain();
+	guiMainHub->cleanUpForSwapchain();
 	worldDevice->DeInitSwapchainImageViews();
 	worldDevice->DestroySwapchainKHR();
 }

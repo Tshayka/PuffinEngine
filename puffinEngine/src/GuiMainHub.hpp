@@ -19,20 +19,24 @@ public:
 		bool display_imgui = true;
 	} ui_settings;
 
-	bool guiOverlayVisible = true;
-	void CleanUpForSwapchain();
-	void DeInit();
 	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
-	void RecreateForSwapchain();
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+	void DeInit();
+	
 	void Submit(VkQueue, uint32_t);
 	void UpdateGui(); 
 	
+
 	std::vector<VkCommandBuffer> command_buffers;
+	bool guiOverlayVisible = true;
 
 private:
     void CreateCommandPool();
 	void CreateRenderPass();
 	void updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double& fps);
+
+	void freeCommandBuffers();
 
 	uint32_t bufferIndex;
 	VkRenderPass renderPass;

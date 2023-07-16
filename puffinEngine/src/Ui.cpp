@@ -29,11 +29,11 @@ void GuiElement::Init(Device* device, VkCommandPool& commandPool) {
 	indexBuffer.setDevice(device);
 
 	SetUp();
-	LoadImage();
+	loadFontImage();
 	CreateDescriptorSetLayout();
 	CreateDescriptorPool();
 	CreateDescriptorSet();
-	CreateGraphicsPipeline();
+	createGraphicsPipeline();
 }
 
 void GuiElement::SetUp() {
@@ -99,7 +99,7 @@ void GuiElement::SetUp() {
     style.Colors[ImGuiCol_ModalWindowDarkening]  = ImVec4(0.200f, 0.220f, 0.270f, 0.73f);
 }
 
-void GuiElement::LoadImage() {
+void GuiElement::loadFontImage() {
 	ImGuiIO& io = ImGui::GetIO();
 
 	unsigned char* fontData;
@@ -283,7 +283,7 @@ VkShaderModule GuiElement::CreateFragShaderModule() {
 	return shaderModule;
 }
 
-void GuiElement::CreateGraphicsPipeline() {
+void GuiElement::createGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 	ErrorCheck(vkCreatePipelineCache(logicalDevice->get(), &PipelineCacheCreateInfo, nullptr, &pipelineCache));
@@ -557,13 +557,24 @@ void GuiElement::CreateUniformBuffer(const VkCommandBuffer& command_buffer) {
 	}
 }
 
+void GuiElement::cleanUpForSwapchain() {
+	destroyPipeline();
+}
+
+void GuiElement::recreateForSwapchain() {
+	createGraphicsPipeline();
+}
+
+void GuiElement::destroyPipeline() {
+	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
+	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);
+	vkDestroyPipelineLayout(logicalDevice->get(), pipelineLayout, nullptr);
+}
+
 void GuiElement::DeInit() {
 	indexBuffer.destroy();
 	vertexBuffer.destroy();
 	font.DeInit();
-	vkDestroyPipelineCache(logicalDevice->get(), pipelineCache, nullptr);
-	vkDestroyPipeline(logicalDevice->get(), pipeline, nullptr);
-	vkDestroyPipelineLayout(logicalDevice->get(), pipelineLayout, nullptr);
 	vkDestroyDescriptorPool(logicalDevice->get(), descriptorPool, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice->get(), descriptorSetLayout, nullptr);
 

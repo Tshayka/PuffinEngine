@@ -49,9 +49,18 @@ void GuiMainHub::UpdateGui() {
 	updateCommandBuffers(mainClock->frameTime, (uint32_t)mainClock->totalElapsedTime, mainClock->fps);
 }
 
-void GuiMainHub::CleanUpForSwapchain() {}
+void GuiMainHub::cleanUpForSwapchain() {
+	freeCommandBuffers();
+	console->cleanUpForSwapchain();
+	textOverlay->cleanUpForSwapchain();
+	mainUi->cleanUpForSwapchain();
+}
 
-void GuiMainHub::RecreateForSwapchain() {}
+void GuiMainHub::recreateForSwapchain() {
+	console->recreateForSwapchain();
+	textOverlay->recreateForSwapchain();
+	mainUi->recreateForSwapchain();
+}
 
 void GuiMainHub::Submit(VkQueue queue, uint32_t bufferindex) {
 	if (!guiOverlayVisible) {
@@ -221,6 +230,10 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 		vkCmdEndRenderPass(command_buffers[i]);
 		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
 	}
+}
+
+void GuiMainHub::freeCommandBuffers() {
+	vkFreeCommandBuffers(logicalDevice->get(), commandPool, static_cast<uint32_t>(command_buffers.size()), command_buffers.data());
 }
 
 void GuiMainHub::DeInit() {

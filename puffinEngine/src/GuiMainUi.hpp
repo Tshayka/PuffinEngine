@@ -17,9 +17,12 @@ public:
 	GuiMainUi();
 	~GuiMainUi();
 
-	void CreateUniformBuffer(VkCommandBuffer command_buffer);
-	void DeInit();
 	void Init(Device* device, VkCommandPool& commandPool);
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+	void DeInit();
+
+	void CreateUniformBuffer(VkCommandBuffer command_buffer);
 	void LoadImGuiImage();
 	void NewFrame();
 	void SetUp();
@@ -70,9 +73,11 @@ private:
 	void CreateDescriptorPool();
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
-	void CreateGraphicsPipeline();
-	//void CreateViewAndSampler();
+
     void GetDrawData();
+
+	void createGraphicsPipeline();
+	void destroyPipeline();
 	
 	enginetool::Buffer vertexBuffer;
 	enginetool::Buffer indexBuffer;	

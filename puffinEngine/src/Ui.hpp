@@ -13,12 +13,16 @@ public:
 	GuiElement();
 	~GuiElement();
 
-	void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
-	void DeInit();
 	void Init(Device* logiclDevice, VkCommandPool& commandPool);
-	void LoadImage();
-	void NewFrame();
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+	void DeInit();
+	
 	void RenderDrawData();
+
+	void CreateUniformBuffer(const VkCommandBuffer& command_buffer);
+	void loadFontImage();
+	void NewFrame();
 	void SetUp();
 
 	// UI params are set via push constants
@@ -33,10 +37,12 @@ private:
 	void CreateDescriptorPool();
 	void CreateDescriptorSet();
 	void CreateDescriptorSetLayout();
-	void CreateGraphicsPipeline();
 	VkShaderModule CreateVertShaderModule();
 	VkShaderModule CreateFragShaderModule();
-	void CreateViewAndSampler();
+	
+
+	void createGraphicsPipeline();
+	void destroyPipeline();
 	
 	enginetool::Buffer vertexBuffer;
 	enginetool::Buffer indexBuffer;	
