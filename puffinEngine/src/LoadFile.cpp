@@ -1,6 +1,8 @@
 #include <fstream>
 #include <vector>
 
+#include "ErrorCheck.hpp"
+
 namespace enginetool {
 
     static std::vector<char> readFile(const std::string& filename) {

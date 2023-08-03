@@ -1,8 +1,9 @@
-#include <array>
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include <glm/gtx/hash.hpp>
 #include <vector>
+#include <array>
+#include <string>
 #include <vulkan/vulkan.h>
 
 namespace enginetool {

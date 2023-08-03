@@ -8,13 +8,13 @@
 
 Camera::Camera(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
 : Actor(name, description, position, type, actors) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Camera created\n";
 #endif 
 }
 
 Camera::~Camera() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Camera destroyed\n";
 #endif 
 }

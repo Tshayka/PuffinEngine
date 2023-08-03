@@ -3,7 +3,7 @@
 #include <cmath>
 
 #define BOOST_PENDING_INTEGER_LOG2_HPP
-#include <boost/integer/integer_log2.hpp>
+//#include <boost/integer/integer_log2.hpp>
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>

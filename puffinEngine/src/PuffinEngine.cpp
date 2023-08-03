@@ -8,23 +8,15 @@
  //---------- Constructors and dectructors ---------- //
 
 PuffinEngine::PuffinEngine() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Engine object created\n";
 #endif 
 }
 
 PuffinEngine::~PuffinEngine() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Engine object destroyed\n";
 #endif
-}
-
-std::string PuffinEngine::isUppercase(char l)
-{
-if(l & 0b00100000)
-    return "This letter is lowercase!";
-else
-    return "This letter is uppercase!";
 }
 
 template<typename T>
@@ -34,27 +26,51 @@ return std::min(b, std::max(what, a));
 
 // ---------------- Main functions ------------------ //
 
-void PuffinEngine::Run() {
-	InitWindow();
-	InitDefaultKeysBindings(functions);
-    InitVulkan();
-    MainLoop();
-    CleanUp();
+void PuffinEngine::run() {
+	if (initAllSystems()) {
+		mainLoop();
+	}
+
+    cleanUp();
 }
 
-void PuffinEngine::CreateDevice() {
-	worldDevice = new Device();
-	worldDevice->InitDevice(window);
+bool PuffinEngine::initAllSystems() {
+	if (!initWindow()) {
+		return false;
+	}
+
+	if (!initDefaultKeysBindings(functions)) {
+		return false;
+	}
+
+	initDevice();
+	createWorldClock();
+	GatherThreadInfo();
+	CreateImGuiMenu();
+	CreateGuiTextOverlay();
+	CreateMainUi();
+	CreateGuiMainHub();
+	CreateMousePicker();
+	CreateMaterialLibrary();
+	CreateMeshLibrary();
+	CreateScene();
+	CreateSemaphores();
+
+	return true;
 }
 
-void PuffinEngine::CreateWorldClock() {
-	mainClock = new WorldClock();
+void PuffinEngine::initDevice() {
+	m_Device.init(window);
+}
+
+void PuffinEngine::createWorldClock() {
+	//
 }
 
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
 	std::cout << "numThreads = " << numThreads << std::endl;
-	threadPool.SetThreadCount(numThreads);		
+	m_ThreadPool.SetThreadCount(numThreads);		
 }
 
 void PuffinEngine::CreateImGuiMenu() {
@@ -70,18 +86,15 @@ void PuffinEngine::CreateMainUi() {
 }
 
 void PuffinEngine::CreateMousePicker() {
-	mousePicker = new MousePicker();
-	mousePicker->Init(worldDevice);
+	m_MousePicker.init(&m_Device);
 }
 
 void PuffinEngine::CreateMaterialLibrary() {
-	materialLibrary = new MaterialLibrary();
-	materialLibrary->Init(worldDevice);
+	m_MaterialLibrary.Init(&m_Device);
 }
 
 void PuffinEngine::CreateMeshLibrary() {
-	meshLibrary = new MeshLibrary();
-	meshLibrary->Init(worldDevice);
+	m_MeshLibrary.Init(&m_Device);
 }
 
 void PuffinEngine::CreateMainCharacter() {
@@ -90,85 +103,89 @@ void PuffinEngine::CreateMainCharacter() {
 }
 
 void PuffinEngine::CreateGuiMainHub() {
-	guiMainHub = new GuiMainHub();
-	guiMainHub->Init(worldDevice, console, guiStatistics, mainUi, mainClock, threadPool);
+	m_GUIMainHub.init(&m_Device, console, guiStatistics, mainUi, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::CreateScene() {
-	scene_1 = new Scene();
-	scene_1->InitScene(worldDevice, guiMainHub, mousePicker, meshLibrary, materialLibrary, mainClock, threadPool);
+	scene_1.init(&m_Device, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
 }
 
-void PuffinEngine::InitVulkan() {
-	CreateDevice();
-	CreateWorldClock();
-	GatherThreadInfo();
-	CreateImGuiMenu();
-	CreateGuiTextOverlay();
-	CreateMainUi();
-	CreateGuiMainHub();
-	CreateMousePicker();
-	CreateMaterialLibrary();
-	CreateMeshLibrary();
-	CreateScene();
-	CreateSemaphores();
-}
-
-void PuffinEngine::MainLoop() {
-	mainClock->currentTime = glfwGetTime();
-	
-	const double MAX_ACCUMULATED_TIME = 1.0;
+void PuffinEngine::mainLoop() {
+	const double maxAccumulatedTime = 1.0;
+	m_MainClock.fixedTimeValue = 0.015;
+	const double maxFrameTime = 0.15;
+	double currentTime = glfwGetTime();
+	double accumulator = 0.0;
+	int frameCount = 0;
+	const int frameHistorySize = 60;
+	double frameTimes[frameHistorySize] = { 0.0 };
+	int frameIndex = 0;
 
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
-		double frameTime = newTime - mainClock->currentTime;
-		if (frameTime > 0.15)
-			frameTime = 0.15;
-		mainClock->currentTime = newTime;
-		
-		mainClock->accumulator += frameTime;
-		mainClock->accumulator = clamp(mainClock->accumulator, 0.0, MAX_ACCUMULATED_TIME);
+		double frameTime = newTime - currentTime;
+		currentTime = newTime;
+
+		// Limit frame time to avoid spiral of death
+		if (frameTime > maxFrameTime)
+			frameTime = maxFrameTime;
+
+		accumulator += frameTime;
 
 		glfwPollEvents();
 		glfwGetCursorPos(window, &xpos, &ypos);
 		glfwGetFramebufferSize(window, &fb_width, &fb_height);
 		glfwGetWindowSize(window, &width, &height);
 
-		ImGuiIO& io = ImGui::GetIO(); 
-		io.DisplaySize = ImVec2((float)width, (float)height);
-		io.DisplayFramebufferScale = ImVec2(width > 0 ? ((float)fb_width / width) : 0, height > 0 ? ((float)fb_height / height) : 0);
-		io.DeltaTime = (float)frameTime;	
+		ImGuiIO& io = ImGui::GetIO();
+		io.DisplaySize = ImVec2(static_cast<float>(width), static_cast<float>(height));
+		io.DisplayFramebufferScale = ImVec2(width > 0 ? (static_cast<float>(fb_width) / width) : 0,
+			height > 0 ? (static_cast<float>(fb_height) / height) : 0);
+		io.DeltaTime = static_cast<float>(frameTime);
 
-		while (mainClock->accumulator >= mainClock->fixedTimeValue) {
-			threadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
-			scene_1->UpdateScene();
-			mainClock->totalTime += mainClock->fixedTimeValue;
-			mainClock->accumulator -= mainClock->fixedTimeValue;
+		while (accumulator >= m_MainClock.fixedTimeValue) {
+			m_ThreadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
+			scene_1.update();
+			m_MainClock.totalElapsedTime += m_MainClock.fixedTimeValue;
+			accumulator -= m_MainClock.fixedTimeValue;
 		}
-		
-		DrawFrame();	
+
+		DrawFrame();
+
+		// Calculate average frame time and FPS
+		// frameTimes - bumber of frames to consider for FPS calculation
+		frameTimes[frameIndex] = frameTime;
+		frameIndex = (frameIndex + 1) % frameHistorySize;
+		double avgFrameTime = 0.0;
+		for (int i = 0; i < frameHistorySize; i++) {
+			avgFrameTime += frameTimes[i];
+		}
+
+		avgFrameTime /= frameHistorySize;
+		m_MainClock.fps = 1.0 / avgFrameTime;
+		m_MainClock.frameTime = frameTime;
 	}
 
-	vkDeviceWaitIdle(worldDevice->device);
+	vkDeviceWaitIdle(m_Device.get());
 }
 
 void PuffinEngine::UpdateGui(){
-	guiMainHub->UpdateGui();
+	m_GUIMainHub.updateGui();
 }
 
 void PuffinEngine::CreateSemaphores() {
 	VkSemaphoreCreateInfo semaphore_info = {};
 	semaphore_info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
 
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &imageAvailableSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &renderFinishedSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &reflectRenderSemaphore));
-	ErrorCheck(vkCreateSemaphore(worldDevice->device, &semaphore_info, nullptr, &refractRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(m_Device.get(), &semaphore_info, nullptr, &imageAvailableSemaphore));
+	ErrorCheck(vkCreateSemaphore(m_Device.get(), &semaphore_info, nullptr, &renderFinishedSemaphore));
+	ErrorCheck(vkCreateSemaphore(m_Device.get(), &semaphore_info, nullptr, &reflectRenderSemaphore));
+	ErrorCheck(vkCreateSemaphore(m_Device.get(), &semaphore_info, nullptr, &refractRenderSemaphore));
 }
 
 void PuffinEngine::DrawFrame() {
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(worldDevice->device, worldDevice->swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(m_Device.get(), m_Device.swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)	{
 		RecreateSwapChain();
@@ -188,36 +205,36 @@ void PuffinEngine::DrawFrame() {
 	submit_info.signalSemaphoreCount = 1;
 	
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->reflectionCmdBuff;
+	submit_info.pCommandBuffers = &scene_1.reflectionCmdBuff;
 	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
 	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
 
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->refractionCmdBuff;
+	submit_info.pCommandBuffers = &scene_1.refractionCmdBuff;
 	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
 	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
 	
 	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1->commandBuffers[imageIndex];
+	submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
 	submit_info.pWaitSemaphores = &refractRenderSemaphore;
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(worldDevice->queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
 
-	guiMainHub->Submit(worldDevice->queue, imageIndex);
+	m_GUIMainHub.submit(m_Device.queue, imageIndex);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores = &renderFinishedSemaphore;
 
-	VkSwapchainKHR swapChains[] = { worldDevice->swapchain };
+	VkSwapchainKHR swapChains[] = { m_Device.swapchain };
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = swapChains;
 	present_info.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(worldDevice->present_queue, &present_info);
+	result = vkQueuePresentKHR(m_Device.present_queue, &present_info);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		RecreateSwapChain();
@@ -227,29 +244,27 @@ void PuffinEngine::DrawFrame() {
 		std::exit(-1);
 	}
 
-	vkQueueWaitIdle(worldDevice->present_queue);
+	vkQueueWaitIdle(m_Device.present_queue);
 }
 
 void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
-	if (width == 0 || height == 0) return;
+	if (width == 0 || height == 0) { return; }
 
-	vkDeviceWaitIdle(worldDevice->device);
+	vkDeviceWaitIdle(m_Device.get());
 
 	CleanUpSwapChain();
 
-	worldDevice->InitSwapChain();
-	scene_1->RecreateForSwapchain();
-	guiMainHub->RecreateForSwapchain();
+	m_Device.InitSwapChain();
+	scene_1.RecreateForSwapchain();
+	m_GUIMainHub.recreateForSwapchain();
 }
 
 
 // ----------- Callbacks and GLFW ------------------- //
 
-void PuffinEngine::InitWindow() {
-
+bool PuffinEngine::initWindow() {
 	glfwInit();
-
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
 
@@ -273,14 +288,14 @@ void PuffinEngine::InitWindow() {
 
 	if (!window) {
 		glfwTerminate();
-		exit(EXIT_FAILURE);
+		return false;
 	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-	io.Fonts->AddFontFromFileTTF("puffinEngine/fonts/exo-2/Exo2-SemiBold.otf", 16.0f);
+	ImFont* font1 = io.Fonts->AddFontDefault();
+	//io.Fonts->AddFontFromFileTTF("puffinEngine/fonts/exo-2/Exo2-SemiBold.otf", 16.0f);
 
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 	io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;   // We can honor GetMouseCursor() values (optional)
@@ -307,6 +322,8 @@ void PuffinEngine::InitWindow() {
 	io.KeyMap[ImGuiKey_X] = GLFW_KEY_X;
 	io.KeyMap[ImGuiKey_Y] = GLFW_KEY_Y;
 	io.KeyMap[ImGuiKey_Z] = GLFW_KEY_Z;
+
+	return true;
 }
 
 void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint) {
@@ -317,15 +334,15 @@ void PuffinEngine::CharacterCallback(GLFWwindow* window, unsigned int codepoint)
 
 void PuffinEngine::CursorPositionCallback(GLFWwindow* window, double xpos, double ypos) {
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
-	app->scene_1->currentCamera->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
-	app->mousePicker->CalculateNormalisedDeviceCoordinates(xpos, ypos);
+	app->scene_1.currentCamera->MouseMove(xpos, ypos, app->width, app->height, 0.005f);
+	app->m_MousePicker.CalculateNormalisedDeviceCoordinates(xpos, ypos);
 	ImGuiIO& io = ImGui::GetIO();
 	io.MousePos = ImVec2((float)xpos, (float)ypos);
 }
 
 
 void PuffinEngine::ErrorCallback(int error, const char* description) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cerr << description << std::endl;
 #endif
 }
@@ -355,15 +372,15 @@ void PuffinEngine::MouseButtonCallback(GLFWwindow* window, int button, int actio
 
 
 	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
-		app->scene_1->DeSelect();
-#if BUILD_ENABLE_VULKAN_DEBUG
+		app->scene_1.DeSelect();
+#if DEBUG_VERSION
 		std::cout << "You clicked right mouse button" << std::endl;
 #endif
 	}
 	
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
-		app->scene_1->HandleMouseClick();
-#if BUILD_ENABLE_VULKAN_DEBUG
+		app->scene_1.HandleMouseClick();
+#if DEBUG_VERSION
 		std::cout << "You clicked left mouse button" << std::endl;
 #endif
 	}
@@ -385,7 +402,7 @@ void PuffinEngine::onWindowResized(GLFWwindow* window, int width, int height) {
 }
 
 void PuffinEngine::CursorEnterCallback(GLFWwindow* window, int entered) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	if (entered) std::cout << "Entered window" << std::endl;
 	else std::cout << "Left window" << std::endl;
 #endif
@@ -405,36 +422,36 @@ void PuffinEngine::ScrollCallback(GLFWwindow* window, double xoffset, double yof
 	io.MouseWheel += (float)yoffset;
 }
 
-void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
-	FuncPair test = {&Scene::Test, nullptr};
+bool PuffinEngine::initDefaultKeysBindings(std::map<int, FuncPair>& functions ) {	
+	FuncPair test = {&puffinengine::tool::Scene::Test, nullptr};
 
-	FuncPair moveForward = {&Scene::MoveCameraForward, &Scene::StopCameraForwardBackward};
-	FuncPair moveBackward = {&Scene::MoveCameraBackward, &Scene::StopCameraForwardBackward};
-	FuncPair moveLeft = {&Scene::MoveCameraLeft, &Scene::StopCameraLeftRight};
-	FuncPair moveRight = {&Scene::MoveCameraRight, &Scene::StopCameraLeftRight};
-	FuncPair moveUp = {&Scene::MoveCameraUp, &Scene::StopCameraUpDown};
-	FuncPair moveDown = {&Scene::MoveCameraDown, &Scene::StopCameraUpDown};
+	FuncPair moveForward = {&puffinengine::tool::Scene::MoveCameraForward, &puffinengine::tool::Scene::StopCameraForwardBackward};
+	FuncPair moveBackward = {&puffinengine::tool::Scene::MoveCameraBackward, &puffinengine::tool::Scene::StopCameraForwardBackward};
+	FuncPair moveLeft = {&puffinengine::tool::Scene::MoveCameraLeft, &puffinengine::tool::Scene::StopCameraLeftRight};
+	FuncPair moveRight = {&puffinengine::tool::Scene::MoveCameraRight, &puffinengine::tool::Scene::StopCameraLeftRight};
+	FuncPair moveUp = {&puffinengine::tool::Scene::MoveCameraUp, &puffinengine::tool::Scene::StopCameraUpDown};
+	FuncPair moveDown = {&puffinengine::tool::Scene::MoveCameraDown, &puffinengine::tool::Scene::StopCameraUpDown};
 
-	FuncPair makeMainCharacterJump = {&Scene::MakeMainCharacterJump, nullptr};
-	FuncPair moveMainCharacterForward = {&Scene::MoveMainCharacterForward, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterBackward = {&Scene::MoveMainCharacterBackward, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterLeft = {&Scene::MoveMainCharacterLeft, &Scene::StopMainCharacter};
-	FuncPair moveMainCharacterRight = {&Scene::MoveMainCharacterRight, &Scene::StopMainCharacter};
+	FuncPair makeMainCharacterJump = {&puffinengine::tool::Scene::MakeMainCharacterJump, nullptr};
+	FuncPair moveMainCharacterForward = {&puffinengine::tool::Scene::MoveMainCharacterForward, &puffinengine::tool::Scene::StopMainCharacter};
+	FuncPair moveMainCharacterBackward = {&puffinengine::tool::Scene::MoveMainCharacterBackward, &puffinengine::tool::Scene::StopMainCharacter};
+	FuncPair moveMainCharacterLeft = {&puffinengine::tool::Scene::MoveMainCharacterLeft, &puffinengine::tool::Scene::StopMainCharacter};
+	FuncPair moveMainCharacterRight = {&puffinengine::tool::Scene::MoveMainCharacterRight, &puffinengine::tool::Scene::StopMainCharacter};
 	
-	FuncPair moveSelectedActorForward = {&Scene::MoveSelectedActorForward, &Scene::StopSelectedActorForwardBackward};
-	FuncPair moveSelectedActorBackward = {&Scene::MoveSelectedActorBackward, &Scene::StopSelectedActorForwardBackward};
-	FuncPair moveSelectedActorLeft = {&Scene::MoveSelectedActorLeft, &Scene::StopSelectedActorLeftRight};
-	FuncPair moveSelectedActorRight = {&Scene::MoveSelectedActorRight, &Scene::StopSelectedActorLeftRight};
-	FuncPair moveSelectedActorUp = {&Scene::MoveSelectedActorUp, &Scene::StopSelectedActorUpDown};
-	FuncPair moveSelectedActorDown = {&Scene::MoveSelectedActorDown, &Scene::StopSelectedActorUpDown};
+	FuncPair moveSelectedActorForward = {&puffinengine::tool::Scene::MoveSelectedActorForward, &puffinengine::tool::Scene::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorBackward = {&puffinengine::tool::Scene::MoveSelectedActorBackward, &puffinengine::tool::Scene::StopSelectedActorForwardBackward};
+	FuncPair moveSelectedActorLeft = {&puffinengine::tool::Scene::MoveSelectedActorLeft, &puffinengine::tool::Scene::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorRight = {&puffinengine::tool::Scene::MoveSelectedActorRight, &puffinengine::tool::Scene::StopSelectedActorLeftRight};
+	FuncPair moveSelectedActorUp = {&puffinengine::tool::Scene::MoveSelectedActorUp, &puffinengine::tool::Scene::StopSelectedActorUpDown};
+	FuncPair moveSelectedActorDown = {&puffinengine::tool::Scene::MoveSelectedActorDown, &puffinengine::tool::Scene::StopSelectedActorUpDown};
 		
-	FuncPair allGuiToggle = {&Scene::AllGuiToggle, nullptr};
-	FuncPair SelectionIndicatorToggle = {&Scene::SelectionIndicatorToggle, nullptr};
-	FuncPair WireframeToggle = {&Scene::WireframeToggle, nullptr};
-	FuncPair AabbToggle = {&Scene::AabbToggle, nullptr};
-	FuncPair ConsoleToggle = {&Scene::ConsoleToggle, nullptr};
-	FuncPair MainUiToggle = {&Scene::MainUiToggle, nullptr};
-	FuncPair TextOverlayToggle = {&Scene::TextOverlayToggle, nullptr};
+	FuncPair allGuiToggle = {&puffinengine::tool::Scene::AllGuiToggle, nullptr};
+	FuncPair SelectionIndicatorToggle = {&puffinengine::tool::Scene::SelectionIndicatorToggle, nullptr};
+	FuncPair WireframeToggle = {&puffinengine::tool::Scene::WireframeToggle, nullptr};
+	FuncPair AabbToggle = {&puffinengine::tool::Scene::AabbToggle, nullptr};
+	FuncPair ConsoleToggle = {&puffinengine::tool::Scene::ConsoleToggle, nullptr};
+	FuncPair MainUiToggle = {&puffinengine::tool::Scene::MainUiToggle, nullptr};
+	FuncPair TextOverlayToggle = {&puffinengine::tool::Scene::TextOverlayToggle, nullptr};
 
 	functions = {
 		{GLFW_KEY_SPACE, makeMainCharacterJump},
@@ -463,6 +480,8 @@ void PuffinEngine::InitDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 		{GLFW_KEY_DOWN, moveMainCharacterBackward},
 		{GLFW_KEY_UP, moveMainCharacterForward},
 	};
+
+	return true;
 }
 
 void PuffinEngine::PressKey(int key) {
@@ -470,9 +489,9 @@ void PuffinEngine::PressKey(int key) {
 		
 	if (functions.count(key)) {
 		if (state == GLFW_PRESS) 
-			functions[key].first(scene_1);
+			functions[key].first(&scene_1);
 		if (state == GLFW_RELEASE && functions[key].second!=nullptr)  
-			functions[key].second(scene_1);
+			functions[key].second(&scene_1);
 	}
 }
 
@@ -545,86 +564,68 @@ void PuffinEngine::PressKey(int key) {
 
 // ---------------- Deinitialisation ---------------- //
 
-void PuffinEngine::CleanUp() {
+void PuffinEngine::cleanUp() {
 	CleanUpSwapChain();
 
 	ImGui::DestroyContext();
 	DeInitSemaphores();
-	DestroyMousePicker();
+	deinitMousePicker();
 	DestroyScene();
-	DestroyMeshLibrary();
+	destroyMeshLibrary();
 	DestroyMaterialLibrary();
 	DestroyGUI();
-	DestroyWorldClock();
-	DestroyDevice();
+	deinitWorldClock();
+	m_Device.deinit();
 	glfwDestroyWindow(window);
 	glfwTerminate();
-	
 }
 
 void PuffinEngine::CleanUpSwapChain() {
-	scene_1->CleanUpForSwapchain();
-	guiMainHub->CleanUpForSwapchain();
-	worldDevice->DeInitSwapchainImageViews();
-	worldDevice->DestroySwapchainKHR();
+	scene_1.CleanUpForSwapchain();
+	m_GUIMainHub.cleanUpForSwapchain();
+	m_Device.DeInitSwapchainImageViews();
+	m_Device.DestroySwapchainKHR();
 }
 
 void PuffinEngine::DeInitSemaphores() {
-	vkDestroySemaphore(worldDevice->device, renderFinishedSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, imageAvailableSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, reflectRenderSemaphore, nullptr);
-	vkDestroySemaphore(worldDevice->device, refractRenderSemaphore, nullptr);
+	vkDestroySemaphore(m_Device.get(), renderFinishedSemaphore, nullptr);
+	vkDestroySemaphore(m_Device.get(), imageAvailableSemaphore, nullptr);
+	vkDestroySemaphore(m_Device.get(), reflectRenderSemaphore, nullptr);
+	vkDestroySemaphore(m_Device.get(), refractRenderSemaphore, nullptr);
 }
 
-void PuffinEngine::DestroyDevice() {
-	worldDevice->DeInitDevice();
-	delete worldDevice;
-	worldDevice = nullptr;
-}
-
-void PuffinEngine::DestroyWorldClock() {
-	delete mainClock;
-	mainClock = nullptr;
+void PuffinEngine::deinitWorldClock() {
+	//
 }
 
 void PuffinEngine::DestroyMaterialLibrary() {
-	materialLibrary->DeInit();
-	delete materialLibrary;
-	materialLibrary = nullptr;
+	m_MaterialLibrary.DeInit();
 }
 
-void PuffinEngine::DestroyMeshLibrary() {
-	meshLibrary->DeInit();
-	delete meshLibrary;
-	meshLibrary = nullptr;
+void PuffinEngine::destroyMeshLibrary() {
+	m_MeshLibrary.DeInit();
 }
 
 void PuffinEngine::DestroyScene() {// can't see destructor working
-	scene_1->DeInitScene();
-	delete scene_1;
-	scene_1 = nullptr;
+	scene_1.deinit();
 }
 
 void PuffinEngine::DestroyGUI() {
-	mainUi->DeInit();
+	mainUi->deInit();
 	delete mainUi;
 	mainUi = nullptr;
 
-	guiStatistics->DeInit();
+	guiStatistics->deInit();
 	delete guiStatistics;
 	guiStatistics = nullptr;
 
-	console->DeInit();
+	console->deInit();
 	delete console;
 	console = nullptr;
 
-	guiMainHub->DeInit();
-	delete guiMainHub;
-	guiMainHub = nullptr;
+	m_GUIMainHub.deinit();
 }
 
-void PuffinEngine::DestroyMousePicker() {
-	mousePicker->DeInit();
-	delete mousePicker;
-	mousePicker = nullptr;
+void PuffinEngine::deinitMousePicker() {
+	m_MousePicker.deinit();
 }

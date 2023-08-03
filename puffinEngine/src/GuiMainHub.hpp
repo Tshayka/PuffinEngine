@@ -5,46 +5,51 @@
 #include "Ui.hpp"
 #include "Device.hpp"
 
-class GuiMainHub 
-{
+struct GUISettings {
+	bool display_dynamic_ub = true;
+	bool display_scene_models = true;
+	bool display_main_ui = true;
+	bool display_stats_overlay = true;
+	bool display_imgui = true;
+};
+
+class GuiMainHub {
 public:
 	GuiMainHub();
 	~GuiMainHub();
 
-	struct GUISettings {
-		bool display_dynamic_ub = true;
-		bool display_scene_models = true;
-		bool display_main_ui = true;
-		bool display_stats_overlay = true;
-		bool display_imgui = true;
-	} ui_settings;
-
-	bool guiOverlayVisible = true;
-	void CleanUpForSwapchain();
-	void DeInit();
-	void Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool);
-	void RecreateForSwapchain();
-	void Submit(VkQueue, uint32_t);
-	void UpdateGui(); 
+	void init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool);
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+	void deinit();
 	
-	std::vector<VkCommandBuffer> command_buffers;
+	void submit(const VkQueue& queue, const int32_t& bufferIndex);
+	void updateGui(); 
+	
+	bool m_Initialized = false;
+	std::vector<VkCommandBuffer> m_CommandBuffers;
+	bool guiOverlayVisible = true;
+
+	GUISettings m_GUISettings;
 
 private:
-    void CreateCommandPool();
-	void CreateRenderPass();
-	void UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime);
+    void createCommandPool();
+	void createRenderPass();
+	void updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double& fps);
 
-	uint32_t bufferIndex;
-	VkRenderPass renderPass;
-	VkCommandPool commandPool;
+	void freeCommandBuffers();
 
-	VkRect2D scissor = {};
-	VkViewport viewport = {}; 
+	uint32_t m_BufferIndex;
+	VkRenderPass m_RenderPass;
+	VkCommandPool m_CommandPool;
 
-	GuiMainUi* mainUi = nullptr;
-	GuiElement* console = nullptr;
-	GuiTextOverlay* textOverlay = nullptr;
-	Device* logicalDevice = nullptr;
-	enginetool::ThreadPool* threadPool = nullptr;
-	WorldClock* mainClock = nullptr;	
+	VkRect2D m_Scissor = {};
+	VkViewport m_Viewport = {}; 
+
+	GuiMainUi* p_MainUi = nullptr;
+	GuiElement* p_Console = nullptr;
+	GuiTextOverlay* p_TextOverlay = nullptr;
+	Device* p_LogicalDevice = nullptr;
+	enginetool::ThreadPool* p_ThreadPool = nullptr;
+	puffinengine::tool::WorldClock* p_MainClock = nullptr;
 };

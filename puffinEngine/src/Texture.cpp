@@ -5,13 +5,13 @@
 //---------- Constructors and dectructors ---------- //
 
 TextureLayout::TextureLayout() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Texture created\n";
 #endif 
 }
 
 TextureLayout::~TextureLayout() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Texture destroyed\n";
 #endif
 }
@@ -48,28 +48,28 @@ void TextureLayout::CreateImage(VkImageTiling tiling, VkImageUsageFlags usage, V
 	ImageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	ImageInfo.flags = flag;
 
-	ErrorCheck(vkCreateImage(logicalDevice->device, &ImageInfo, nullptr, &texture));
+	ErrorCheck(vkCreateImage(logicalDevice->get(), &ImageInfo, nullptr, &m_FontImage));
 
-	VkMemoryRequirements memory_requirements;
-	vkGetImageMemoryRequirements(logicalDevice->device, texture, &memory_requirements); // TODO
+	VkMemoryRequirements memoryRequirements;
+	vkGetImageMemoryRequirements(logicalDevice->get(), m_FontImage, &memoryRequirements);
 	
 	VkMemoryAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-	allocInfo.allocationSize = memory_requirements.size;
-	allocInfo.memoryTypeIndex = logicalDevice->FindMemoryType(memory_requirements.memoryTypeBits, properties);
+	allocInfo.allocationSize = memoryRequirements.size;
+	allocInfo.memoryTypeIndex = logicalDevice->FindMemoryType(memoryRequirements.memoryTypeBits, properties);
 
-	if (vkAllocateMemory(logicalDevice->device, &allocInfo, nullptr, &memory) != VK_SUCCESS) {
+	if (vkAllocateMemory(logicalDevice->get(), &allocInfo, nullptr, &m_FontMemory) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to allocate image memory!");
 		std::exit(-1);
 	}
 
-	ErrorCheck(vkBindImageMemory(logicalDevice->device, texture, memory, 0));
+	ErrorCheck(vkBindImageMemory(logicalDevice->get(), m_FontImage, m_FontMemory, 0));
 }
 
 void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageViewType type) {
 	VkImageViewCreateInfo ViewInfo = {};
 	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.image = texture;
+	ViewInfo.image = m_FontImage;
 	ViewInfo.viewType = type;
 	ViewInfo.format = format;
 	ViewInfo.components.a = VK_COMPONENT_SWIZZLE_A;
@@ -82,7 +82,7 @@ void TextureLayout::CreateImageView(VkImageAspectFlags aspect_flags, VkImageView
 	ViewInfo.subresourceRange.baseArrayLayer = 0;
 	ViewInfo.subresourceRange.layerCount = layers;
 
-	if (vkCreateImageView(logicalDevice->device, &ViewInfo, nullptr, &view) != VK_SUCCESS) {
+	if (vkCreateImageView(logicalDevice->get(), &ViewInfo, nullptr, &view) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture image view!");
 		std::exit(-1);
 	}
@@ -106,7 +106,7 @@ void TextureLayout::CreateTextureSampler(enum VkSamplerAddressMode mode) {
 	SamplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
 	SamplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
 
-	if (vkCreateSampler(logicalDevice->device, &SamplerInfo, nullptr, &sampler) != VK_SUCCESS) {
+	if (vkCreateSampler(logicalDevice->get(), &SamplerInfo, nullptr, &sampler) != VK_SUCCESS) {
 		assert(0 && "Vulkan ERROR: failed to create texture sampler!");
 		std::exit(-1);
 	}
@@ -136,7 +136,7 @@ void TextureLayout::CopyBufferToImage(VkBuffer buffer) {
 		}
 	}
 
-	vkCmdCopyBufferToImage(commandBuffer, buffer, texture, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
+	vkCmdCopyBufferToImage(commandBuffer, buffer, m_FontImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, static_cast<uint32_t>(bufferCopyRegions.size()), bufferCopyRegions.data());
 	
 	EndSingleTimeCommands(commandBuffer);
 }
@@ -154,7 +154,7 @@ void TextureLayout::TransitionImageLayout(VkImageLayout oldLayout, VkImageLayout
 	barrier.newLayout = newLayout;
 	barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
 	barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-	barrier.image = texture;
+	barrier.image = m_FontImage;
 
 	if (newLayout == VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL) {
 		barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -214,7 +214,7 @@ VkCommandBuffer TextureLayout::BeginSingleTimeCommands() {
 	AllocInfo.commandBufferCount = 1;
 
 	VkCommandBuffer commandBuffer;
-	vkAllocateCommandBuffers(logicalDevice->device, &AllocInfo, &commandBuffer);
+	vkAllocateCommandBuffers(logicalDevice->get(), &AllocInfo, &commandBuffer);
 
 	VkCommandBufferBeginInfo BeginInfo = {};
 	BeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -236,12 +236,12 @@ void TextureLayout::EndSingleTimeCommands(VkCommandBuffer commandBuffer) {
 	vkQueueSubmit(logicalDevice->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
 	vkQueueWaitIdle(logicalDevice->queue);
 
-	vkFreeCommandBuffers(logicalDevice->device, *commandPool, 1, &commandBuffer);
+	vkFreeCommandBuffers(logicalDevice->get(), *commandPool, 1, &commandBuffer);
 }
 
 void TextureLayout::DeInit() {
-	if(sampler) vkDestroySampler(logicalDevice->device, sampler, nullptr);
-	vkDestroyImageView(logicalDevice->device, view, nullptr);
-	vkDestroyImage(logicalDevice->device, texture, nullptr);
-	vkFreeMemory(logicalDevice->device, memory, nullptr);
+	if(sampler) vkDestroySampler(logicalDevice->get(), sampler, nullptr);
+	vkDestroyImageView(logicalDevice->get(), view, nullptr);
+	vkDestroyImage(logicalDevice->get(), m_FontImage, nullptr);
+	vkFreeMemory(logicalDevice->get(), m_FontMemory, nullptr);
 };

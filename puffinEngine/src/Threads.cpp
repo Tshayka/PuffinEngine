@@ -1,10 +1,17 @@
 #include <assert.h>
 #include <vector>
-#include <thread>
 #include <queue>
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+
+#ifdef WIN32
+#define NOMINMAX
+#include <windows.h>
+#elif UNIX
+#include <thread>
+#endif
+
 
 namespace enginetool {
 	class Thread {
@@ -18,9 +25,17 @@ namespace enginetool {
 			condition.notify_one();
 		}
 
+
+
+#ifdef WIN32
+		DWORD GetCurrentThreadID() {
+			return GetCurrentThreadId();
+		}
+#elif UNIX
 		pthread_t GetCurrentThreadID() {
 			return pthread_self();
 		}
+#endif
 
 		void Sleep() {
 			std::this_thread::yield();

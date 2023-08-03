@@ -3,7 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp> 
 
 #include "ErrorCheck.hpp"
-#include "Device.hpp"
+#include "Buffer.hpp"
 #include "Texture.hpp"
 
 // Defines for the STB font used
@@ -22,40 +22,43 @@ public:
 	GuiTextOverlay();
 	~GuiTextOverlay();
 
-	void BeginTextUpdate();
-    void CreateUniformBuffer(VkCommandBuffer);
-    void DeInit();
-	void EndTextUpdate();
-	void Init(Device* device, VkCommandPool& commandPool);
-	void RenderText(std::string, float, float, enum TextAlignment);
-	void SetUp();
+	void init(Device* device, VkCommandPool* commandPool);
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+    void deInit();
+	
+	void createUniformBuffer(const VkCommandBuffer& commandBuffer);
+	void beginTextUpdate();
+	void renderText(const std::string& text, float x, float y, const TextAlignment& align);
+	void endTextUpdate();
 
 private:
-	void CreateDescriptorPool();
-	void CreateDescriptorSet();
-	void CreateDescriptorSetLayout();
-	void CreateGraphicsPipeline();
-	VkShaderModule CreateShaderModule(const std::vector<char>&);
-	void LoadImage();
+	void createDescriptorPool();
+	void createDescriptorSet();
+	void createDescriptorSetLayout();
 
-	glm::vec4 *mapped = nullptr;
-	stb_fontchar stbFontData[STB_NUM_CHARS];
-	uint32_t num_letters;
+	void loadFontImage();
 
-	VkBuffer vertexBuffer; // mapping the vertex data
-	VkDeviceMemory memory;
-
-	TextureLayout font;
-	VkDescriptorPool descriptorPool;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet descriptorSet;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline pipeline;
-	VkPipelineCache pipelineCache;
+	void createGraphicsPipeline();
+	void destroyPipeline();
 	
-	VkRect2D scissor = {};
-	VkViewport viewport = {}; 
+	stb_fontchar m_StbFontData[STB_NUM_CHARS];
+	uint32_t m_NumLetters;
+	TextureLayout m_Font;
 
-	Device* logical_device = nullptr;
-	VkCommandPool* commandPool = nullptr;
+	VkDescriptorPool m_DescriptorPool;
+	VkDescriptorSetLayout m_DescriptorSetLayout;
+	VkDescriptorSet m_DescriptorSet;
+	VkPipelineLayout m_PipelineLayout;
+	VkPipeline m_Pipeline;
+	VkPipelineCache m_PipelineCache;
+
+	glm::vec4* p_Mapped = nullptr;
+	enginetool::Buffer m_VertexBuffer;
+
+	VkRect2D m_Scissor = {};
+	VkViewport m_Viewport = {};
+
+	Device* p_LogicalDevice = nullptr;
+	VkCommandPool* p_CommandPool = nullptr;
 };

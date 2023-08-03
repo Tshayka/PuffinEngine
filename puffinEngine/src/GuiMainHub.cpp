@@ -12,13 +12,13 @@
 //---------- Constructors and dectructors ---------- //
 
 GuiMainHub::GuiMainHub() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main hub - created\n";
 #endif 
 }
 
 GuiMainHub::~GuiMainHub() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Gui - main hub - destroyed\n";
 #endif
 }
@@ -29,47 +29,58 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::Init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, WorldClock* mainClock, enginetool::ThreadPool& threadPool) {
-	logicalDevice = device; 
-	this->mainUi = mainUi;
-	this->console = console;
-	this->textOverlay = textOverlay;
-	this->threadPool = &threadPool;
-	this->mainClock = mainClock;
+void GuiMainHub::init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+	p_LogicalDevice = device; 
+	p_MainUi = mainUi;
+	p_Console = console;
+	p_TextOverlay = textOverlay;
+	p_ThreadPool = threadPool;
+	p_MainClock = mainClock;
 		
-	CreateRenderPass();
-	CreateCommandPool();
+	createRenderPass();
+	createCommandPool();
 
-	console->Init(logicalDevice, commandPool);
-	textOverlay->Init(logicalDevice, commandPool);
-	mainUi->Init(logicalDevice, commandPool);
+	p_Console->init(p_LogicalDevice, &m_CommandPool);
+	p_TextOverlay->init(p_LogicalDevice, &m_CommandPool);
+	p_MainUi->init(p_LogicalDevice, &m_CommandPool);
+
+	m_Initialized = true;
 }
 
-void GuiMainHub::UpdateGui() {
-	UpdateCommandBuffers((float)mainClock->accumulator, (uint32_t)mainClock->totalTime);
+void GuiMainHub::updateGui() {
+	updateCommandBuffers(p_MainClock->frameTime, (uint32_t)p_MainClock->totalElapsedTime, p_MainClock->fps);
 }
 
-void GuiMainHub::CleanUpForSwapchain() {}
+void GuiMainHub::cleanUpForSwapchain() {
+	freeCommandBuffers();
+	p_Console->cleanUpForSwapchain();
+	p_TextOverlay->cleanUpForSwapchain();
+	p_MainUi->cleanUpForSwapchain();
+}
 
-void GuiMainHub::RecreateForSwapchain() {}
+void GuiMainHub::recreateForSwapchain() {
+	p_Console->recreateForSwapchain();
+	p_TextOverlay->recreateForSwapchain();
+	p_MainUi->recreateForSwapchain();
+}
 
-void GuiMainHub::Submit(VkQueue queue, uint32_t bufferindex) {
+void GuiMainHub::submit(const VkQueue& queue, const int32_t &bufferIndex) {
 	if (!guiOverlayVisible) {
 		return;
 	}
 	
 	VkSubmitInfo submitInfo = {};
 	submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-	submitInfo.pCommandBuffers = &command_buffers[bufferindex];
+	submitInfo.pCommandBuffers = &m_CommandBuffers[bufferIndex];
 	submitInfo.commandBufferCount = 1;
 	
 	ErrorCheck(vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE));
 	ErrorCheck(vkQueueWaitIdle(queue));
 }
 
-void GuiMainHub::CreateRenderPass() {
+void GuiMainHub::createRenderPass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = logicalDevice->swapchainImageFormat;
+	color_attachment.format = p_LogicalDevice->swapchainImageFormat;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // Don't clear the framebuffer!
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -79,7 +90,7 @@ void GuiMainHub::CreateRenderPass() {
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = logicalDevice->depthFormat;
+	depth_attachment.format = p_LogicalDevice->depthFormat;
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -139,39 +150,39 @@ void GuiMainHub::CreateRenderPass() {
 	renderPass_info.dependencyCount = 2;
 	renderPass_info.pDependencies = SubpassDependencies;
 
-	ErrorCheck(vkCreateRenderPass(logicalDevice->device, &renderPass_info, nullptr, &renderPass));
+	ErrorCheck(vkCreateRenderPass(p_LogicalDevice->get(), &renderPass_info, nullptr, &m_RenderPass));
 }
 
-void GuiMainHub::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
+void GuiMainHub::createCommandPool() {
+	QueueFamilyIndices queueFamilyIndices = p_LogicalDevice->FindQueueFamilies(p_LogicalDevice->gpu);
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
-	ErrorCheck(vkCreateCommandPool(logicalDevice->device, &poolInfo, nullptr, &commandPool));
+	ErrorCheck(vkCreateCommandPool(p_LogicalDevice->get(), &poolInfo, nullptr, &m_CommandPool));
 }
 
-void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
-	textOverlay->BeginTextUpdate();
-	textOverlay->RenderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
+void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double &fps) {
+	p_TextOverlay->beginTextUpdate();
+	p_TextOverlay->renderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
 	std::stringstream ss;
-	ss << std::fixed << std::setprecision(2) << (1000.0f*frameTimer) << " elapsed time (" << elapsedTime << " fps)";
-	textOverlay->RenderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
-	textOverlay->RenderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
-	textOverlay->EndTextUpdate();
+	ss << std::fixed << std::setprecision(4) << "Frame Time : " << (frameTime) << "ms | " << " elapsed time : " << elapsedTime << "s | " << fps << " FPS)";
+	p_TextOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
+	p_TextOverlay->renderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
+	p_TextOverlay->endTextUpdate();
 
-	mainUi->NewFrame();
-	mainUi->UpdateDrawData();
-	console->NewFrame();
-	console->RenderDrawData();
+	p_MainUi->newFrame();
+	p_MainUi->updateDrawData();
+	p_Console->newFrame();
+	p_Console->updateDrawData();
 
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -183,47 +194,51 @@ void GuiMainHub::UpdateCommandBuffers(float frameTimer, uint32_t elapsedTime) {
 	
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = renderPass;
+	renderPassInfo.renderPass = m_RenderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = logicalDevice->swapchain_extent;
+	renderPassInfo.renderArea.extent = p_LogicalDevice->swapchain_extent;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	command_buffers.resize(logicalDevice->swap_chain_framebuffers.size());
+	m_CommandBuffers.resize(p_LogicalDevice->swap_chain_framebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-	allocInfo.commandPool = commandPool;
+	allocInfo.commandPool = m_CommandPool;
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
-	allocInfo.commandBufferCount = (uint32_t)command_buffers.size();
+	allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(logicalDevice->device, &allocInfo, command_buffers.data()));
+	ErrorCheck(vkAllocateCommandBuffers(p_LogicalDevice->get(), &allocInfo, m_CommandBuffers.data()));
 	
 	// starting command buffer recording
-	for (size_t i = 0; i < command_buffers.size(); i++) {
+	for (size_t i = 0; i < m_CommandBuffers.size(); i++) {
 		// Set target frame buffer
-		renderPassInfo.framebuffer = logicalDevice->swap_chain_framebuffers[i];
-		vkBeginCommandBuffer(command_buffers[i], &beginInfo);
-		vkCmdBeginRenderPass(command_buffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		renderPassInfo.framebuffer = p_LogicalDevice->swap_chain_framebuffers[i];
+		vkBeginCommandBuffer(m_CommandBuffers[i], &beginInfo);
+		vkCmdBeginRenderPass(m_CommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-		if (ui_settings.display_main_ui) {
-			mainUi->CreateUniformBuffer(command_buffers[i]);
+		if (m_GUISettings.display_main_ui) {
+			p_MainUi->createUniformBuffer(m_CommandBuffers[i]);
 		}
 
-		if (ui_settings.display_stats_overlay) {
-			textOverlay->CreateUniformBuffer(command_buffers[i]);
+		if (m_GUISettings.display_stats_overlay) {
+			p_TextOverlay->createUniformBuffer(m_CommandBuffers[i]);
 		}
 
-		if (ui_settings.display_imgui) {
-			console->CreateUniformBuffer(command_buffers[i]);
+		if (m_GUISettings.display_imgui) {
+			p_Console->createUniformBuffer(m_CommandBuffers[i]);
 		};
 
-		vkCmdEndRenderPass(command_buffers[i]);
-		ErrorCheck(vkEndCommandBuffer(command_buffers[i]));
+		vkCmdEndRenderPass(m_CommandBuffers[i]);
+		ErrorCheck(vkEndCommandBuffer(m_CommandBuffers[i]));
 	}
 }
 
-void GuiMainHub::DeInit() {
-	vkDestroyCommandPool(logicalDevice->device, commandPool, nullptr);
-	vkDestroyRenderPass(logicalDevice->device, renderPass, nullptr);
+void GuiMainHub::freeCommandBuffers() {
+	vkFreeCommandBuffers(p_LogicalDevice->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
+}
+
+void GuiMainHub::deinit() {
+	vkDestroyCommandPool(p_LogicalDevice->get(), m_CommandPool, nullptr);
+	vkDestroyRenderPass(p_LogicalDevice->get(), m_RenderPass, nullptr);
 }

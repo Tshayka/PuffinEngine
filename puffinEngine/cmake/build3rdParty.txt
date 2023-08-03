@@ -1,0 +1,33 @@
+#[[----Downloading and unpack STB into 3rdParty directory----]]
+
+configure_file(${CMAKE_SOURCE_DIR}/PuffinEngine/cmake/CMakeListsSTB.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+RESULT_VARIABLE result
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb)
+if(result)
+    message(FATAL_ERROR "CMake step for STB failed: ${result}")
+endif()
+
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb)
+if(result)
+    message(FATAL_ERROR "Build step for STB failed: ${result}")
+endif()
+
+#[[----Downloading and unpack BOOST into 3rdParty directory----]]
+
+configure_file(${CMAKE_SOURCE_DIR}/PuffinEngine/cmake/CMakeListsBOOST.txt.in ${CMAKE_SOURCE_DIR}/PuffinEngine/3rdParty/boost/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+RESULT_VARIABLE result
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/PuffinEngine/3rdParty/boost)
+if(result)
+    message(FATAL_ERROR "CMake step for BOOST failed: ${result}")
+endif()
+
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/PuffinEngine/3rdParty/boost)
+if(result)
+    message(FATAL_ERROR "Build step for BOOST failed: ${result}")
+endif()

@@ -2,7 +2,7 @@
 
 #include <map>
 
-#include "Device.hpp"
+#include "Buffer.hpp"
 
 class MaterialLibrary {
 public:

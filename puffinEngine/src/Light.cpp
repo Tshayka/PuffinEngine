@@ -6,40 +6,40 @@
 
 Light::Light(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
 : Actor(name, description, position, type, actors) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Light created\n";
 #endif
 }
 
 Light::~Light() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Light destroyed\n";
 #endif
 }
 
 SphereLight::SphereLight(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors) 
 : Light(name, description, position, type, actors) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Sphere light created\n";
 #endif
 }
 
 SphereLight::~SphereLight() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Sphere light destroyed\n";
 #endif
 }
 
 Skybox::Skybox(std::string name, std::string description, glm::vec3 position, ActorType type,  std::vector<std::shared_ptr<Actor>>& actors, float horizon) 
 : Light(name, description, position, type, actors) {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Skybox created\n";
 #endif
 	this->horizon = horizon;
 }
 
 Skybox::~Skybox() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Skybox destroyed\n";
 #endif
 }

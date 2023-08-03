@@ -1,4 +1,5 @@
 #include <iostream>
+#include <filesystem>
 
 #include <unordered_map>
 
@@ -12,13 +13,13 @@
 // ------- Constructors and dectructors ------------- //
 
 MeshLibrary::MeshLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Mesh library created\n";
 #endif
 }
 
 MeshLibrary::~MeshLibrary() {
-#if BUILD_ENABLE_VULKAN_DEBUG
+#if DEBUG_VERSION
 	std::cout << "Mesh library destroyed\n";
 #endif 
 }
@@ -36,14 +37,31 @@ void MeshLibrary::Init(Device* device) {
 void MeshLibrary::FillLibrary() {
     enginetool::ScenePart box, teapot, human, plane, cloud, sphere, smallCoinB, coin; 
 
-    sphere.meshFilename = "puffinEngine/assets/models/sphere.obj";
-	teapot.meshFilename = "puffinEngine/assets/models/teapotR200originMid.obj";
-	cloud.meshFilename = "puffinEngine/assets/models/cloud.obj";
-    plane.meshFilename = "puffinEngine/assets/models/planeHorizontal1000x1000x1000originMid.obj";
-	box.meshFilename = "puffinEngine/assets/models/box100x100x100originMId.obj";
-	human.meshFilename = "puffinEngine/assets/models/box180x500x500originMidBot.obj";
-    smallCoinB.meshFilename = "puffinEngine/assets/models/selectionCoinSmallB.obj";
-	coin.meshFilename = "puffinEngine/assets/models/coin.obj";
+	std::filesystem::path p = std::filesystem::current_path().parent_path();
+	
+	std::filesystem::path meshPath = p / "puffinEngine" / "assets" / "models" / "sphere.obj";
+    sphere.meshFilename = meshPath.string();
+
+	std::filesystem::path teapotPath = p / "puffinEngine" / "assets" / "models" / "teapotR200originMid.obj";
+	teapot.meshFilename = teapotPath.string();
+	
+	std::filesystem::path cloudPath = p / "puffinEngine" / "assets" / "models" / "cloud.obj";
+	cloud.meshFilename = cloudPath.string();
+
+	std::filesystem::path planePath = p / "puffinEngine" / "assets" / "models" / "planeHorizontal1000x1000x1000originMid.obj";
+    plane.meshFilename = planePath.string();
+
+	std::filesystem::path boxPath = p / "puffinEngine" / "assets" / "models" / "box100x100x100originMId.obj";
+	box.meshFilename = boxPath.string();
+
+	std::filesystem::path humanPath = p / "puffinEngine" / "assets" / "models" / "box180x500x500originMidBot.obj";
+	human.meshFilename = humanPath.string();
+
+	std::filesystem::path smallPath = p / "puffinEngine" / "assets" / "models" / "selectionCoinSmallB.obj";
+    smallCoinB.meshFilename = smallPath.string();
+
+	std::filesystem::path coinPath = p / "puffinEngine" / "assets" / "models" / "selectionCoinSmallB.obj"; // coin model is missing
+	coin.meshFilename = coinPath.string();
 
     meshes = {
         {"box", box},
@@ -56,7 +74,9 @@ void MeshLibrary::FillLibrary() {
         {"SmallCoinB", smallCoinB}
     };
 
-    for (auto& m : meshes) Load(m.second);    
+	for (auto& m : meshes) { 
+		Load(m.second);
+	}
 }
 
 void MeshLibrary::PrepeareAABBs() {
@@ -70,7 +90,7 @@ void MeshLibrary::Load(enginetool::ScenePart& mesh){
 	std::string warn, err;
 
 	if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, mesh.meshFilename.c_str())) {
-		throw std::runtime_error(warn + err);
+		throw std::runtime_error(warn + err + mesh.meshFilename.c_str());
 	}
 
 	mesh.indexBase = static_cast<uint32_t>(indices.size());

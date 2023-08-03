@@ -1,13 +1,32 @@
 cmake_minimum_required (VERSION 2.8.2)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/bin)
+set(EXECUTABLE_OUTPUT_PATH ${CMAKE_ROOT_DIR}/bin)
+
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+if(UNIX)
+    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -Wpedantic -Wextra")
+endif()
+    set(CMAKE_CONFIGURATION_TYPES Debug)
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/PuffinEngine/work/debug)
+    add_definitions(-DDEBUG_VERSION)
+    message("-- Debug build")
+elseif(CMAKE_BUILD_TYPE MATCHES Release)
+if(UNIX)
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -Wpedantic -Wextra -O3 -pthread")
+endif()
+    set(CMAKE_CONFIGURATION_TYPES Release)
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_SOURCE_DIR}/PuffinEngine/work/release)
+    add_definitions(-DRELEASE_VERSION)
+    message("-- Release build")
+endif()
 
 project (PuffinEngine)
+set(VS_STARTUP_PROJECT ${PROJECT_NAME})
 
-add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
+SET(SOURCE_FILES                "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Buffer.cpp"
                                 "puffinEngine/src/Camera.cpp"
                                 "puffinEngine/src/Character.cpp"
@@ -31,16 +50,44 @@ add_executable(${PROJECT_NAME}  "puffinEngine/src/Actor.cpp"
                                 "puffinEngine/src/Threads.cpp"
                                 "puffinEngine/src/Ui.cpp"
                                 "puffinEngine/src/WorldClock.cpp"
-                                "main.cpp")
+				"main.cpp")
+
+SET(HEADER_FILES 		"puffinEngine/src/Actor.hpp"
+				"puffinEngine/src/Buffer.hpp"
+                                "puffinEngine/src/Camera.hpp"
+                                "puffinEngine/src/Character.hpp"
+                                "puffinEngine/src/Device.hpp"
+                                "puffinEngine/src/ErrorCheck.hpp"
+                                "puffinEngine/src/GuiMainUi.hpp"
+                                "puffinEngine/src/GuiMainHub.hpp"
+                                "puffinEngine/src/GuiTextOverlay.hpp"
+                                "puffinEngine/src/Landscape.hpp"
+                                "puffinEngine/src/Light.hpp"
+                                "puffinEngine/src/MainCharacter.hpp"
+                                "puffinEngine/src/MaterialLibrary.hpp"
+                                "puffinEngine/src/MeshLibrary.hpp"
+                                "puffinEngine/src/MousePicker.hpp"
+                                "puffinEngine/src/PuffinEngine.hpp"
+				"puffinEngine/src/PushConstant.hpp"
+                                "puffinEngine/src/Scene.hpp"
+                                "puffinEngine/src/Texture.hpp"
+                                "puffinEngine/src/Ui.hpp"
+                                "puffinEngine/src/WorldClock.hpp")
+
+
+add_executable(${PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES})
+
+add_subdirectory(puffinEngine/imgui)
+target_link_libraries(${PROJECT_NAME} imgui)
 
 find_package(Vulkan)
 if (Vulkan_FOUND)
     target_link_libraries(${PROJECT_NAME} "${Vulkan_LIBRARY}")
     include_directories(${PROJECT_NAME} "${Vulkan_INCLUDE_DIR}")
-endif (Vulkan_FOUND)
+else ()
+    message("-- ??")
+endif ()
 
-add_subdirectory(puffinEngine/imgui)
-target_link_libraries(${PROJECT_NAME} imgui)
 
 #[[----Downloading and unpack GLFW3, GLI, GLM into liblaries directory.----]]
 
@@ -72,8 +119,27 @@ if(UNIX)
     target_link_libraries(${PROJECT_NAME} -lGL -ldl -lX11 -lXxf86vm -lXrandr -lpthread -lXi)
 endif()
 
-set(GLM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm)
-include_directories(${PROJECT_NAME} ${GLM_INCLUDE_DIR})
+#[[----Linking GLM libraries----]]
+
+set(glm_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm/lib/cmake/glm)
+find_package(glm)
+target_link_libraries(${PROJECT_NAME} glm::glm)
+include_directories(${glm_DIR})
+
+if(NOT GLM_INCLUDE_DIR OR GLM_INCLUDE_DIR MATCHES "NOTFOUND")
+	set(GLM_FOUND false)
+	if(NOT GLM_QUIET)
+		message( STATUS "GLM was not found")
+	elseif(GLM_REQUIRED)
+		message( SEND_ERROR "GLM was not found")
+	endif()
+else()
+	set(GLM_FOUND true)
+	set(GLM_INCLUDE_DIRS ${GLM_INCLUDE_DIR})
+        message( STATUS "GLM was found")
+endif()
+
+#[[----Linking GLI libraries----]]
 
 set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli/include)
 include_directories(${GLI_INCLUDE_DIR})
@@ -82,52 +148,63 @@ include_directories(${GLI_INCLUDE_DIR})
 
 include(ExternalProject)
 ExternalProject_Add(tinyobjloader
-	GIT_REPOSITORY         https://github.com/syoyo/tinyobjloader
-    GIT_TAG                master
+    GIT_REPOSITORY         https://github.com/syoyo/tinyobjloader
+    GIT_TAG                release
     SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
-	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
-	UPDATE_COMMAND  ""
+    CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader"
+    UPDATE_COMMAND  ""
 )
 
 set(TINYOBJ_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader/include)
 include_directories(${PROJECT_NAME} ${TINYOBJ_INCLUDE_PATH})
 
-#[[----Downloading and unpack STB into libraries directory.----]]
 
-include(ExternalProject)
-ExternalProject_Add(stb
-	GIT_REPOSITORY         https://github.com/nothings/stb
-    GIT_TAG                master
-    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
-	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb"
-	UPDATE_COMMAND  ""
-    CONFIGURE_COMMAND  ""
-    BUILD_COMMAND  ""
-    INSTALL_COMMAND  ""
-)
 
-set(STB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/stb)
-target_include_directories(${PROJECT_NAME} PUBLIC ${STB_INCLUDE_DIR})
 
-add_definitions(-DSTB_IMAGE_IMPLEMENTATION)
+#[[----Linking STB libraries----]]
+
+set(STB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb/stb-prefix/src/stb)
+include_directories(${PROJECT_NAME} ${STB_INCLUDE_DIR})
+
+
 
 #[[---Downloading and unpack BOOST into libraries directory.---]]
 
-include(ExternalProject)
-ExternalProject_Add(BOOST
-	URL                     "https://dl.bintray.com/boostorg/release/1.69.0/source/boost_1_69_0.tar.bz2"
-    URL_MD5                 "a1332494397bf48332cb152abfefcec2"
-    SOURCE_DIR              "${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost"
-	CMAKE_ARGS              "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost"
-    CONFIGURE_COMMAND       ./bootstrap.sh --with-libraries=atomic,date_time,filesystem,program_options,system,thread
-    BUILD_COMMAND           ./b2 link=static
-    BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
-	UPDATE_COMMAND  ""
-)
+if(WIN32)
+	set(CONFIG_COMMAND_VAL b2.exe)
+	set(BUILD_COMMAND_VAL bootstrap.bat)
+elseif(UNIX)
+	set(CONFIG_COMMAND_VAL ./bootstrap.sh)
+	set(BUILD_COMMAND_VAL ./b2)
+endif()
 
-set(BOOST_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/boost)
-target_include_directories(${PROJECT_NAME} PUBLIC ${BOOST_INCLUDE_DIR})
+configure_file(${CMAKE_SOURCE_DIR}/puffinEngine/cmake/CMakeListsBOOST.txt.in ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/boost/CMakeLists.txt)
+execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
+RESULT_VARIABLE result
+WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/boost)
+if(result)
+    message(FATAL_ERROR "CMake step for BOOST failed: ${result}")
+endif()
+
+execute_process(COMMAND "${CMAKE_COMMAND}" --build .
+    RESULT_VARIABLE result
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/boost)
+if(result)
+    message(FATAL_ERROR "Build step for BOOST failed: ${result}")
+endif()
+
+find_package(Boost)
+if(Boost_FOUND)
+    include_directories(${Boost_INCLUDE_DIRS})
+    target_link_libraries(${PROJECT_NAME}  ${Boost_LIBRARIES})
+    message("boost lib: ${Boost_LIBRARIES}")
+    message("boost inc: ${Boost_INCLUDE_DIR}")
+elseif(NOT Boost_FOUND)
+    message("-- Can't find boost libraries. Try to add manually.")
+    set(Boost_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/boost/boost-prefix/src/boost/)
+    set(Boost_LIBRARY_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/boost/boost-prefix/src/boost/libs)
+    include_directories(${Boost_INCLUDE_DIR})
+endif()
 
 #[[----Include GTest in project.----]]
 

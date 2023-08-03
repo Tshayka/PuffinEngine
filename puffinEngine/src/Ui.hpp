@@ -1,58 +1,57 @@
 #pragma once
 
-#include <glm/glm.hpp>
-
 #include "../imgui/imgui.h"
-#include "Device.hpp"
+#include "Buffer.hpp"
 #include "ErrorCheck.hpp"
+#include "PushConstant.hpp"
 #include "Texture.hpp"
 
 class GuiElement {
 public:
-
 	GuiElement();
 	~GuiElement();
 
-	void CreateUniformBuffer(VkCommandBuffer);
-	void DeInit();
-	void Init(Device* logiclDevice, VkCommandPool& commandPool);
-	void LoadImage();
-	void NewFrame();
-	void RenderDrawData();
-	void SetUp();
+	void init(Device* logiclDevice, VkCommandPool* commandPool);
+	void cleanUpForSwapchain();
+	void recreateForSwapchain();
+	void deInit();
+	
+	void createUniformBuffer(const VkCommandBuffer& command_buffer);
+	void newFrame();
+	void setUp();
+	void updateDrawData();
 
-	// UI params are set via push constants
-	struct PushConstBlock {
-		glm::vec2 scale;
-		glm::vec2 translate;
-	} pushConstBlock;
-
-	//bool visible = true;
+	PushConstBlock m_PushConstBlock;
 
 private:
-	void CreateDescriptorPool();
-	void CreateDescriptorSet();
-	void CreateDescriptorSetLayout();
-	void CreateGraphicsPipeline();
-	VkShaderModule CreateVertShaderModule();
-	VkShaderModule CreateFragShaderModule();
-	void CreateViewAndSampler();
+	void createDescriptorPool();
+	void createDescriptorSet();
+	void createDescriptorSetLayout();
+
+	VkShaderModule createVertShaderModule();
+	VkShaderModule createFragShaderModule();
 	
-	enginetool::Buffer vertexBuffer;
-	enginetool::Buffer indexBuffer;	
-	int32_t vertexCount = 0;
-	int32_t indexCount = 0;
-	TextureLayout font;
-	VkDescriptorPool descriptorPool;
-	VkDescriptorSetLayout descriptorSetLayout;
-	VkDescriptorSet descriptorSet;
-	VkPipelineLayout pipelineLayout;
-	VkPipeline pipeline;
-	VkPipelineCache pipelineCache;
+	void loadFontImage();
+	void createGraphicsPipeline();
+	void destroyPipeline();
+	
+	int32_t m_VertexCount = 0;
+	int32_t m_IndexCount = 0;
+	TextureLayout m_Font;
 
-	VkViewport viewport = {};
-	VkRect2D scissor = {};
+	VkDescriptorPool m_DescriptorPool;
+	VkDescriptorSetLayout m_DescriptorSetLayout;
+	VkDescriptorSet m_DescriptorSet;
+	VkPipelineLayout m_PipelineLayout;
+	VkPipeline m_Pipeline;
+	VkPipelineCache m_PipelineCache;
 
-	Device* logicalDevice = nullptr;
-	VkCommandPool* commandPool = nullptr; 
+	enginetool::Buffer m_VertexBuffer;
+	enginetool::Buffer m_IndexBuffer;
+
+	VkViewport m_Viewport = {};
+	VkRect2D m_Scissor = {};
+
+	Device* p_LogicalDevice = nullptr;
+	VkCommandPool* p_CommandPool = nullptr; 
 };

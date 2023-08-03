@@ -57,12 +57,13 @@ You must add them inside working directory, because they won't be global:
 If you want use multithreaded command buffer, you must turn off validation layers in "ErrorCheck.cpp" file, 
 by "BUILD_ENABLE_VULKAN_DEBUG" value to '0'.
 
-## Building
-- $ cmake -H. -Bbuild
-- $ cmake --build build -- -j4
-
-## Running program
+## Building and running
+### Linux
+- $ ./linux64release.sh
 - $ ./bin/PuffinEngine
+### Windows
+- $ win64debug.bat
+- $
 
 ## Running tests
 - $ ./bin/PuffinEngineTest
@@ -72,15 +73,18 @@ by "BUILD_ENABLE_VULKAN_DEBUG" value to '0'.
 
 ## Third party libraries
 
-The following third party packages are included, and carry, their own copyright notices and license terms: 
-- [GLFW](https://github.com/glfw/glfw)
+The following third party packages and assets are included, and carry, their own copyright notices and license terms:
+- [Bitmap fonts for C/C++](https://nothings.org/stb/font/)
+- [Boost]()
+- [Dear ImGui](https://github.com/ocornut/imgui) 
+- [GLFW](https://github.com/glfw/glfw) 
 - [GLM](https://github.com/glm/glm)
 - [GLI](https://github.com/gli/gli)
-- [Dear ImGui](https://github.com/ocornut/imgui)
 - [JSON for Modern C++](https://github.com/nlohmann/json)
-- [Bitmap fonts for C/C++](https://nothings.org/stb/font/)
 - [stb](https://github.com/nothings/stb)
 - [tinyobjloader](https://github.com/syoyo/tinyobjloader)
+- [vulcan]()
+
 - [Icons](https://www.flaticon.com)
 - [Fonts](https://fonts.google.com/specimen/Exo+2)
 

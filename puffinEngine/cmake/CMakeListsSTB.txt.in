@@ -1,0 +1,14 @@
+cmake_minimum_required(VERSION 2.8.2)
+
+project(glfw-download NONE)
+include(ExternalProject)
+
+ExternalProject_Add(stb
+    GIT_REPOSITORY         https://github.com/nothings/stb
+    GIT_TAG                master
+    CMAKE_ARGS             "-DCMAKE_INSTALL_PREFIX=${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb"
+    UPDATE_COMMAND  ""
+    CONFIGURE_COMMAND  ""
+    BUILD_COMMAND  ""
+    INSTALL_COMMAND  ""
+)
