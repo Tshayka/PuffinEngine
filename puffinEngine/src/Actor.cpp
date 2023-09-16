@@ -9,7 +9,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/lexical_cast.hpp>
 
-#include "Actor.hpp"
+#include "headers/Actor.hpp"
 
 Actor::Actor(std::string name, std::string description, glm::vec3 position, ActorType type, std::vector<std::shared_ptr<Actor>>& actors) : state(ActorState::Idle) {
 	this->name = name;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Buffer.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/Buffer.hpp"
+#include "headers/ErrorCheck.hpp"
 
 using namespace enginetool;
 

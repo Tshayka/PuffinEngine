@@ -7,8 +7,8 @@
 #include <string>
 #include <unordered_map>
 
-#include "Device.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/Device.hpp"
+#include "headers/ErrorCheck.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>

@@ -3,7 +3,7 @@
 
 #include <array>
 #include "LoadFile.cpp"
-#include "GuiTextOverlay.hpp"
+#include "headers/GuiTextOverlay.hpp"
 
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
 

@@ -1,6 +1,6 @@
 #include <iostream>
-#include "Light.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/Light.hpp"
+#include "headers/ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
 

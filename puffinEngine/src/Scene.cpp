@@ -5,8 +5,8 @@
 #include <filesystem>
 
 #include "LoadFile.cpp"
-#include "ErrorCheck.hpp"
-#include "Scene.hpp"
+#include "headers/ErrorCheck.hpp"
+#include "headers/Scene.hpp"
 
 void* alignedAlloc(size_t size, size_t alignment)
 {
