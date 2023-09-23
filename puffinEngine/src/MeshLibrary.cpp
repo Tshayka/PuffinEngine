@@ -7,8 +7,8 @@
 #include <tiny_obj_loader.h> // loading obj files
 
 #include "MeshLayout.cpp"
-#include "MeshLibrary.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/MeshLibrary.hpp"
+#include "headers/ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
 

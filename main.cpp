@@ -1,4 +1,4 @@
-#include "puffinEngine/src/PuffinEngine.hpp"
+#include "headers/PuffinEngine.hpp"
 
 int main(){	
 	PuffinEngine engine;

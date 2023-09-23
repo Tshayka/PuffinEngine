@@ -10,8 +10,8 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
 
-#include "Threads.cpp"
-#include "WorldClock.hpp"
+#include "src/Threads.cpp"
+#include "headers/WorldClock.hpp"
 
 struct QueueFamilyIndices
 {

@@ -1,5 +1,5 @@
 #include <string>
-#include "Texture.hpp"
+#include "headers/Texture.hpp"
 
 namespace enginetool {
 	struct SceneMaterial {

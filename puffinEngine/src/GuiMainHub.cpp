@@ -4,7 +4,7 @@
 #include <sstream>
 
 #include "MeshLayout.cpp"
-#include "GuiMainHub.hpp"
+#include "headers/GuiMainHub.hpp"
 
 
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048

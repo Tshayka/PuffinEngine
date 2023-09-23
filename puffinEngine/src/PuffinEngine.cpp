@@ -3,7 +3,7 @@
 #include <string>
 #include <thread>
 
-#include "PuffinEngine.hpp"
+#include "headers/PuffinEngine.hpp"
 
  //---------- Constructors and dectructors ---------- //
 

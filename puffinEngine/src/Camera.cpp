@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "Camera.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/Camera.hpp"
+#include "headers/ErrorCheck.hpp"
 
 
 // ------- Constructors and dectructors ------------- //

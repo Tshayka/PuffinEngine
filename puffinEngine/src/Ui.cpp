@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "LoadFile.cpp"
-#include "Ui.hpp"
+#include "headers/Ui.hpp"
 
 //---------- Constructors and dectructors ---------- //
 

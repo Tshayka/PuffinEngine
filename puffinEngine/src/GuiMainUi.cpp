@@ -5,7 +5,7 @@
 #include <filesystem>
 
 #include "LoadFile.cpp"
-#include "GuiMainUi.hpp"
+#include "headers/GuiMainUi.hpp"
 
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>

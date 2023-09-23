@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "WorldClock.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/WorldClock.hpp"
+#include "headers/ErrorCheck.hpp"
 
 using namespace puffinengine::tool;
 

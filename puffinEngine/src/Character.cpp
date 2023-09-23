@@ -1,7 +1,7 @@
 #include <fstream>
 #include <iostream>
 
-#include "Character.hpp"
+#include "headers/Character.hpp"
 
 // ------- Constructors and dectructors ------------- //
 

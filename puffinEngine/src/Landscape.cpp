@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "Landscape.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/Landscape.hpp"
+#include "headers/ErrorCheck.hpp"
 
 
 // ------- Constructors and dectructors ------------- //

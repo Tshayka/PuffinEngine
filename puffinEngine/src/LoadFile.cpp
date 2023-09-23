@@ -1,7 +1,7 @@
 #include <fstream>
 #include <vector>
 
-#include "ErrorCheck.hpp"
+#include "headers/ErrorCheck.hpp"
 
 namespace enginetool {
 

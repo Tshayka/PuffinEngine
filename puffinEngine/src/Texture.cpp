@@ -1,6 +1,6 @@
 #include <iostream>
-#include "ErrorCheck.hpp"
-#include "Texture.hpp"
+#include "headers/ErrorCheck.hpp"
+#include "headers/Texture.hpp"
 
 //---------- Constructors and dectructors ---------- //
 

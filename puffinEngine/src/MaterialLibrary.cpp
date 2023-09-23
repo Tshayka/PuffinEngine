@@ -7,8 +7,8 @@
 #include <filesystem>
 
 #include "LoadTexture.cpp"
-#include "MaterialLibrary.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/MaterialLibrary.hpp"
+#include "headers/ErrorCheck.hpp"
 
 // ------- Constructors and dectructors ------------- //
 

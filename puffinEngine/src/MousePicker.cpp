@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "MousePicker.hpp"
-#include "ErrorCheck.hpp"
+#include "headers/MousePicker.hpp"
+#include "headers/ErrorCheck.hpp"
 
 
 // ------- Constructors and dectructors ------------- //
