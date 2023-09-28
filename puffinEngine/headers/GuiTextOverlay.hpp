@@ -5,6 +5,7 @@
 #include "ErrorCheck.hpp"
 #include "Buffer.hpp"
 #include "Texture.hpp"
+#include "RenderPass.hpp"
 
 // Defines for the STB font used
 // STB font files can be found at http://nothings.org/stb/font/
@@ -15,14 +16,14 @@
 #define STB_FIRST_CHAR STB_FONT_consolas_24_latin1_FIRST_CHAR
 #define STB_NUM_CHARS STB_FONT_consolas_24_latin1_NUM_CHARS
 
-enum TextAlignment { alignLeft, alignCenter, alignRight };
+enum class TextAlignment { alignLeft, alignCenter, alignRight };
 
 class GuiTextOverlay {
 public:
 	GuiTextOverlay();
 	~GuiTextOverlay();
 
-	void init(Device* device, VkCommandPool* commandPool);
+	void init(Device* device, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
     void deInit();
@@ -60,5 +61,6 @@ private:
 	VkViewport m_Viewport = {};
 
 	Device* p_LogicalDevice = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass;
 	VkCommandPool* p_CommandPool = nullptr;
 };

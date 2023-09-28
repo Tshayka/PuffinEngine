@@ -6,6 +6,7 @@
 #include "MeshLayout.cpp"
 #include "headers/GuiMainHub.hpp"
 
+using namespace puffinengine::tool;
 
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
 
@@ -29,8 +30,9 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
-	p_LogicalDevice = device; 
+void GuiMainHub::init(Device* device, RenderPass* renderPass, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+	p_LogicalDevice = device;
+	p_RenderPass = renderPass;
 	p_MainUi = mainUi;
 	p_Console = console;
 	p_TextOverlay = textOverlay;
@@ -40,9 +42,9 @@ void GuiMainHub::init(Device* device, GuiElement* console, GuiTextOverlay* textO
 	createRenderPass();
 	createCommandPool();
 
-	p_Console->init(p_LogicalDevice, &m_CommandPool);
-	p_TextOverlay->init(p_LogicalDevice, &m_CommandPool);
-	p_MainUi->init(p_LogicalDevice, &m_CommandPool);
+	p_Console->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
+	p_TextOverlay->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
+	p_MainUi->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
 
 	m_Initialized = true;
 }
@@ -90,7 +92,7 @@ void GuiMainHub::createRenderPass() {
 	color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
 	VkAttachmentDescription depth_attachment = {};
-	depth_attachment.format = p_LogicalDevice->depthFormat;
+	depth_attachment.format = p_RenderPass->getFormat();
 	depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

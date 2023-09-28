@@ -4,6 +4,7 @@
 #include "Buffer.hpp"
 #include "ErrorCheck.hpp"
 #include "PushConstant.hpp"
+#include "RenderPass.hpp"
 #include "Texture.hpp"
 
 #ifdef WIN32
@@ -45,7 +46,7 @@ public:
 	GuiMainUi();
 	~GuiMainUi();
 
-	void init(Device* device, VkCommandPool* commandPool);
+	void init(Device* device, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();
@@ -87,5 +88,6 @@ private:
 	VkRect2D m_Scissor = {};
 
 	Device* p_LogicalDevice = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr;
 };

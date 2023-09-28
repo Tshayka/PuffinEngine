@@ -5,13 +5,14 @@
 #include "ErrorCheck.hpp"
 #include "PushConstant.hpp"
 #include "Texture.hpp"
+#include "RenderPass.hpp"
 
 class GuiElement {
 public:
 	GuiElement();
 	~GuiElement();
 
-	void init(Device* logiclDevice, VkCommandPool* commandPool);
+	void init(Device* logiclDevice, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();
@@ -53,5 +54,6 @@ private:
 	VkRect2D m_Scissor = {};
 
 	Device* p_LogicalDevice = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr; 
 };

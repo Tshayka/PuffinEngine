@@ -7,6 +7,8 @@
 #include "LoadFile.cpp"
 #include "headers/Ui.hpp"
 
+using namespace puffinengine::tool;
+
 //---------- Constructors and dectructors ---------- //
 
 GuiElement::GuiElement() {
@@ -21,8 +23,9 @@ GuiElement::~GuiElement() {
 #endif
 }
 
-void GuiElement::init(Device* device, VkCommandPool* commandPool) {
+void GuiElement::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
+	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 
 	m_VertexBuffer.setDevice(device);
@@ -404,7 +407,7 @@ void GuiElement::createGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = m_PipelineLayout;
-	PipelineInfo.renderPass = p_LogicalDevice->renderPass;
+	PipelineInfo.renderPass = p_RenderPass->get();
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 

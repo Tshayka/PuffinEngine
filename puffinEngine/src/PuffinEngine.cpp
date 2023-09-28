@@ -5,6 +5,8 @@
 
 #include "headers/PuffinEngine.hpp"
 
+using namespace puffinengine::tool;
+
  //---------- Constructors and dectructors ---------- //
 
 PuffinEngine::PuffinEngine() {
@@ -44,6 +46,15 @@ bool PuffinEngine::initAllSystems() {
 	}
 
 	initDevice();
+
+	if (!m_ScreenRenderPass.init(&m_Device, RenderPass::Type::SCREEN)) {
+		return false;
+	}
+
+	if (!m_OffScreenRenderPass.init(&m_Device, RenderPass::Type::OFFSCREEN)) {
+		return false;
+	}
+
 	createWorldClock();
 	GatherThreadInfo();
 	CreateImGuiMenu();
@@ -103,11 +114,11 @@ void PuffinEngine::CreateMainCharacter() {
 }
 
 void PuffinEngine::CreateGuiMainHub() {
-	m_GUIMainHub.init(&m_Device, console, guiStatistics, mainUi, &m_MainClock, &m_ThreadPool);
+	m_GUIMainHub.init(&m_Device, &m_ScreenRenderPass, console, guiStatistics, mainUi, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::CreateScene() {
-	scene_1.init(&m_Device, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
+	scene_1.init(&m_Device, &m_ScreenRenderPass, &m_OffScreenRenderPass, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::mainLoop() {
@@ -575,7 +586,16 @@ void PuffinEngine::cleanUp() {
 	DestroyMaterialLibrary();
 	DestroyGUI();
 	deinitWorldClock();
-	m_Device.deinit();
+
+	if (m_ScreenRenderPass.m_Initialized) {
+		m_ScreenRenderPass.deInit();
+	}
+
+	if (m_OffScreenRenderPass.m_Initialized) {
+		m_OffScreenRenderPass.deInit();
+	}
+
+	m_Device.deInit();
 	glfwDestroyWindow(window);
 	glfwTerminate();
 }

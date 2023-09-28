@@ -4,6 +4,7 @@
 #include <map>
 
 #include "Device.hpp"
+#include "RenderPass.hpp"
 #include "Scene.hpp"
 #include "GuiMainHub.hpp"
 
@@ -71,6 +72,8 @@ private:
     
     puffinengine::tool::Scene scene_1;
     Device m_Device;
+    puffinengine::tool::RenderPass m_ScreenRenderPass;
+    puffinengine::tool::RenderPass m_OffScreenRenderPass;
     puffinengine::tool::WorldClock m_MainClock;
 
     MaterialLibrary m_MaterialLibrary;

@@ -5,6 +5,8 @@
 #include "LoadFile.cpp"
 #include "headers/GuiTextOverlay.hpp"
 
+using namespace puffinengine::tool;
+
 #define TEXTOVERLAY_MAX_CHAR_COUNT 2048
 
 //---------- Constructors and dectructors ---------- //
@@ -27,8 +29,9 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiTextOverlay::init(Device* device, VkCommandPool* commandPool) {
+void GuiTextOverlay::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
+	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 	p_Mapped = static_cast<glm::vec4*>(m_VertexBuffer.getMapped());
 	
@@ -246,7 +249,7 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	pipelineInfo.pColorBlendState = &colorBlending;
 	pipelineInfo.pDynamicState = &viewportDynamic;	
 	pipelineInfo.layout = m_PipelineLayout;
-	pipelineInfo.renderPass = p_LogicalDevice->renderPass;
+	pipelineInfo.renderPass = p_RenderPass->get();
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 

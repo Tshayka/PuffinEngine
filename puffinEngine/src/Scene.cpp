@@ -52,8 +52,10 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::init(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+void Scene::init(Device* device, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
 	m_Device = device;
+	p_ScreenRenderPass = screenRenderPass;
+	p_OffScreenRenderPass = offScreenRenderPass;
 	m_GUIMainHub = guiMainHub;
 	m_MousePicker = mousePicker;
 	m_MeshLibrary = meshLibrary;
@@ -185,7 +187,7 @@ void Scene::CreateFramebuffers() {
 			
 	VkFramebufferCreateInfo reflectionFramebufferInfo = {};
 	reflectionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	reflectionFramebufferInfo.renderPass = m_Device->offscreenRenderPass;
+	reflectionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	reflectionFramebufferInfo.attachmentCount = static_cast<uint32_t>(reflectionAttachments.size());
 	reflectionFramebufferInfo.pAttachments = reflectionAttachments.data();
 	reflectionFramebufferInfo.width = m_Device->swapchain_extent.width;
@@ -199,7 +201,7 @@ void Scene::CreateFramebuffers() {
 
 	VkFramebufferCreateInfo refractionFramebufferInfo = {};
 	refractionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	refractionFramebufferInfo.renderPass = m_Device->offscreenRenderPass;
+	refractionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	refractionFramebufferInfo.attachmentCount = static_cast<uint32_t>(refractionAttachments.size());
 	refractionFramebufferInfo.pAttachments = refractionAttachments.data();
 	refractionFramebufferInfo.width = m_Device->swapchain_extent.width;
@@ -216,7 +218,7 @@ void Scene::CreateFramebuffers() {
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = m_Device->renderPass; // specify with which render pass the framebuffer needs to be compatible
+		framebufferInfo.renderPass = p_ScreenRenderPass->get(); // specify with which render pass the framebuffer needs to be compatible
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
 		framebufferInfo.width = m_Device->swapchain_extent.width;
@@ -395,7 +397,7 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = pipelineLayout;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -431,16 +433,16 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
 	// Skybox refraction pipeline
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxRefractionPipeline));
 
 	// Skybox reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxReflectionPipeline));
 	
 	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 
 	vkDestroyShaderModule(m_Device->get(), fragCubeMapShaderModule, nullptr);
 	vkDestroyShaderModule(m_Device->get(), vertCubeMapShaderModule, nullptr);
@@ -479,19 +481,19 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
 	
 	// Models refraction pipeline
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrRefractionPipeline));
 
 	// Models reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrReflectionPipeline));
 
 	vkDestroyShaderModule(m_Device->get(), fragModelsShaderModule, nullptr);
 	vkDestroyShaderModule(m_Device->get(), vertModelsShaderModule, nullptr);
 	
 	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 
 	// III. Selection crystal pipeline
 	std::filesystem::path vertSelectionCrystalShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "selectionCrystalShader.vert.spv";
@@ -694,7 +696,7 @@ void Scene::CreateCommandBuffers() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->renderPass;
+	renderPassInfo.renderPass = p_ScreenRenderPass->get();
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
 	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
@@ -844,7 +846,7 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->offscreenRenderPass;
+	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
 	renderPassInfo.framebuffer = m_Device->reflectionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
@@ -919,7 +921,7 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->offscreenRenderPass;
+	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
 	renderPassInfo.framebuffer = m_Device->refractionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
