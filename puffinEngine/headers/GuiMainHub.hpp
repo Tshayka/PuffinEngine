@@ -4,6 +4,7 @@
 #include "GuiTextOverlay.hpp"
 #include "Ui.hpp"
 #include "Device.hpp"
+#include "RenderPass.hpp"
 
 struct GUISettings {
 	bool display_dynamic_ub = true;
@@ -18,7 +19,7 @@ public:
 	GuiMainHub();
 	~GuiMainHub();
 
-	void init(Device* device, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool);
+	void init(Device* device, puffinengine::tool::RenderPass* renderPass, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deinit();
@@ -49,7 +50,8 @@ private:
 	GuiMainUi* p_MainUi = nullptr;
 	GuiElement* p_Console = nullptr;
 	GuiTextOverlay* p_TextOverlay = nullptr;
-	Device* p_LogicalDevice = nullptr;
+	Device* p_Device = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	enginetool::ThreadPool* p_ThreadPool = nullptr;
 	puffinengine::tool::WorldClock* p_MainClock = nullptr;
 };

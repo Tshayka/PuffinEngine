@@ -16,6 +16,7 @@
 #include "MaterialLibrary.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
+#include "RenderPass.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
 
@@ -34,7 +35,7 @@ namespace puffinengine {
 
 			bool m_Initialized = false;
 
-			void init(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
+			void init(Device* device, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
 			void CleanUpForSwapchain();
 			void RecreateForSwapchain();
 			void deinit();
@@ -358,6 +359,8 @@ namespace puffinengine {
 			VkViewport viewport = {};
 
 			Device* m_Device = nullptr;
+			RenderPass* p_ScreenRenderPass;
+			RenderPass* p_OffScreenRenderPass;
 			MaterialLibrary* materialLibrary = nullptr;
 			MeshLibrary* m_MeshLibrary = nullptr;
 			MousePicker* m_MousePicker = nullptr;

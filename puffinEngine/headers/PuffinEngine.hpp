@@ -4,6 +4,7 @@
 #include <map>
 
 #include "Device.hpp"
+#include "RenderPass.hpp"
 #include "Scene.hpp"
 #include "GuiMainHub.hpp"
 
@@ -42,9 +43,6 @@ private:
     static void ErrorCallback(int, const char*);
 
     // ---------------- Main functions ------------------ //
-    
-    
-
     //void ConnectGamepad();
     void initDevice();
     void CreateGuiTextOverlay();
@@ -71,6 +69,8 @@ private:
     
     puffinengine::tool::Scene scene_1;
     Device m_Device;
+    puffinengine::tool::RenderPass m_ScreenRenderPass;
+    puffinengine::tool::RenderPass m_OffScreenRenderPass;
     puffinengine::tool::WorldClock m_MainClock;
 
     MaterialLibrary m_MaterialLibrary;
@@ -78,9 +78,9 @@ private:
     MousePicker m_MousePicker;
 
     GuiMainHub m_GUIMainHub;
-    GuiElement* console = nullptr;
-    GuiMainUi* mainUi = nullptr;
-    GuiTextOverlay* guiStatistics = nullptr;
+    GuiElement* p_Console = nullptr;
+    GuiMainUi* p_MainUi = nullptr;
+    GuiTextOverlay* p_GuiStatistics = nullptr;
 
 	VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;
