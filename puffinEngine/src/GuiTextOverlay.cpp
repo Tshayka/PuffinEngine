@@ -30,7 +30,7 @@ GuiTextOverlay::~GuiTextOverlay() {
 // ---------------- Main functions ------------------ //
 
 void GuiTextOverlay::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
-	p_LogicalDevice = device;
+	p_Device = device;
 	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 	p_Mapped = static_cast<glm::vec4*>(m_VertexBuffer.getMapped());
@@ -46,7 +46,7 @@ void GuiTextOverlay::loadFontImage() {
 	static unsigned char font24pixels[STB_FONT_HEIGHT][STB_FONT_WIDTH];
 	STB_FONT_NAME(m_StbFontData, font24pixels, STB_FONT_HEIGHT);
 
-	m_Font.Init(p_LogicalDevice, *p_CommandPool, VK_FORMAT_R8_UNORM, 0, 1, 1);
+	m_Font.Init(p_Device, *p_CommandPool, VK_FORMAT_R8_UNORM, 0, 1, 1);
 	m_Font.texWidth = STB_FONT_WIDTH;
 	m_Font.texHeight = STB_FONT_HEIGHT;
 	m_Font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
@@ -55,7 +55,7 @@ void GuiTextOverlay::loadFontImage() {
 
 	VkDeviceSize uploadSize = STB_FONT_WIDTH * STB_FONT_HEIGHT * sizeof(int);
 	enginetool::Buffer stagingBuffer;
-	stagingBuffer.setDevice(p_LogicalDevice);
+	stagingBuffer.setDevice(p_Device);
 	stagingBuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, &m_StbFontData);
 
 	stagingBuffer.map(uploadSize, 0);
@@ -68,7 +68,7 @@ void GuiTextOverlay::loadFontImage() {
 	m_Font.TransitionImageLayout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
 	VkDeviceSize vertexBufferSize = TEXTOVERLAY_MAX_CHAR_COUNT * sizeof(glm::vec4);
-	m_VertexBuffer.setDevice(p_LogicalDevice);
+	m_VertexBuffer.setDevice(p_Device);
 	m_VertexBuffer.createUnstagedBuffer(vertexBufferSize, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
@@ -87,7 +87,7 @@ void GuiTextOverlay::createDescriptorSetLayout() {
 	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
 	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(p_LogicalDevice->get(), &SceneObjectsLayoutInfo, nullptr, &m_DescriptorSetLayout));
+	ErrorCheck(vkCreateDescriptorSetLayout(p_Device->get(), &SceneObjectsLayoutInfo, nullptr, &m_DescriptorSetLayout));
 }
 
 void GuiTextOverlay::createDescriptorPool() {
@@ -102,7 +102,7 @@ void GuiTextOverlay::createDescriptorPool() {
 	poolInfo.pPoolSizes = poolSizes.data();
 	poolInfo.maxSets = 1; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(p_LogicalDevice->get(), &poolInfo, nullptr, &m_DescriptorPool));
+	ErrorCheck(vkCreateDescriptorPool(p_Device->get(), &poolInfo, nullptr, &m_DescriptorPool));
 }
 
 void GuiTextOverlay::createDescriptorSet() {
@@ -112,7 +112,7 @@ void GuiTextOverlay::createDescriptorSet() {
 		allocInfo.descriptorSetCount = 1;
 		allocInfo.pSetLayouts = &m_DescriptorSetLayout;
 
-		ErrorCheck(vkAllocateDescriptorSets(p_LogicalDevice->get(), &allocInfo, &m_DescriptorSet));
+		ErrorCheck(vkAllocateDescriptorSets(p_Device->get(), &allocInfo, &m_DescriptorSet));
 
 		VkDescriptorImageInfo imageInfo = {};
 		imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -129,13 +129,13 @@ void GuiTextOverlay::createDescriptorSet() {
 		descriptorWrites[0].descriptorCount = 1;
 		descriptorWrites[0].pImageInfo = &imageInfo;
 
-		vkUpdateDescriptorSets(p_LogicalDevice->get(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
+		vkUpdateDescriptorSets(p_Device->get(), static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
 }
 
 void GuiTextOverlay::createGraphicsPipeline() {
 	VkPipelineCacheCreateInfo pipelineCacheCreateInfo = {};
 	pipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	ErrorCheck(vkCreatePipelineCache(p_LogicalDevice->get(), &pipelineCacheCreateInfo, nullptr, &m_PipelineCache));
+	ErrorCheck(vkCreatePipelineCache(p_Device->get(), &pipelineCacheCreateInfo, nullptr, &m_PipelineCache));
 
 	VkPipelineInputAssemblyStateCreateInfo inputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -232,7 +232,7 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());
 	pipelineLayoutInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(p_LogicalDevice->get(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout));
+	ErrorCheck(vkCreatePipelineLayout(p_Device->get(), &pipelineLayoutInfo, nullptr, &m_PipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -260,8 +260,8 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	auto vertModelsShaderCode = enginetool::readFile(vertModelsShaderCodePath.string());
 	auto fragModelsShaderCode = enginetool::readFile(fragModelsShaderCodePath.string());
 
-	VkShaderModule vertModelsShaderModule = p_LogicalDevice->CreateShaderModule(vertModelsShaderCode);
-	VkShaderModule fragModelsShaderModule = p_LogicalDevice->CreateShaderModule(fragModelsShaderCode);
+	VkShaderModule vertModelsShaderModule = p_Device->CreateShaderModule(vertModelsShaderCode);
+	VkShaderModule fragModelsShaderModule = p_Device->CreateShaderModule(fragModelsShaderCode);
 
 	VkPipelineShaderStageCreateInfo vertModelsShaderStageInfo = {};
 	vertModelsShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -278,22 +278,22 @@ void GuiTextOverlay::createGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(p_LogicalDevice->get(), m_PipelineCache, 1, &pipelineInfo, nullptr, &m_Pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(p_Device->get(), m_PipelineCache, 1, &pipelineInfo, nullptr, &m_Pipeline));
 
-	vkDestroyShaderModule(p_LogicalDevice->get(), fragModelsShaderModule, nullptr);
-	vkDestroyShaderModule(p_LogicalDevice->get(), vertModelsShaderModule, nullptr);
+	vkDestroyShaderModule(p_Device->get(), fragModelsShaderModule, nullptr);
+	vkDestroyShaderModule(p_Device->get(), vertModelsShaderModule, nullptr);
 }
 
 void GuiTextOverlay::beginTextUpdate() {
-	ErrorCheck(vkMapMemory(p_LogicalDevice->get(), m_VertexBuffer.getMemory(), 0, VK_WHOLE_SIZE, 0, (void **)&p_Mapped));
+	ErrorCheck(vkMapMemory(p_Device->get(), m_VertexBuffer.getMemory(), 0, VK_WHOLE_SIZE, 0, (void **)&p_Mapped));
 	m_NumLetters = 0;
 }
 
 void GuiTextOverlay::renderText(const std::string& text, float x, float y, const TextAlignment& align) {
 	assert(p_Mapped != nullptr); // try-catch
 
-	float fbW = static_cast<float>(p_LogicalDevice->swapchain_extent.width);
-	float fbH = static_cast<float>(p_LogicalDevice->swapchain_extent.height);
+	float fbW = static_cast<float>(p_Device->swapchain_extent.width);
+	float fbH = static_cast<float>(p_Device->swapchain_extent.height);
 
 	const float charW = 1.5f / fbW;
 	const float charH = 1.5f / fbH;
@@ -359,14 +359,14 @@ void GuiTextOverlay::endTextUpdate() {
 void GuiTextOverlay::createUniformBuffer(const VkCommandBuffer& commandBuffer) {
 	m_Viewport.x = 0.0f;
 	m_Viewport.y = 0.0f;
-	m_Viewport.width = static_cast<float>(p_LogicalDevice->swapchain_extent.width);
-	m_Viewport.height = static_cast<float>(p_LogicalDevice->swapchain_extent.height);
+	m_Viewport.width = static_cast<float>(p_Device->swapchain_extent.width);
+	m_Viewport.height = static_cast<float>(p_Device->swapchain_extent.height);
 	m_Viewport.minDepth = 0.0f;
 	m_Viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(commandBuffer, 0, 1, &m_Viewport);
 
 	m_Scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	m_Scissor.extent = p_LogicalDevice->swapchain_extent;	
+	m_Scissor.extent = p_Device->swapchain_extent;	
 	vkCmdSetScissor(commandBuffer, 0, 1, &m_Scissor);
 	
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
@@ -390,17 +390,17 @@ void GuiTextOverlay::recreateForSwapchain() {
 }
 
 void GuiTextOverlay::destroyPipeline(){
-	vkDestroyPipelineCache(p_LogicalDevice->get(), m_PipelineCache, nullptr);
-	vkDestroyPipeline(p_LogicalDevice->get(), m_Pipeline, nullptr);
-	vkDestroyPipelineLayout(p_LogicalDevice->get(), m_PipelineLayout, nullptr);
+	vkDestroyPipelineCache(p_Device->get(), m_PipelineCache, nullptr);
+	vkDestroyPipeline(p_Device->get(), m_Pipeline, nullptr);
+	vkDestroyPipelineLayout(p_Device->get(), m_PipelineLayout, nullptr);
 }
 
 void GuiTextOverlay::deInit() {
 	m_VertexBuffer.destroy();
 	m_Font.DeInit();
-	vkDestroyDescriptorPool(p_LogicalDevice->get(), m_DescriptorPool, nullptr);
-    vkDestroyDescriptorSetLayout(p_LogicalDevice->get(), m_DescriptorSetLayout, nullptr);
+	vkDestroyDescriptorPool(p_Device->get(), m_DescriptorPool, nullptr);
+    vkDestroyDescriptorSetLayout(p_Device->get(), m_DescriptorSetLayout, nullptr);
 
-	p_LogicalDevice = nullptr;
+	p_Device = nullptr;
 	p_CommandPool = nullptr;
 }

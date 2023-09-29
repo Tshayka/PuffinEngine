@@ -31,7 +31,7 @@ GuiMainHub::~GuiMainHub() {
 // ---------------- Main functions ------------------ //
 
 void GuiMainHub::init(Device* device, RenderPass* renderPass, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
-	p_LogicalDevice = device;
+	p_Device = device;
 	p_RenderPass = renderPass;
 	p_MainUi = mainUi;
 	p_Console = console;
@@ -42,9 +42,9 @@ void GuiMainHub::init(Device* device, RenderPass* renderPass, GuiElement* consol
 	createRenderPass();
 	createCommandPool();
 
-	p_Console->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
-	p_TextOverlay->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
-	p_MainUi->init(p_LogicalDevice, p_RenderPass, &m_CommandPool);
+	p_Console->init(p_Device, p_RenderPass, &m_CommandPool);
+	p_TextOverlay->init(p_Device, p_RenderPass, &m_CommandPool);
+	p_MainUi->init(p_Device, p_RenderPass, &m_CommandPool);
 
 	m_Initialized = true;
 }
@@ -82,7 +82,7 @@ void GuiMainHub::submit(const VkQueue& queue, const int32_t &bufferIndex) {
 
 void GuiMainHub::createRenderPass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = p_LogicalDevice->swapchainImageFormat;
+	color_attachment.format = p_Device->swapchainImageFormat;
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // Don't clear the framebuffer!
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -152,18 +152,18 @@ void GuiMainHub::createRenderPass() {
 	renderPass_info.dependencyCount = 2;
 	renderPass_info.pDependencies = SubpassDependencies;
 
-	ErrorCheck(vkCreateRenderPass(p_LogicalDevice->get(), &renderPass_info, nullptr, &m_RenderPass));
+	ErrorCheck(vkCreateRenderPass(p_Device->get(), &renderPass_info, nullptr, &m_RenderPass));
 }
 
 void GuiMainHub::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = p_LogicalDevice->FindQueueFamilies(p_LogicalDevice->gpu);
+	QueueFamilyIndices queueFamilyIndices = p_Device->FindQueueFamilies(p_Device->gpu);
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
 	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
 	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 
-	ErrorCheck(vkCreateCommandPool(p_LogicalDevice->get(), &poolInfo, nullptr, &m_CommandPool));
+	ErrorCheck(vkCreateCommandPool(p_Device->get(), &poolInfo, nullptr, &m_CommandPool));
 }
 
 void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double &fps) {
@@ -198,11 +198,11 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = m_RenderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = p_LogicalDevice->swapchain_extent;
+	renderPassInfo.renderArea.extent = p_Device->swapchain_extent;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	m_CommandBuffers.resize(p_LogicalDevice->swap_chain_framebuffers.size());
+	m_CommandBuffers.resize(p_Device->swap_chain_framebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -210,12 +210,12 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(p_LogicalDevice->get(), &allocInfo, m_CommandBuffers.data()));
+	ErrorCheck(vkAllocateCommandBuffers(p_Device->get(), &allocInfo, m_CommandBuffers.data()));
 	
 	// starting command buffer recording
 	for (size_t i = 0; i < m_CommandBuffers.size(); i++) {
 		// Set target frame buffer
-		renderPassInfo.framebuffer = p_LogicalDevice->swap_chain_framebuffers[i];
+		renderPassInfo.framebuffer = p_Device->swap_chain_framebuffers[i];
 		vkBeginCommandBuffer(m_CommandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(m_CommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -237,10 +237,10 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 }
 
 void GuiMainHub::freeCommandBuffers() {
-	vkFreeCommandBuffers(p_LogicalDevice->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
+	vkFreeCommandBuffers(p_Device->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
 }
 
 void GuiMainHub::deinit() {
-	vkDestroyCommandPool(p_LogicalDevice->get(), m_CommandPool, nullptr);
-	vkDestroyRenderPass(p_LogicalDevice->get(), m_RenderPass, nullptr);
+	vkDestroyCommandPool(p_Device->get(), m_CommandPool, nullptr);
+	vkDestroyRenderPass(p_Device->get(), m_RenderPass, nullptr);
 }

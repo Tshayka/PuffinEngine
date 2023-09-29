@@ -69,19 +69,19 @@ bool RenderPass::createRenderPass(const RenderPass::Type type) {
 	depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference color_attachment_references = {};
-	color_attachment_references.attachment = 0;
-	color_attachment_references.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference colorAttachmentReferences = {};
+	colorAttachmentReferences.attachment = 0;
+	colorAttachmentReferences.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
-	VkAttachmentReference depth_attachment_references = {};
-	depth_attachment_references.attachment = 1;
-	depth_attachment_references.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+	VkAttachmentReference depthAttachmentReferences = {};
+	depthAttachmentReferences.attachment = 1;
+	depthAttachmentReferences.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 	VkSubpassDescription subpass = {};
 	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
 	subpass.colorAttachmentCount = 1;
-	subpass.pColorAttachments = &color_attachment_references;
-	subpass.pDepthStencilAttachment = &depth_attachment_references;
+	subpass.pColorAttachments = &colorAttachmentReferences;
+	subpass.pDepthStencilAttachment = &depthAttachmentReferences;
 
 	// specify memory and execution dependencies between subpasses
 

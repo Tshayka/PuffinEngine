@@ -43,9 +43,6 @@ private:
     static void ErrorCallback(int, const char*);
 
     // ---------------- Main functions ------------------ //
-    
-    
-
     //void ConnectGamepad();
     void initDevice();
     void CreateGuiTextOverlay();
@@ -81,9 +78,9 @@ private:
     MousePicker m_MousePicker;
 
     GuiMainHub m_GUIMainHub;
-    GuiElement* console = nullptr;
-    GuiMainUi* mainUi = nullptr;
-    GuiTextOverlay* guiStatistics = nullptr;
+    GuiElement* p_Console = nullptr;
+    GuiMainUi* p_MainUi = nullptr;
+    GuiTextOverlay* p_GuiStatistics = nullptr;
 
 	VkSemaphore imageAvailableSemaphore;
     VkSemaphore renderFinishedSemaphore;

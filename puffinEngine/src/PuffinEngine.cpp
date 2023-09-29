@@ -85,15 +85,15 @@ void PuffinEngine::GatherThreadInfo() {
 }
 
 void PuffinEngine::CreateImGuiMenu() {
-	console = new GuiElement();
+	p_Console = new GuiElement();
 }
 
 void PuffinEngine::CreateGuiTextOverlay() {
-	guiStatistics = new GuiTextOverlay();
+	p_GuiStatistics = new GuiTextOverlay();
 }
 
 void PuffinEngine::CreateMainUi() {
-	mainUi = new GuiMainUi();
+	p_MainUi = new GuiMainUi();
 }
 
 void PuffinEngine::CreateMousePicker() {
@@ -114,7 +114,7 @@ void PuffinEngine::CreateMainCharacter() {
 }
 
 void PuffinEngine::CreateGuiMainHub() {
-	m_GUIMainHub.init(&m_Device, &m_ScreenRenderPass, console, guiStatistics, mainUi, &m_MainClock, &m_ThreadPool);
+	m_GUIMainHub.init(&m_Device, &m_ScreenRenderPass, p_Console, p_GuiStatistics, p_MainUi, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::CreateScene() {
@@ -631,17 +631,17 @@ void PuffinEngine::DestroyScene() {// can't see destructor working
 }
 
 void PuffinEngine::DestroyGUI() {
-	mainUi->deInit();
-	delete mainUi;
-	mainUi = nullptr;
+	p_MainUi->deInit();
+	delete p_MainUi;
+	p_MainUi = nullptr;
 
-	guiStatistics->deInit();
-	delete guiStatistics;
-	guiStatistics = nullptr;
+	p_GuiStatistics->deInit();
+	delete p_GuiStatistics;
+	p_GuiStatistics = nullptr;
 
-	console->deInit();
-	delete console;
-	console = nullptr;
+	p_Console->deInit();
+	delete p_Console;
+	p_Console = nullptr;
 
 	m_GUIMainHub.deinit();
 }

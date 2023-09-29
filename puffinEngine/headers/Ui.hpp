@@ -53,7 +53,7 @@ private:
 	VkViewport m_Viewport = {};
 	VkRect2D m_Scissor = {};
 
-	Device* p_LogicalDevice = nullptr;
+	Device* p_Device = nullptr;
 	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr; 
 };

@@ -50,7 +50,7 @@ private:
 	GuiMainUi* p_MainUi = nullptr;
 	GuiElement* p_Console = nullptr;
 	GuiTextOverlay* p_TextOverlay = nullptr;
-	Device* p_LogicalDevice = nullptr;
+	Device* p_Device = nullptr;
 	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	enginetool::ThreadPool* p_ThreadPool = nullptr;
 	puffinengine::tool::WorldClock* p_MainClock = nullptr;

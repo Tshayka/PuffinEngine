@@ -24,7 +24,7 @@ GuiElement::~GuiElement() {
 }
 
 void GuiElement::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
-	p_LogicalDevice = device;
+	p_Device = device;
 	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 
@@ -41,7 +41,7 @@ void GuiElement::init(Device* device, RenderPass* renderPass, VkCommandPool* com
 
 void GuiElement::setUp() {
 	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)p_LogicalDevice->swapchain_extent.width, (float)p_LogicalDevice->swapchain_extent.height);
+	io.DisplaySize = ImVec2((float)p_Device->swapchain_extent.width, (float)p_Device->swapchain_extent.height);
 	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 	
 	ImGuiStyle& style = ImGui::GetStyle();
@@ -110,10 +110,10 @@ void GuiElement::loadFontImage() {
 	VkDeviceSize uploadSize = static_cast<uint64_t>(m_Font.texWidth) * static_cast<uint64_t>(m_Font.texHeight) * 4 * sizeof(char);
 	
 	enginetool::Buffer stagingBuffer;
-	stagingBuffer.setDevice(p_LogicalDevice);
+	stagingBuffer.setDevice(p_Device);
 	stagingBuffer.createStagedBuffer(uploadSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, fontData);
 	
-	m_Font.Init(p_LogicalDevice, *p_CommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
+	m_Font.Init(p_Device, *p_CommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
 	m_Font.CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	m_Font.CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	m_Font.CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -142,7 +142,7 @@ void GuiElement::createDescriptorSetLayout() {
 	SceneObjectsLayoutInfo.bindingCount = static_cast<uint32_t>(set_layout_bindings.size());
 	SceneObjectsLayoutInfo.pBindings = set_layout_bindings.data();
 
-	ErrorCheck(vkCreateDescriptorSetLayout(p_LogicalDevice->get(), &SceneObjectsLayoutInfo, nullptr, &m_DescriptorSetLayout));
+	ErrorCheck(vkCreateDescriptorSetLayout(p_Device->get(), &SceneObjectsLayoutInfo, nullptr, &m_DescriptorSetLayout));
 }
 
 
@@ -158,7 +158,7 @@ void GuiElement::createDescriptorPool() {
 	PoolInfo.pPoolSizes = PoolSizes.data();
 	PoolInfo.maxSets = 2; // maximum number of descriptor sets that will be allocated
 
-	ErrorCheck(vkCreateDescriptorPool(p_LogicalDevice->get(), &PoolInfo, nullptr, &m_DescriptorPool));
+	ErrorCheck(vkCreateDescriptorPool(p_Device->get(), &PoolInfo, nullptr, &m_DescriptorPool));
 }
 
 void GuiElement::createDescriptorSet() {
@@ -168,7 +168,7 @@ void GuiElement::createDescriptorSet() {
 	AllocInfo.descriptorSetCount = 1;
 	AllocInfo.pSetLayouts = &m_DescriptorSetLayout;
 
-	ErrorCheck(vkAllocateDescriptorSets(p_LogicalDevice->get(), &AllocInfo, &m_DescriptorSet));
+	ErrorCheck(vkAllocateDescriptorSets(p_Device->get(), &AllocInfo, &m_DescriptorSet));
 
 	VkDescriptorImageInfo ImageInfo = {};
 	ImageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -185,7 +185,7 @@ void GuiElement::createDescriptorSet() {
 	WriteDescriptorSets[0].descriptorCount = 1;
 	WriteDescriptorSets[0].pImageInfo = &ImageInfo;
 
-	vkUpdateDescriptorSets(p_LogicalDevice->get(), static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
+	vkUpdateDescriptorSets(p_Device->get(), static_cast<uint32_t>(WriteDescriptorSets.size()), WriteDescriptorSets.data(), 0, nullptr);
 }
 
 static uint32_t __glsl_shader_vert_spv[] =
@@ -269,7 +269,7 @@ VkShaderModule GuiElement::createVertShaderModule() {
 	vert_info.pCode = (uint32_t*)__glsl_shader_vert_spv;
 
 	VkShaderModule shaderModule;
-	ErrorCheck(vkCreateShaderModule(p_LogicalDevice->get(), &vert_info, nullptr, &shaderModule));
+	ErrorCheck(vkCreateShaderModule(p_Device->get(), &vert_info, nullptr, &shaderModule));
 
 	return shaderModule;
 }
@@ -281,7 +281,7 @@ VkShaderModule GuiElement::createFragShaderModule() {
 	frag_info.pCode = (uint32_t*)__glsl_shader_frag_spv;
 
 	VkShaderModule shaderModule;
-	ErrorCheck(vkCreateShaderModule(p_LogicalDevice->get(), &frag_info, nullptr, &shaderModule));
+	ErrorCheck(vkCreateShaderModule(p_Device->get(), &frag_info, nullptr, &shaderModule));
 
 	return shaderModule;
 }
@@ -289,7 +289,7 @@ VkShaderModule GuiElement::createFragShaderModule() {
 void GuiElement::createGraphicsPipeline() {
 	VkPipelineCacheCreateInfo PipelineCacheCreateInfo = {};
 	PipelineCacheCreateInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-	ErrorCheck(vkCreatePipelineCache(p_LogicalDevice->get(), &PipelineCacheCreateInfo, nullptr, &m_PipelineCache));
+	ErrorCheck(vkCreatePipelineCache(p_Device->get(), &PipelineCacheCreateInfo, nullptr, &m_PipelineCache));
 
 	VkPushConstantRange PushConstantRange = {};
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
@@ -390,7 +390,7 @@ void GuiElement::createGraphicsPipeline() {
 	PipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(layouts.size());;
 	PipelineLayoutCreateInfo.pSetLayouts = layouts.data();
 	
-	ErrorCheck(vkCreatePipelineLayout(p_LogicalDevice->get(), &PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout));
+	ErrorCheck(vkCreatePipelineLayout(p_Device->get(), &PipelineLayoutCreateInfo, nullptr, &m_PipelineLayout));
 
 	std::array <VkPipelineShaderStageCreateInfo, 2> shaderStages;
 
@@ -438,10 +438,10 @@ void GuiElement::createGraphicsPipeline() {
 	shaderStages[0] = vertModelsShaderStageInfo;
 	shaderStages[1] = fragModelsShaderStageInfo;
 
-	ErrorCheck(vkCreateGraphicsPipelines(p_LogicalDevice->get(), m_PipelineCache, 1, &PipelineInfo, nullptr, &m_Pipeline));
+	ErrorCheck(vkCreateGraphicsPipelines(p_Device->get(), m_PipelineCache, 1, &PipelineInfo, nullptr, &m_Pipeline));
 
-	vkDestroyShaderModule(p_LogicalDevice->get(), fragModelsShaderModule, nullptr);
-	vkDestroyShaderModule(p_LogicalDevice->get(), vertModelsShaderModule, nullptr); 
+	vkDestroyShaderModule(p_Device->get(), fragModelsShaderModule, nullptr);
+	vkDestroyShaderModule(p_Device->get(), vertModelsShaderModule, nullptr); 
 }
 
 void GuiElement::newFrame() {
@@ -569,18 +569,18 @@ void GuiElement::recreateForSwapchain() {
 }
 
 void GuiElement::destroyPipeline() {
-	vkDestroyPipelineCache(p_LogicalDevice->get(), m_PipelineCache, nullptr);
-	vkDestroyPipeline(p_LogicalDevice->get(), m_Pipeline, nullptr);
-	vkDestroyPipelineLayout(p_LogicalDevice->get(), m_PipelineLayout, nullptr);
+	vkDestroyPipelineCache(p_Device->get(), m_PipelineCache, nullptr);
+	vkDestroyPipeline(p_Device->get(), m_Pipeline, nullptr);
+	vkDestroyPipelineLayout(p_Device->get(), m_PipelineLayout, nullptr);
 }
 
 void GuiElement::deInit() {
 	m_IndexBuffer.destroy();
 	m_VertexBuffer.destroy();
 	m_Font.DeInit();
-	vkDestroyDescriptorPool(p_LogicalDevice->get(), m_DescriptorPool, nullptr);
-	vkDestroyDescriptorSetLayout(p_LogicalDevice->get(), m_DescriptorSetLayout, nullptr);
+	vkDestroyDescriptorPool(p_Device->get(), m_DescriptorPool, nullptr);
+	vkDestroyDescriptorSetLayout(p_Device->get(), m_DescriptorSetLayout, nullptr);
 
-	p_LogicalDevice = nullptr;
+	p_Device = nullptr;
 	p_CommandPool = nullptr; 
 }
