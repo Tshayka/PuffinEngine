@@ -13,21 +13,44 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 
-
 // ------- Constructors and dectructors ------------- //
 
-Device::Device() 
-{
+Device::Device() {
 #if DEBUG_VERSION
 	std::cout << "Device object created\n";
 #endif 
 }
 
-Device::~Device()
-{
+Device::~Device() {
 #if DEBUG_VERSION
 	std::cout << "Device object destroyed\n";
 #endif 
+}
+
+// --------------- Setters and getters -------------- //
+
+VkDevice Device::get() const {
+	return device;
+}
+
+VkPhysicalDevice Device::getGpu() const {
+	return m_Gpu;
+}
+
+VkSurfaceKHR Device::getSurface() const {
+	return m_Surface;
+}
+
+VkPhysicalDeviceProperties Device::getGpuProperties() const {
+	return m_GpuProperties;
+}
+
+VkQueue Device::getQueue() const {
+	return m_Queue;
+}
+
+VkQueue Device::getPresentQueue() const {
+	return m_PresentQueue;
 }
 
 // ---------------- Main functions ------------------ //
@@ -46,11 +69,11 @@ void Device::init(GLFWwindow* window) {
 void Device::deInit(){
     DeInitDebug();
 	vkDestroyDevice(device, nullptr);
-    vkDestroyInstance(instance, nullptr);
+    vkDestroyInstance(m_Instance, nullptr);
 }
 
 void Device::createSurface() {
-	if (glfwCreateWindowSurface(instance, p_Window, nullptr, &m_Surface) != VK_SUCCESS) {
+	if (glfwCreateWindowSurface(m_Instance, p_Window, nullptr, &m_Surface) != VK_SUCCESS) {
 		throw std::runtime_error("failed to create window surface!");
 	}
 }
@@ -77,8 +100,7 @@ SwapChainSupportDetails Device::querySwapChainSupport() {
 	uint32_t format_count;
 	vkGetPhysicalDeviceSurfaceFormatsKHR(m_Gpu, m_Surface, &format_count, nullptr); // querying the supported surface formats.
 
-	if (format_count != 0)
-	{
+	if (format_count != 0) {
 		details.formats.resize(format_count);
 		vkGetPhysicalDeviceSurfaceFormatsKHR(m_Gpu, m_Surface, &format_count, details.formats.data());
 	}
@@ -86,8 +108,7 @@ SwapChainSupportDetails Device::querySwapChainSupport() {
 	uint32_t present_mode_count;
 	vkGetPhysicalDeviceSurfacePresentModesKHR(m_Gpu, m_Surface, &present_mode_count, nullptr); //querying the supported presentation modes
 
-	if (present_mode_count != 0)
-	{
+	if (present_mode_count != 0) {
 		details.presentModes.resize(present_mode_count);
 		vkGetPhysicalDeviceSurfacePresentModesKHR(m_Gpu, m_Surface, &present_mode_count, details.presentModes.data());
 	}
@@ -95,8 +116,7 @@ SwapChainSupportDetails Device::querySwapChainSupport() {
 	return details;
 }
 
-void Device::CreateInstance()
-{
+void Device::CreateInstance() {
 	VkApplicationInfo application_info = {}; // this data is optional, but it may provide some useful information to the driver to optimize for specific application
 	application_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
 	application_info.pApplicationName = "GLFW with Vulkan";
@@ -120,11 +140,10 @@ void Device::CreateInstance()
 	createInfo.enabledLayerCount = 0;
 #endif // BUILD_ENABLE_VULKAN_DEBUG
 
-	ErrorCheck(vkCreateInstance(&createInfo, VK_NULL_HANDLE, &instance)); 
+	ErrorCheck(vkCreateInstance(&createInfo, VK_NULL_HANDLE, &m_Instance));
 }
 
-std::vector<const char*> Device::GetRequiredExtensions() 
-{
+std::vector<const char*> Device::GetRequiredExtensions() {
 	std::vector<const char*> extensions;
 
 	unsigned int glfwExtensionCount = 0;
@@ -145,13 +164,13 @@ std::vector<const char*> Device::GetRequiredExtensions()
 
 void Device::PickPhysicalDevice() {	
 	uint32_t gpu_count = 0;
-	vkEnumeratePhysicalDevices(instance, &gpu_count, VK_NULL_HANDLE);
+	vkEnumeratePhysicalDevices(m_Instance, &gpu_count, VK_NULL_HANDLE);
 		if (gpu_count == 0) {
 			throw std::runtime_error("failed to find GPUs with Vulkan support!");
 		}
 
 		std::vector<VkPhysicalDevice> gpuList(gpu_count); //allocate an array to hold all of the VkPhysicalDevice handles
-		vkEnumeratePhysicalDevices(instance, &gpu_count, gpuList.data());
+		vkEnumeratePhysicalDevices(m_Instance, &gpu_count, gpuList.data());
 
 		m_Gpu = gpuList[0];
 		vkGetPhysicalDeviceProperties(m_Gpu, &m_GpuProperties);
@@ -169,8 +188,7 @@ void Device::PickPhysicalDevice() {
 		}
 }
 
-void Device::CreateLogicalDevice() // init device
-{
+void Device::CreateLogicalDevice() { // init device
 	{
 		uint32_t family_count = 0;
 		vkGetPhysicalDeviceQueueFamilyProperties(m_Gpu, &family_count, VK_NULL_HANDLE);
@@ -243,8 +261,8 @@ void Device::CreateLogicalDevice() // init device
 
 	ErrorCheck(vkCreateDevice(m_Gpu, &device_create_info, VK_NULL_HANDLE, &device));
 
-	vkGetDeviceQueue(device, indices.graphicsFamily, 0, &queue);
-	vkGetDeviceQueue(device, indices.presentFamily, 0, &present_queue);
+	vkGetDeviceQueue(device, indices.graphicsFamily, 0, &m_Queue);
+	vkGetDeviceQueue(device, indices.presentFamily, 0, &m_PresentQueue);
 }
 
 bool Device::isDeviceSuitable(const VkPhysicalDevice& gpu) { // evaluate if GPU is suitable for the operations we want to perform
@@ -285,13 +303,10 @@ VkFormat Device::FindSupportedFormat(const std::vector<VkFormat>& candidates, Vk
 		VkFormatProperties props;
 		vkGetPhysicalDeviceFormatProperties(m_Gpu, format, &props);
 
-
-		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features)
-		{
+		if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
 			return format;
 		}
-		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)
-		{
+		else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features)	{
 			return format;
 		}
 	}

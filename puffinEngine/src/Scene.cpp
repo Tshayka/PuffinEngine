@@ -164,7 +164,7 @@ void Scene::CreateFramebuffers() {
 	reflectionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	reflectionFramebufferInfo.layers = 1;
 
-	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &reflectionFramebufferInfo, nullptr, &m_Device->reflectionFramebuffer));
+	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &reflectionFramebufferInfo, nullptr, &m_Device->m_ReflectionFramebuffer));
 
 	// Refraction frambuffer
 	std::array<VkImageView, 2>  refractionAttachments = {refractionImage->view, refractionDepthImage->view};
@@ -178,10 +178,10 @@ void Scene::CreateFramebuffers() {
 	refractionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	refractionFramebufferInfo.layers = 1;
 
-	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &refractionFramebufferInfo, nullptr, &m_Device->refractionFramebuffer));
+	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &refractionFramebufferInfo, nullptr, &m_Device->m_RefractionFramebuffer));
 
 	// Screen frambuffer
-	m_Device->swap_chain_framebuffers.resize(p_SwapChain->getSwapchainImageViews().size());
+	m_Device->m_SwapChainFramebuffers.resize(p_SwapChain->getSwapchainImageViews().size());
 
 	for (size_t i = 0; i < p_SwapChain->getSwapchainImageViews().size(); i++) {
 		std::array<VkImageView, 2> attachments = { p_SwapChain->getSwapchainImageViews()[i], screenDepthImage->view };
@@ -195,7 +195,7 @@ void Scene::CreateFramebuffers() {
 		framebufferInfo.height = p_SwapChain->getExtent().height;
 		framebufferInfo.layers = 1; // swap chain images are single images,
 
-		ErrorCheck(vkCreateFramebuffer(m_Device->get(), &framebufferInfo, nullptr, &m_Device->swap_chain_framebuffers[i]));
+		ErrorCheck(vkCreateFramebuffer(m_Device->get(), &framebufferInfo, nullptr, &m_Device->m_SwapChainFramebuffers[i]));
 	}
 }
 
@@ -247,8 +247,8 @@ void Scene::EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const Vk
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(m_Device->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(m_Device->queue);
+	vkQueueSubmit(m_Device->getQueue(), 1, &SubmitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(m_Device->getQueue());
 
 	vkFreeCommandBuffers(m_Device->get(), commandPool, 1, &commandBuffer);
 }
@@ -674,7 +674,7 @@ void Scene::CreateCommandBuffers() {
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 	
-	commandBuffers.resize(m_Device->swap_chain_framebuffers.size());
+	commandBuffers.resize(m_Device->m_SwapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -687,7 +687,7 @@ void Scene::CreateCommandBuffers() {
 	// starting command buffer recording
 	for (size_t i = 0; i < commandBuffers.size(); i++)	{
 		// Set target frame buffer
-		renderPassInfo.framebuffer = m_Device->swap_chain_framebuffers[i];
+		renderPassInfo.framebuffer = m_Device->m_SwapChainFramebuffers[i];
 		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		
@@ -818,7 +818,7 @@ void Scene::CreateReflectionCommandBuffer() {
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
-	renderPassInfo.framebuffer = m_Device->reflectionFramebuffer;
+	renderPassInfo.framebuffer = m_Device->m_ReflectionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
 	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
@@ -893,7 +893,7 @@ void Scene::CreateRefractionCommandBuffer() {
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
-	renderPassInfo.framebuffer = m_Device->refractionFramebuffer;
+	renderPassInfo.framebuffer = m_Device->m_RefractionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
 	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
 	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
@@ -2287,12 +2287,12 @@ void Scene::TextOverlayToggle() {m_GUIMainHub->m_GUISettings.display_stats_overl
 // ---------------- Deinitialisation ---------------- //
 
 void Scene::DeInitFramebuffer() {
-	for (size_t i = 0; i < m_Device->swap_chain_framebuffers.size(); i++) {
-		vkDestroyFramebuffer(m_Device->get(), m_Device->swap_chain_framebuffers[i], nullptr);
+	for (size_t i = 0; i < m_Device->m_SwapChainFramebuffers.size(); i++) {
+		vkDestroyFramebuffer(m_Device->get(), m_Device->m_SwapChainFramebuffers[i], nullptr);
 	}
 
-	vkDestroyFramebuffer(m_Device->get(), m_Device->reflectionFramebuffer, nullptr);
-	vkDestroyFramebuffer(m_Device->get(), m_Device->refractionFramebuffer, nullptr);
+	vkDestroyFramebuffer(m_Device->get(), m_Device->m_ReflectionFramebuffer, nullptr);
+	vkDestroyFramebuffer(m_Device->get(), m_Device->m_RefractionFramebuffer, nullptr);
 }
 
 void Scene::CleanUpDepthResources() {

@@ -203,7 +203,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
-	m_CommandBuffers.resize(p_Device->swap_chain_framebuffers.size());
+	m_CommandBuffers.resize(p_Device->m_SwapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -216,7 +216,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	// starting command buffer recording
 	for (size_t i = 0; i < m_CommandBuffers.size(); i++) {
 		// Set target frame buffer
-		renderPassInfo.framebuffer = p_Device->swap_chain_framebuffers[i];
+		renderPassInfo.framebuffer = p_Device->m_SwapChainFramebuffers[i];
 		vkBeginCommandBuffer(m_CommandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(m_CommandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 

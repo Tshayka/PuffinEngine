@@ -224,21 +224,21 @@ void PuffinEngine::DrawFrame() {
 	submit_info.pCommandBuffers = &scene_1.reflectionCmdBuff;
 	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
 	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1.refractionCmdBuff;
 	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
 	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 	
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
 	submit_info.pWaitSemaphores = &refractRenderSemaphore;
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 
-	m_GUIMainHub.submit(m_Device.queue, imageIndex);
+	m_GUIMainHub.submit(m_Device.getQueue(), imageIndex);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -250,7 +250,7 @@ void PuffinEngine::DrawFrame() {
 	present_info.pSwapchains = swapChains;
 	present_info.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(m_Device.present_queue, &present_info);
+	result = vkQueuePresentKHR(m_Device.getPresentQueue(), &present_info);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		RecreateSwapChain();
@@ -260,7 +260,7 @@ void PuffinEngine::DrawFrame() {
 		std::exit(-1);
 	}
 
-	vkQueueWaitIdle(m_Device.present_queue);
+	vkQueueWaitIdle(m_Device.getPresentQueue());
 }
 
 void PuffinEngine::RecreateSwapChain() {
