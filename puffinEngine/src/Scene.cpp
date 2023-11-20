@@ -52,8 +52,10 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::init(Device* device, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+void Scene::init(GLFWwindow* window, Device* device, SwapChain* swapChain, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+	p_Window = window;
 	m_Device = device;
+	p_SwapChain = swapChain;
 	p_ScreenRenderPass = screenRenderPass;
 	p_OffScreenRenderPass = offScreenRenderPass;
 	m_GUIMainHub = guiMainHub;
@@ -92,7 +94,7 @@ void Scene::init(Device* device, RenderPass* screenRenderPass, RenderPass* offSc
 	m_IndexBuffersSelectRay.setDevice(device);
     m_IndexBuffersAABB.setDevice(device);
 
-	InitSwapchainImageViews();
+	//p_SwapChain->initSwapchainImageViews();
 	CreateCommandPool();
 	CreateDepthResources();
 	PrepareOffscreenImage();
@@ -125,7 +127,7 @@ void Scene::update() {
 #endif 
 }
 
-void Scene::CleanUpForSwapchain() {
+void Scene::cleanUpForSwapchain() {
 	CleanUpDepthResources();
 	CleanUpOffscreenImage();
 	DeInitFramebuffer();
@@ -134,7 +136,6 @@ void Scene::CleanUpForSwapchain() {
 }
 
 void Scene::RecreateForSwapchain() {
-	InitSwapchainImageViews();
 	CreateDepthResources();
 	PrepareOffscreenImage();
 	CreateFramebuffers();
@@ -144,39 +145,8 @@ void Scene::RecreateForSwapchain() {
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 
-	m_MousePicker->width = (float)m_Device->swapchain_extent.width;
-	m_MousePicker->height = (float)m_Device->swapchain_extent.height;
-}
-
-// ------------------ Swapchain --------------------- //
-
-void Scene::InitSwapchainImageViews() {
-	m_Device->swapchainImageViews.resize(m_Device->swapchainImages.size());
-
-	for (size_t i = 0; i < m_Device->swapchainImages.size(); i++) {
-		m_Device->swapchainImageViews[i] = CreateImageView(m_Device->swapchainImages[i], m_Device->swapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-	}
-}
-
-VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags) {//TODO use in swapchain textureLayout class
-	VkImageViewCreateInfo ViewInfo = {};
-	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.image = image;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	ViewInfo.format = format;
-	ViewInfo.subresourceRange.aspectMask = aspect_flags;
-	ViewInfo.subresourceRange.baseMipLevel = 0;
-	ViewInfo.subresourceRange.levelCount = 1;
-	ViewInfo.subresourceRange.baseArrayLayer = 0;
-	ViewInfo.subresourceRange.layerCount = 1;
-
-	VkImageView image_view;
-	if (vkCreateImageView(m_Device->get(), &ViewInfo, nullptr, &image_view) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture image view!");
-		std::exit(-1);
-	}
-
-	return image_view;
+	m_MousePicker->width = (float)p_SwapChain->getExtent().width;
+	m_MousePicker->height = (float)p_SwapChain->getExtent().height;
 }
 
 // ----------------- Framebuffer -------------------- //
@@ -190,8 +160,8 @@ void Scene::CreateFramebuffers() {
 	reflectionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	reflectionFramebufferInfo.attachmentCount = static_cast<uint32_t>(reflectionAttachments.size());
 	reflectionFramebufferInfo.pAttachments = reflectionAttachments.data();
-	reflectionFramebufferInfo.width = m_Device->swapchain_extent.width;
-	reflectionFramebufferInfo.height = m_Device->swapchain_extent.height;
+	reflectionFramebufferInfo.width = p_SwapChain->getExtent().width;
+	reflectionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	reflectionFramebufferInfo.layers = 1;
 
 	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &reflectionFramebufferInfo, nullptr, &m_Device->reflectionFramebuffer));
@@ -204,25 +174,25 @@ void Scene::CreateFramebuffers() {
 	refractionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	refractionFramebufferInfo.attachmentCount = static_cast<uint32_t>(refractionAttachments.size());
 	refractionFramebufferInfo.pAttachments = refractionAttachments.data();
-	refractionFramebufferInfo.width = m_Device->swapchain_extent.width;
-	refractionFramebufferInfo.height = m_Device->swapchain_extent.height;
+	refractionFramebufferInfo.width = p_SwapChain->getExtent().width;
+	refractionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	refractionFramebufferInfo.layers = 1;
 
 	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &refractionFramebufferInfo, nullptr, &m_Device->refractionFramebuffer));
 
 	// Screen frambuffer
-	m_Device->swap_chain_framebuffers.resize(m_Device->swapchainImageViews.size());
+	m_Device->swap_chain_framebuffers.resize(p_SwapChain->getSwapchainImageViews().size());
 
-	for (size_t i = 0; i < m_Device->swapchainImageViews.size(); i++) {
-		std::array<VkImageView, 2> attachments = { m_Device->swapchainImageViews[i], screenDepthImage->view };
+	for (size_t i = 0; i < p_SwapChain->getSwapchainImageViews().size(); i++) {
+		std::array<VkImageView, 2> attachments = { p_SwapChain->getSwapchainImageViews()[i], screenDepthImage->view };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
 		framebufferInfo.renderPass = p_ScreenRenderPass->get(); // specify with which render pass the framebuffer needs to be compatible
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = m_Device->swapchain_extent.width;
-		framebufferInfo.height = m_Device->swapchain_extent.height;
+		framebufferInfo.width = p_SwapChain->getExtent().width;
+		framebufferInfo.height = p_SwapChain->getExtent().height;
 		framebufferInfo.layers = 1; // swap chain images are single images,
 
 		ErrorCheck(vkCreateFramebuffer(m_Device->get(), &framebufferInfo, nullptr, &m_Device->swap_chain_framebuffers[i]));
@@ -238,7 +208,7 @@ Because the image in the framebuffer depends on which specific image the swap ch
 we need to record a command buffer for each possible image and select the right one at draw time. */
 
 void Scene::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = m_Device->FindQueueFamilies(m_Device->gpu);
+	QueueFamilyIndices queueFamilyIndices = m_Device->findQueueFamilies();
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -301,7 +271,7 @@ void Scene::CreateGraphicsPipeline() {
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	PushConstantRange.offset = 0;
 	PushConstantRange.size = sizeof(Constants);
-	assert(sizeof(Constants) <= m_Device->gpu_properties.limits.maxPushConstantsSize);
+	assert(sizeof(Constants) <= m_Device->getGpuProperties().limits.maxPushConstantsSize);
 
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -364,14 +334,15 @@ void Scene::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	VertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	std::array<VkDescriptorSetLayout, 7> layouts = { descriptor_set_layout, 
-													skybox_descriptor_set_layout, 
-													cloudDescriptorSetLayout, 
-													oceanDescriptorSetLayout, 
-													lineDescriptorSetLayout,
-													selectionIndicatorDescriptorSetLayout,
-													aabbDescriptorSetLayout 
-													};
+	std::array<VkDescriptorSetLayout, 7> layouts = { 
+		descriptor_set_layout, 
+		skybox_descriptor_set_layout, 
+		cloudDescriptorSetLayout, 
+		oceanDescriptorSetLayout, 
+		lineDescriptorSetLayout,
+		selectionIndicatorDescriptorSetLayout,
+		aabbDescriptorSetLayout 
+	};
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -698,8 +669,8 @@ void Scene::CreateCommandBuffers() {
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = p_ScreenRenderPass->get();
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 	
@@ -722,14 +693,14 @@ void Scene::CreateCommandBuffers() {
 		
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)m_Device->swapchain_extent.width;
-		viewport.height = (float)m_Device->swapchain_extent.height;
+		viewport.width = (float)p_SwapChain->getExtent().width;
+		viewport.height = (float)p_SwapChain->getExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 
 		scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-		scissor.extent = m_Device->swapchain_extent;
+		scissor.extent = p_SwapChain->getExtent();
 		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
 		VkDeviceSize offsets[1] = { 0 };
@@ -849,8 +820,8 @@ void Scene::CreateReflectionCommandBuffer() {
 	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
 	renderPassInfo.framebuffer = m_Device->reflectionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
@@ -867,15 +838,15 @@ void Scene::CreateReflectionCommandBuffer() {
 		
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)m_Device->swapchain_extent.width;
-	viewport.height = (float)m_Device->swapchain_extent.height;
+	viewport.width = (float)p_SwapChain->getExtent().width;
+	viewport.height = (float)p_SwapChain->getExtent().height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(reflectionCmdBuff, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	scissor.extent.height = m_Device->swapchain_extent.height;
-	scissor.extent.width = m_Device->swapchain_extent.width;
+	scissor.extent.width = p_SwapChain->getExtent().width;
+	scissor.extent.height = p_SwapChain->getExtent().height;
 	vkCmdSetScissor(reflectionCmdBuff, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
@@ -924,8 +895,8 @@ void Scene::CreateRefractionCommandBuffer() {
 	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
 	renderPassInfo.framebuffer = m_Device->refractionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
@@ -942,15 +913,15 @@ void Scene::CreateRefractionCommandBuffer() {
 		
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)m_Device->swapchain_extent.width;
-	viewport.height = (float)m_Device->swapchain_extent.height;
+	viewport.width = (float)p_SwapChain->getExtent().width;
+	viewport.height = (float)p_SwapChain->getExtent().height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(refractionCmdBuff, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	scissor.extent.height = m_Device->swapchain_extent.height;
-	scissor.extent.width = m_Device->swapchain_extent.width;
+	scissor.extent.width = p_SwapChain->getExtent().width;
+	scissor.extent.height = p_SwapChain->getExtent().height;
 	vkCmdSetScissor(refractionCmdBuff, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
@@ -997,7 +968,7 @@ void Scene::CreateBuffers() {
 	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
-	size_t minUboAlignment = m_Device->gpu_properties.limits.minUniformBufferOffsetAlignment;
+	size_t minUboAlignment = m_Device->getGpuProperties().limits.minUniformBufferOffsetAlignment;
 
 	dynamicAlignment = sizeof(glm::mat4);
 
@@ -1151,7 +1122,7 @@ void Scene::DeSelect() {
 }
 
 void Scene::UpdateStaticUniformBuffer() {
-	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSG.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBOSG.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSG.model = glm::mat4(1.0f);
@@ -1163,7 +1134,7 @@ void Scene::UpdateStaticUniformBuffer() {
 }
 
 void Scene::UpdateCloudsUniformBuffer() {
-	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.time = (float)mainClock->totalElapsedTime;
@@ -1176,7 +1147,7 @@ void Scene::UpdateCloudsUniformBuffer() {
 } 
 
 void Scene::UpdateSelectionIndicatorUniformBuffer() {
-	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSI.proj[1][1] *= -1; 
 	UBOSI.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalElapsedTime * glm::radians(90.0f), currentCamera->up);
@@ -1186,7 +1157,7 @@ void Scene::UpdateSelectionIndicatorUniformBuffer() {
 }
 
 void Scene::UpdateOffscreenUniformBuffer() {
-	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOO.proj[1][1] *= -1; 
 	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOO.model = glm::mat4(1.0f);
@@ -1248,7 +1219,7 @@ void Scene::UpdateDynamicUniformBuffer() {
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
-	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSB.proj[1][1] *= -1;
 	UBOSB.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSB.view[3][0] *= 0;
@@ -1267,7 +1238,7 @@ void Scene::UpdateSkyboxUniformBuffer() {
 
 void Scene::UpdateOceanUniformBuffer() {
 	UBOSE.model = glm::mat4(1.0f);
-	UBOSE.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSE.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSE.proj[1][1] *= -1;
 	UBOSE.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSE.cameraPos = currentCamera->position;
@@ -2236,22 +2207,22 @@ void Scene::InitMaterials() {
 
 void Scene::CreateDepthResources() {
 	screenDepthImage->Init(m_Device, commandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	screenDepthImage->texWidth = m_Device->swapchain_extent.width; 
-	screenDepthImage->texHeight = m_Device->swapchain_extent.height;
+	screenDepthImage->texWidth = p_SwapChain->getExtent().width;
+	screenDepthImage->texHeight = p_SwapChain->getExtent().height;
 	screenDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	screenDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	screenDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 	reflectionDepthImage->Init(m_Device, reflectionCommandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	reflectionDepthImage->texWidth = (int32_t)m_Device->swapchain_extent.width; 
-	reflectionDepthImage->texHeight = (int32_t)m_Device->swapchain_extent.height;
+	reflectionDepthImage->texWidth = p_SwapChain->getExtent().width;
+	reflectionDepthImage->texHeight = p_SwapChain->getExtent().height;
 	reflectionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 	refractionDepthImage->Init(m_Device, refractionCommandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	refractionDepthImage->texWidth = (int32_t)m_Device->swapchain_extent.width; 
-	refractionDepthImage->texHeight = (int32_t)m_Device->swapchain_extent.height;
+	refractionDepthImage->texWidth = p_SwapChain->getExtent().width;
+	refractionDepthImage->texHeight = p_SwapChain->getExtent().height;
 	refractionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	refractionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	refractionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -2259,15 +2230,15 @@ void Scene::CreateDepthResources() {
 
 void Scene::PrepareOffscreenImage() {
 	reflectionImage->Init(m_Device, reflectionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	reflectionImage->texWidth = m_Device->swapchain_extent.width;
-	reflectionImage->texHeight = m_Device->swapchain_extent.height;
+	reflectionImage->texWidth = p_SwapChain->getExtent().width;
+	reflectionImage->texHeight = p_SwapChain->getExtent().height;
 	reflectionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	refractionImage->Init(m_Device, refractionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	refractionImage->texWidth = m_Device->swapchain_extent.width;
-	refractionImage->texHeight = m_Device->swapchain_extent.height;
+	refractionImage->texWidth = p_SwapChain->getExtent().width;
+	refractionImage->texHeight = p_SwapChain->getExtent().height;
 	refractionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	refractionImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	refractionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);

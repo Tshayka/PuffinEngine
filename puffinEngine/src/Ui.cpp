@@ -23,8 +23,9 @@ GuiElement::~GuiElement() {
 #endif
 }
 
-void GuiElement::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
+void GuiElement::init(Device* device, SwapChain* swapChain, RenderPass* renderPass, VkCommandPool* commandPool) {
 	p_Device = device;
+	p_SwapChain = swapChain;
 	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 
@@ -41,7 +42,7 @@ void GuiElement::init(Device* device, RenderPass* renderPass, VkCommandPool* com
 
 void GuiElement::setUp() {
 	ImGuiIO& io = ImGui::GetIO();
-	io.DisplaySize = ImVec2((float)p_Device->swapchain_extent.width, (float)p_Device->swapchain_extent.height);
+	io.DisplaySize = ImVec2((float)p_SwapChain->getExtent().width, (float)p_SwapChain->getExtent().height);
 	io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
 	
 	ImGuiStyle& style = ImGui::GetStyle();

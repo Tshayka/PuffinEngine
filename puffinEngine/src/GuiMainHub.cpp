@@ -30,8 +30,9 @@ GuiMainHub::~GuiMainHub() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiMainHub::init(Device* device, RenderPass* renderPass, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+void GuiMainHub::init(Device* device, SwapChain* swapChain, RenderPass* renderPass, GuiElement* console, GuiTextOverlay* textOverlay, GuiMainUi* mainUi, puffinengine::tool::WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
 	p_Device = device;
+	p_SwapChain = swapChain;
 	p_RenderPass = renderPass;
 	p_MainUi = mainUi;
 	p_Console = console;
@@ -42,9 +43,9 @@ void GuiMainHub::init(Device* device, RenderPass* renderPass, GuiElement* consol
 	createRenderPass();
 	createCommandPool();
 
-	p_Console->init(p_Device, p_RenderPass, &m_CommandPool);
-	p_TextOverlay->init(p_Device, p_RenderPass, &m_CommandPool);
-	p_MainUi->init(p_Device, p_RenderPass, &m_CommandPool);
+	p_Console->init(p_Device, p_SwapChain, p_RenderPass, &m_CommandPool);
+	p_TextOverlay->init(p_Device, p_SwapChain, p_RenderPass, &m_CommandPool);
+	p_MainUi->init(p_Device, p_SwapChain, p_RenderPass, &m_CommandPool);
 
 	m_Initialized = true;
 }
@@ -82,7 +83,7 @@ void GuiMainHub::submit(const VkQueue& queue, const int32_t &bufferIndex) {
 
 void GuiMainHub::createRenderPass() {
 	VkAttachmentDescription color_attachment = {};
-	color_attachment.format = p_Device->swapchainImageFormat;
+	color_attachment.format = p_SwapChain->getSwapchainImageFormat();
 	color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // Don't clear the framebuffer!
 	color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -156,7 +157,7 @@ void GuiMainHub::createRenderPass() {
 }
 
 void GuiMainHub::createCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = p_Device->FindQueueFamilies(p_Device->gpu);
+	QueueFamilyIndices queueFamilyIndices = p_Device->findQueueFamilies();
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -198,7 +199,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
 	renderPassInfo.renderPass = m_RenderPass;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent = p_Device->swapchain_extent;
+	renderPassInfo.renderArea.extent = p_SwapChain->getExtent();
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 

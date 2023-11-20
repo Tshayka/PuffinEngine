@@ -40,61 +40,64 @@ public:
 		return device;
 	}
 
+	VkPhysicalDevice getGpu() const {
+		return m_Gpu;
+	}
+
+	VkSurfaceKHR getSurface() const {
+		return m_Surface;
+	}
+
+	VkPhysicalDeviceProperties getGpuProperties() const {
+		return m_GpuProperties;
+	}
+
+	void init(GLFWwindow*);
 	void deInit();
 	//void CreateOffscreenRenderPass(VkFormat format);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	uint32_t FindMemoryType(uint32_t, VkMemoryPropertyFlags);
-	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice);
-	void init(GLFWwindow*);
-	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
-	void DeInitSwapchainImageViews();
-	void DestroySwapchainKHR();
+	QueueFamilyIndices findQueueFamilies();
 	VkFormat FindDepthFormat();
 
-	VkPhysicalDevice gpu = VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties gpu_properties = {};
-	VkQueue present_queue = VK_NULL_HANDLE;
-	VkQueue queue = VK_NULL_HANDLE;
-	//VkRenderPass offscreenRenderPass;
-	//VkRenderPass renderPass;
-	//VkFormat depthFormat;
+	VkQueue present_queue = nullptr;
+	VkQueue queue = nullptr;
+
 	int* width; 
 	int* height;
 
 	/*SWAPCHAIN*/
 	// Functions that retrive INFO needed to create swapchain
-	SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice); // populate "SwapChainSupportDetails" struct
+	SwapChainSupportDetails querySwapChainSupport(); // populate "SwapChainSupportDetails" struct
 	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&); // find the right settings for the best possible swap chain - Surface format (color depth)
 	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>); // represents the actual conditions for showing images to the screen (4 possible modes)
 	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR&); // swap extent is the resolution of the swap chain images, it's almost always exactly equal to the resolution of the window that we're drawing to
 	
-	VkSwapchainKHR swapchain;
-	VkFormat swapchainImageFormat;
-	VkExtent2D swapchain_extent;
-	std::vector<VkImage> swapchainImages;
-	std::vector<VkImageView> swapchainImageViews;
 	std::vector<VkFramebuffer> swap_chain_framebuffers;
+
 	VkFramebuffer reflectionFramebuffer;
 	VkFramebuffer refractionFramebuffer;
 
 private:
-	VkDevice device = VK_NULL_HANDLE;
-
-	GLFWwindow* window;	
-	bool CheckDeviceExtensionSupport(VkPhysicalDevice);
+	VkDevice device = nullptr;
+	VkPhysicalDevice m_Gpu = nullptr;
+	VkPhysicalDeviceProperties m_GpuProperties = {};
+	VkSurfaceKHR m_Surface = nullptr;
+	GLFWwindow* p_Window;	
+	
+	void createSurface();
+	bool checkDeviceExtensionSupport(const VkPhysicalDevice& gpu);
 	void CreateInstance();
 	void CreateLogicalDevice();
 	void CreateRenderPass();
-	void CreateSurface();
+	void InitDebug();
 	void DeInitDebug();
 	VkFormat FindSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
-	void InitDebug();
-	bool IsDeviceSuitable(VkPhysicalDevice);
+	bool isDeviceSuitable(const VkPhysicalDevice& gpu);
 	void PickPhysicalDevice();
 	void SetupDebugCallback();
 			
 	VkInstance instance = VK_NULL_HANDLE;
-	VkSurfaceKHR surface = VK_NULL_HANDLE;
 
 	VkDebugReportCallbackEXT callback = VK_NULL_HANDLE;
 

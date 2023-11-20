@@ -69,6 +69,7 @@ private:
     
     puffinengine::tool::Scene scene_1;
     Device m_Device;
+    puffinengine::tool::SwapChain m_SwapChain;
     puffinengine::tool::RenderPass m_ScreenRenderPass;
     puffinengine::tool::RenderPass m_OffScreenRenderPass;
     puffinengine::tool::WorldClock m_MainClock;
@@ -96,7 +97,7 @@ private:
     // ---------------- Deinitialisation ---------------- //
 
     void cleanUp();
-    void CleanUpSwapChain();
+    void cleanUpSwapChain();
     void DestroyGUI();
     void DeInitSemaphores();
     void DestroyMaterialLibrary();

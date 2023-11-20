@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../headers/Device.hpp"
+#include "../headers/SwapChain.hpp"
 
 namespace puffinengine {
 	namespace tool {
@@ -16,7 +17,7 @@ namespace puffinengine {
 				OFFSCREEN
 			};
 			
-			bool init(Device* device, const RenderPass::Type type);
+			bool init(Device* device, SwapChain* swapChain, const RenderPass::Type type);
 			void deInit();
 
 			bool createRenderPass(const RenderPass::Type type);
@@ -29,6 +30,7 @@ namespace puffinengine {
 			VkFormat m_DepthFormat;
 
 			Device* p_Device = nullptr;
+			SwapChain* p_SwapChain = nullptr;
 		};
 	} // namespace tool
 } // namespace puffinengine

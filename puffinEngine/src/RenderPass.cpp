@@ -36,8 +36,9 @@ VkFormat RenderPass::getFormat() const {
 
 // Specify number of color and depth buffers, how many samples to use for each of them and how their contents should be handled throughout the rendering operations
 
-bool RenderPass::init(Device* device, const RenderPass::Type type) {
+bool RenderPass::init(Device* device, SwapChain* swapChain, const RenderPass::Type type) {
 	p_Device = device;
+	p_SwapChain = swapChain;
 
 	createRenderPass(type);
 
@@ -48,7 +49,7 @@ bool RenderPass::init(Device* device, const RenderPass::Type type) {
 
 bool RenderPass::createRenderPass(const RenderPass::Type type) {
 	VkAttachmentDescription colorAttachment = {};
-	colorAttachment.format = (type == Type::SCREEN) ? p_Device->swapchainImageFormat : VK_FORMAT_R8G8B8A8_UNORM;
+	colorAttachment.format = (type == Type::SCREEN) ? p_SwapChain->getSwapchainImageFormat() : VK_FORMAT_R8G8B8A8_UNORM;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
 	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;

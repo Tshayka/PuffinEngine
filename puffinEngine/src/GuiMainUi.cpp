@@ -31,8 +31,9 @@ GuiMainUi::~GuiMainUi() {
 #endif
 }
 
-void GuiMainUi::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
+void GuiMainUi::init(Device* device, SwapChain* swapChain, RenderPass* renderPass, VkCommandPool* commandPool) {
 	p_LogicalDevice = device;
+	p_SwapChain = swapChain;
 	p_RenderPass = renderPass;
 	p_CommandPool = commandPool; 
 
@@ -381,8 +382,8 @@ void GuiMainUi::updateDrawData() {
 void GuiMainUi::createUniformBuffer(const VkCommandBuffer& command_buffer) {
 	m_Viewport.x = 0.0f;
 	m_Viewport.y = 0.0f;
-	m_Viewport.width = (float)p_LogicalDevice->swapchain_extent.width;
-	m_Viewport.height = (float)p_LogicalDevice->swapchain_extent.height;
+	m_Viewport.width = (float)p_SwapChain->getExtent().width;
+	m_Viewport.height = (float)p_SwapChain->getExtent().height;
 	m_Viewport.minDepth = 0.0f;
 	m_Viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(command_buffer, 0, 1, &m_Viewport);
@@ -403,13 +404,11 @@ void GuiMainUi::createUniformBuffer(const VkCommandBuffer& command_buffer) {
 	int32_t vertexOffset = 0;
 	int32_t indexOffset = 0;
 
-	
-
 	for (int32_t i = 0; i < m_DrawData.componentsToDraw.size(); i++) {
 		m_Scissor.offset.x = 0;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.x),0);
 		m_Scissor.offset.y = 0;//std::max((int32_t)(drawData.componentsToDraw[i].clipExtent.y), 0);
-		m_Scissor.extent.width = p_LogicalDevice->swapchain_extent.width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
-		m_Scissor.extent.height = p_LogicalDevice->swapchain_extent.height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
+		m_Scissor.extent.width = p_SwapChain->getExtent().width;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.z - drawData.componentsToDraw[i].clipExtent.x);
+		m_Scissor.extent.height = p_SwapChain->getExtent().height;//(uint32_t)(drawData.componentsToDraw[i].clipExtent.w - drawData.componentsToDraw[i].clipExtent.y);
 		vkCmdSetScissor(command_buffer, 0, 1, &m_Scissor);
 		vkCmdDrawIndexed(command_buffer, static_cast<uint32_t>(m_DrawData.componentsToDraw[i].indices.size()), 1, indexOffset, vertexOffset, 0);
 		//vkCmdDrawIndexed(command_buffers[i], actors[j]->mesh.indexCount, 1, 0, actors[j]->mesh.indexBase, 0);
