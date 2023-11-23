@@ -6,13 +6,14 @@
 #include "PushConstant.hpp"
 #include "Texture.hpp"
 #include "RenderPass.hpp"
+#include "SwapChain.hpp"
 
 class GuiElement {
 public:
 	GuiElement();
 	~GuiElement();
 
-	void init(Device* logiclDevice, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
+	void init(Device* logiclDevice, puffinengine::tool::SwapChain* swapChain, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();
@@ -54,6 +55,7 @@ private:
 	VkRect2D m_Scissor = {};
 
 	Device* p_Device = nullptr;
+	puffinengine::tool::SwapChain* p_SwapChain = nullptr;
 	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr; 
 };

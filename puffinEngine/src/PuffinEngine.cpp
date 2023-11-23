@@ -47,11 +47,15 @@ bool PuffinEngine::initAllSystems() {
 
 	initDevice();
 
-	if (!m_ScreenRenderPass.init(&m_Device, RenderPass::Type::SCREEN)) {
+	if (!m_SwapChain.init(&m_Device, window)) {
 		return false;
 	}
 
-	if (!m_OffScreenRenderPass.init(&m_Device, RenderPass::Type::OFFSCREEN)) {
+	if (!m_ScreenRenderPass.init(&m_Device, &m_SwapChain, RenderPass::Type::SCREEN)) {
+		return false;
+	}
+
+	if (!m_OffScreenRenderPass.init(&m_Device, &m_SwapChain, RenderPass::Type::OFFSCREEN)) {
 		return false;
 	}
 
@@ -114,11 +118,12 @@ void PuffinEngine::CreateMainCharacter() {
 }
 
 void PuffinEngine::CreateGuiMainHub() {
-	m_GUIMainHub.init(&m_Device, &m_ScreenRenderPass, p_Console, p_GuiStatistics, p_MainUi, &m_MainClock, &m_ThreadPool);
+	m_GUIMainHub.init(&m_Device, &m_SwapChain, &m_ScreenRenderPass, p_Console, p_GuiStatistics, p_MainUi, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::CreateScene() {
-	scene_1.init(&m_Device, &m_ScreenRenderPass, &m_OffScreenRenderPass, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
+	m_SwapChain.initSwapchainImageViews();
+	scene_1.init(window, &m_Device, &m_SwapChain, &m_ScreenRenderPass, &m_OffScreenRenderPass, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
 }
 
 void PuffinEngine::mainLoop() {
@@ -196,7 +201,7 @@ void PuffinEngine::CreateSemaphores() {
 
 void PuffinEngine::DrawFrame() {
 	uint32_t imageIndex;
-	VkResult result = vkAcquireNextImageKHR(m_Device.get(), m_Device.swapchain, std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(m_Device.get(), m_SwapChain.get(), std::numeric_limits<uint64_t>::max(), imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR)	{
 		RecreateSwapChain();
@@ -219,33 +224,33 @@ void PuffinEngine::DrawFrame() {
 	submit_info.pCommandBuffers = &scene_1.reflectionCmdBuff;
 	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
 	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1.refractionCmdBuff;
 	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
 	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 	
 	submit_info.commandBufferCount = 1;
 	submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
 	submit_info.pWaitSemaphores = &refractRenderSemaphore;
 	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.queue, 1, &submit_info, VK_NULL_HANDLE));
+	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 
-	m_GUIMainHub.submit(m_Device.queue, imageIndex);
+	m_GUIMainHub.submit(m_Device.getQueue(), imageIndex);
 	
 	VkPresentInfoKHR present_info = {};
 	present_info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	present_info.waitSemaphoreCount = 1;
 	present_info.pWaitSemaphores = &renderFinishedSemaphore;
 
-	VkSwapchainKHR swapChains[] = { m_Device.swapchain };
+	VkSwapchainKHR swapChains[] = { m_SwapChain.get() };
 	present_info.swapchainCount = 1;
 	present_info.pSwapchains = swapChains;
 	present_info.pImageIndices = &imageIndex;
 
-	result = vkQueuePresentKHR(m_Device.present_queue, &present_info);
+	result = vkQueuePresentKHR(m_Device.getPresentQueue(), &present_info);
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		RecreateSwapChain();
@@ -255,18 +260,23 @@ void PuffinEngine::DrawFrame() {
 		std::exit(-1);
 	}
 
-	vkQueueWaitIdle(m_Device.present_queue);
+	vkQueueWaitIdle(m_Device.getPresentQueue());
 }
 
 void PuffinEngine::RecreateSwapChain() {
 	glfwGetWindowSize(window, &width, &height);
-	if (width == 0 || height == 0) { return; }
+
+	if (width == 0 || height == 0) { 
+		return; 
+	}
 
 	vkDeviceWaitIdle(m_Device.get());
 
-	CleanUpSwapChain();
+	cleanUpSwapChain();
+	m_SwapChain.deInit();
 
-	m_Device.InitSwapChain();
+	m_SwapChain.init(&m_Device, window);
+	m_SwapChain.initSwapchainImageViews();
 	scene_1.RecreateForSwapchain();
 	m_GUIMainHub.recreateForSwapchain();
 }
@@ -576,8 +586,10 @@ void PuffinEngine::PressKey(int key) {
 // ---------------- Deinitialisation ---------------- //
 
 void PuffinEngine::cleanUp() {
-	CleanUpSwapChain();
-
+	cleanUpSwapChain();
+	if (m_SwapChain.m_Initialized) {
+		m_SwapChain.deInit();
+	}
 	ImGui::DestroyContext();
 	DeInitSemaphores();
 	deinitMousePicker();
@@ -600,11 +612,10 @@ void PuffinEngine::cleanUp() {
 	glfwTerminate();
 }
 
-void PuffinEngine::CleanUpSwapChain() {
-	scene_1.CleanUpForSwapchain();
+void PuffinEngine::cleanUpSwapChain() {
+	scene_1.cleanUpForSwapchain();
 	m_GUIMainHub.cleanUpForSwapchain();
-	m_Device.DeInitSwapchainImageViews();
-	m_Device.DestroySwapchainKHR();
+	m_SwapChain.deInitSwapchainImageViews();
 }
 
 void PuffinEngine::DeInitSemaphores() {

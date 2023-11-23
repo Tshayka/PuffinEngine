@@ -34,69 +34,52 @@ public:
 	Device();
 	~Device();
 
-	// TODO rule of 5!
+	Device(const Device&) = delete;
+	Device(Device&&) = delete;
+	Device& operator=(const Device&) = delete;
+	Device& operator=(Device&&) = delete;
 
-	VkDevice get() const {
-		return device;
-	}
+	VkDevice get() const;
+	VkPhysicalDevice getGpu() const;
+	VkSurfaceKHR getSurface() const;
+	VkPhysicalDeviceProperties getGpuProperties() const;
+	VkQueue getQueue() const;
+	VkQueue getPresentQueue() const;
 
+	void init(GLFWwindow* window);
 	void deInit();
-	//void CreateOffscreenRenderPass(VkFormat format);
 	VkShaderModule CreateShaderModule(const std::vector<char>&);
 	uint32_t FindMemoryType(uint32_t, VkMemoryPropertyFlags);
-	QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice);
-	void init(GLFWwindow*);
-	void InitSwapChain(); // queue of images that are waiting to be presented to the screen, swap chain synchronize the presentation of images with the refresh rate of the screen
-	void DeInitSwapchainImageViews();
-	void DestroySwapchainKHR();
+	QueueFamilyIndices findQueueFamilies();
 	VkFormat FindDepthFormat();
+	SwapChainSupportDetails querySwapChainSupport(); // populate "SwapChainSupportDetails" struct
 
-	VkPhysicalDevice gpu = VK_NULL_HANDLE;
-	VkPhysicalDeviceProperties gpu_properties = {};
-	VkQueue present_queue = VK_NULL_HANDLE;
-	VkQueue queue = VK_NULL_HANDLE;
-	//VkRenderPass offscreenRenderPass;
-	//VkRenderPass renderPass;
-	//VkFormat depthFormat;
-	int* width; 
-	int* height;
-
-	/*SWAPCHAIN*/
-	// Functions that retrive INFO needed to create swapchain
-	SwapChainSupportDetails QuerySwapChainSupport(VkPhysicalDevice); // populate "SwapChainSupportDetails" struct
-	VkSurfaceFormatKHR ChooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>&); // find the right settings for the best possible swap chain - Surface format (color depth)
-	VkPresentModeKHR ChooseSwapPresentMode(const std::vector<VkPresentModeKHR>); // represents the actual conditions for showing images to the screen (4 possible modes)
-	VkExtent2D ChooseSwapExtent(const VkSurfaceCapabilitiesKHR&); // swap extent is the resolution of the swap chain images, it's almost always exactly equal to the resolution of the window that we're drawing to
-	
-	VkSwapchainKHR swapchain;
-	VkFormat swapchainImageFormat;
-	VkExtent2D swapchain_extent;
-	std::vector<VkImage> swapchainImages;
-	std::vector<VkImageView> swapchainImageViews;
-	std::vector<VkFramebuffer> swap_chain_framebuffers;
-	VkFramebuffer reflectionFramebuffer;
-	VkFramebuffer refractionFramebuffer;
+	std::vector<VkFramebuffer> m_SwapChainFramebuffers;
+	VkFramebuffer m_ReflectionFramebuffer;
+	VkFramebuffer m_RefractionFramebuffer;
 
 private:
-	VkDevice device = VK_NULL_HANDLE;
-
-	GLFWwindow* window;	
-	bool CheckDeviceExtensionSupport(VkPhysicalDevice);
+	bool checkDeviceExtensionSupport(const VkPhysicalDevice& gpu);
+	void createSurface();
 	void CreateInstance();
 	void CreateLogicalDevice();
 	void CreateRenderPass();
-	void CreateSurface();
-	void DeInitDebug();
-	VkFormat FindSupportedFormat(const std::vector<VkFormat>&, VkImageTiling, VkFormatFeatureFlags);
+	VkFormat FindSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features);
 	void InitDebug();
-	bool IsDeviceSuitable(VkPhysicalDevice);
+	void DeInitDebug();
+	bool isDeviceSuitable(const VkPhysicalDevice& gpu);
 	void PickPhysicalDevice();
 	void SetupDebugCallback();
-			
-	VkInstance instance = VK_NULL_HANDLE;
-	VkSurfaceKHR surface = VK_NULL_HANDLE;
 
-	VkDebugReportCallbackEXT callback = VK_NULL_HANDLE;
+	VkDevice device = nullptr;
+	VkPhysicalDevice m_Gpu = nullptr;
+	VkPhysicalDeviceProperties m_GpuProperties = {};
+	VkSurfaceKHR m_Surface = nullptr;
+	GLFWwindow* p_Window = nullptr;	
+	VkInstance m_Instance = nullptr;
+	VkDebugReportCallbackEXT m_Callback;
+	VkQueue m_Queue = nullptr;
+	VkQueue m_PresentQueue = nullptr;
 
 	uint32_t extension_count = 0;
 	uint32_t graphics_family_index = 0;

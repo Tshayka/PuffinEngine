@@ -17,6 +17,7 @@
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
 #include "RenderPass.hpp"
+#include "SwapChain.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
 
@@ -35,8 +36,8 @@ namespace puffinengine {
 
 			bool m_Initialized = false;
 
-			void init(Device* device, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
-			void CleanUpForSwapchain();
+			void init(GLFWwindow* window, Device* device, SwapChain* SwapChain, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
+			void cleanUpForSwapchain();
 			void RecreateForSwapchain();
 			void deinit();
 			
@@ -147,7 +148,6 @@ namespace puffinengine {
 			bool FindDestinationPosition(glm::vec3& destinationPoint);
 			bool HasStencilComponent(VkFormat);
 			void InitMaterials();
-			void InitSwapchainImageViews();
 			void LoadAssets();
 			void PrepeareMainCharacter(enginetool::ScenePart& mesh);
 			void PrepareOffscreenImage();
@@ -358,7 +358,9 @@ namespace puffinengine {
 			VkRect2D scissor = {};
 			VkViewport viewport = {};
 
+			GLFWwindow* p_Window = nullptr;
 			Device* m_Device = nullptr;
+			SwapChain* p_SwapChain = nullptr;
 			RenderPass* p_ScreenRenderPass;
 			RenderPass* p_OffScreenRenderPass;
 			MaterialLibrary* materialLibrary = nullptr;

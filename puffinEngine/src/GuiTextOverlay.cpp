@@ -29,8 +29,9 @@ GuiTextOverlay::~GuiTextOverlay() {
 
 // ---------------- Main functions ------------------ //
 
-void GuiTextOverlay::init(Device* device, RenderPass* renderPass, VkCommandPool* commandPool) {
+void GuiTextOverlay::init(Device* device, SwapChain* swapChain, RenderPass* renderPass, VkCommandPool* commandPool) {
 	p_Device = device;
+	p_SwapChain = swapChain;
 	p_RenderPass = renderPass;
 	p_CommandPool = commandPool;
 	p_Mapped = static_cast<glm::vec4*>(m_VertexBuffer.getMapped());
@@ -292,8 +293,8 @@ void GuiTextOverlay::beginTextUpdate() {
 void GuiTextOverlay::renderText(const std::string& text, float x, float y, const TextAlignment& align) {
 	assert(p_Mapped != nullptr); // try-catch
 
-	float fbW = static_cast<float>(p_Device->swapchain_extent.width);
-	float fbH = static_cast<float>(p_Device->swapchain_extent.height);
+	float fbW = static_cast<float>(p_SwapChain->getExtent().width);
+	float fbH = static_cast<float>(p_SwapChain->getExtent().height);
 
 	const float charW = 1.5f / fbW;
 	const float charH = 1.5f / fbH;
@@ -359,14 +360,14 @@ void GuiTextOverlay::endTextUpdate() {
 void GuiTextOverlay::createUniformBuffer(const VkCommandBuffer& commandBuffer) {
 	m_Viewport.x = 0.0f;
 	m_Viewport.y = 0.0f;
-	m_Viewport.width = static_cast<float>(p_Device->swapchain_extent.width);
-	m_Viewport.height = static_cast<float>(p_Device->swapchain_extent.height);
+	m_Viewport.width = static_cast<float>(p_SwapChain->getExtent().width);
+	m_Viewport.height = static_cast<float>(p_SwapChain->getExtent().height);
 	m_Viewport.minDepth = 0.0f;
 	m_Viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(commandBuffer, 0, 1, &m_Viewport);
 
 	m_Scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	m_Scissor.extent = p_Device->swapchain_extent;	
+	m_Scissor.extent = p_SwapChain->getExtent();
 	vkCmdSetScissor(commandBuffer, 0, 1, &m_Scissor);
 	
 	vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, m_Pipeline);
