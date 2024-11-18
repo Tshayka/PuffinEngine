@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+
 #include "Actor.hpp"
 
 class Light : public Actor {

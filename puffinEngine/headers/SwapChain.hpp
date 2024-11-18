@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../headers/Device.hpp"
+#include "Device.hpp"
 
 namespace puffinengine {
 	namespace tool {

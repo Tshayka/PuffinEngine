@@ -1,8 +1,8 @@
 #include <algorithm>
 #include <iostream>
 
-#include "../headers/SwapChain.hpp"
-#include "../headers/Log.hpp"
+#include "headers/SwapChain.hpp"
+#include "headers/Log.hpp"
 
 using namespace puffinengine::tool;
 

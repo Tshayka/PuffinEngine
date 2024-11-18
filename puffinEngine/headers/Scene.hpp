@@ -248,7 +248,7 @@ namespace puffinengine {
 			// UBO Dynamic that contains all clouds matrices
 			struct UboDataDynamic {
 				glm::mat4* model = nullptr;
-			} uboDataDynamic;
+			} m_UboDataDynamic;
 
 			// Struct that holds the models positions
 			struct Constants {

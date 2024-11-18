@@ -72,7 +72,7 @@ void Buffer::destroy() {
 }
 
 void Buffer::copy(VkDeviceSize size, void* data) {
-	memcpy(p_Mapped, data, size);
+	memcpy(p_Mapped, data, static_cast<size_t>(size));
 }
 
 void Buffer::map(VkDeviceSize size, VkDeviceSize offset) {
@@ -97,11 +97,14 @@ void Buffer::setupDescriptor(VkDeviceSize size, VkDeviceSize offset) {
 }
 
 VkResult Buffer::flush(VkDeviceSize size, VkDeviceSize offset) {
-	VkMappedMemoryRange MappedRange = {};
+	assert(m_Memory && "Memory is not properly initialized!");
+
+	VkMappedMemoryRange MappedRange{};
 	MappedRange.sType = VK_STRUCTURE_TYPE_MAPPED_MEMORY_RANGE;
 	MappedRange.memory = m_Memory;
 	MappedRange.offset = offset;
-	MappedRange.size = size;
+	MappedRange.size = size == VK_WHOLE_SIZE ? VK_WHOLE_SIZE : size;
+
 	return vkFlushMappedMemoryRanges(m_Device->get(), 1, &MappedRange);
 }
 

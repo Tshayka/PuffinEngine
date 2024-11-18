@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "headers/ErrorCheck.hpp"
 #include "headers/Texture.hpp"
 

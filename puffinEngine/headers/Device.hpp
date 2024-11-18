@@ -3,18 +3,14 @@
 #include <vector>
 #include <memory>
 
-#ifdef UNIX
-#define NOMINMAX
-#endif
+#include "ErrorCheck.hpp"
+#include "Threads.hpp"
+#include "WorldClock.hpp"
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h> //#include <vulkan/vulkan.h> is not needed
+#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
 
-#include "src/Threads.cpp"
-#include "headers/WorldClock.hpp"
-
-struct QueueFamilyIndices
-{
+struct QueueFamilyIndices {
 	int graphicsFamily = -1;
 	int presentFamily = -1;
 

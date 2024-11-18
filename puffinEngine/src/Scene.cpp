@@ -971,15 +971,14 @@ void Scene::CreateBuffers() {
 	size_t minUboAlignment = m_Device->getGpuProperties().limits.minUniformBufferOffsetAlignment;
 
 	dynamicAlignment = sizeof(glm::mat4);
-
 	if (minUboAlignment > 0) {
 		dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
 	}
 
 	size_t bufferSize = DYNAMIC_UB_OBJECTS * dynamicAlignment;
-	uboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
 
-	if (uboDataDynamic.model == VK_NULL_HANDLE)	{
+	m_UboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
+	if (m_UboDataDynamic.model == VK_NULL_HANDLE)	{
 		assert(0 && "Vulkan ERROR: Can't create host memory for the dynamic uniform buffer");
 		std::exit(-1);
 	}
@@ -1182,40 +1181,52 @@ void Scene::UpdateUniformBufferParameters() {
 }
 
 void Scene::UpdateDynamicUniformBuffer() {
-	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
-	glm::vec3 offset(cloudsVisibDist, cloudsVisibDist/10, cloudsVisibDist);
-	cloudsPos+=0.01f;
-	
-	for (uint32_t x = 0; x < dim; x++) {
-		for (uint32_t y = 0; y < dim; y++) {
-			for (uint32_t z = 0; z < dim; z++) {
-				uint32_t index = x * dim * dim + y * dim + z;
+	const uint32_t dim = static_cast<uint32_t>(std::cbrt(DYNAMIC_UB_OBJECTS));
+	const glm::vec3 offset(cloudsVisibDist, cloudsVisibDist / 10.0f, cloudsVisibDist);
 
-				// Aligned offset
-				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)uboDataDynamic.model + (index * dynamicAlignment)));
-					
-				// Update matrices
-				glm::vec3 pos = glm::vec3(-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x, -((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y, -((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z);
-					
-				pos += rnd_pos[index];
-				
-				if(cloudsPos>cloudsVisibDist*2){
-					cloudsPos=-cloudsVisibDist*2;
-				} 
+	// Update cloud position with wrap-around behavior
+	cloudsPos += 0.01f;
+	if (cloudsPos > cloudsVisibDist * 2.0f) {
+		cloudsPos = -cloudsVisibDist * 2.0f;
+	}
 
-				*modelMat = glm::translate(glm::mat4(1.0f), pos);
-				*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist*2, 0.0f));
-				//*modelMat = glm::scale(*modelMat,  glm::vec3(55.0f, 55.0f, 55.0f));
+	// Iterate over the 3D grid
+	for (uint32_t x = 0; x < dim; ++x) {
+		for (uint32_t y = 0; y < dim; ++y) {
+			for (uint32_t z = 0; z < dim; ++z) {
+				const uint32_t index = x * dim * dim + y * dim + z;
 
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+				// Calculate aligned memory offset for model matrix
+				glm::mat4* modelMat = reinterpret_cast<glm::mat4*>(
+					reinterpret_cast<uint64_t>(m_UboDataDynamic.model) + (index * dynamicAlignment)
+					);
+
+				// Compute position with base offset and random offset
+				glm::vec3 position(
+					-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x,
+					-((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y,
+					-((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z
+				);
+
+				// Apply additional random offset
+				position += rnd_pos[index];
+
+				// Update model matrix transformations
+				*modelMat = glm::translate(glm::mat4(1.0f), position);
+				*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist * 2.0f, 0.0f));
+
+				// Optional transformations (uncomment as needed)
+				// *modelMat = glm::scale(*modelMat, glm::vec3(55.0f, 55.0f, 55.0f));
+				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
+				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
 			}
 		}
 	}
 
-	m_UboCloudsDynamic.copy(sizeof(uboDataDynamic), uboDataDynamic.model);
-	m_UboCloudsDynamic.flush(sizeof(uboDataDynamic));
+	// Copy and flush the updated data to the buffer
+	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
 }
 
 void Scene::UpdateSkyboxUniformBuffer() {
@@ -1782,7 +1793,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo CloudsDynamicBufferInfo = {};
 	CloudsDynamicBufferInfo.buffer = m_UboCloudsDynamic.getBuffer();
 	CloudsDynamicBufferInfo.offset = 0;
-	CloudsDynamicBufferInfo.range = sizeof(UboDataDynamic);
+	CloudsDynamicBufferInfo.range = sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS;
 
 	std::array<VkWriteDescriptorSet, 2> cloudsDescriptorWrites = {};
 
@@ -2351,8 +2362,8 @@ void Scene::DeInitTextureImage() {
 }
 
 void Scene::DeInitUniformBuffer() {
-	if (uboDataDynamic.model) {
-		alignedFree(uboDataDynamic.model);
+	if (m_UboDataDynamic.model) {
+		alignedFree(m_UboDataDynamic.model);
 	}
 
 	m_UboLine.destroy();

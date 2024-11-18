@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../imgui/imgui.h"
 #include "Buffer.hpp"
 #include "ErrorCheck.hpp"
 #include "PushConstant.hpp"
@@ -9,6 +8,7 @@
 #include "Texture.hpp"
 
 #ifdef WIN32
+#define NOMINMAX
 #include <windows.h>
 #endif
 

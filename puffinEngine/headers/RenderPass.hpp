@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../headers/Device.hpp"
-#include "../headers/SwapChain.hpp"
+#include "Device.hpp"
+#include "SwapChain.hpp"
 
 namespace puffinengine {
 	namespace tool {

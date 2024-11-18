@@ -8,10 +8,6 @@
 #include <unordered_map>
 
 #include "headers/Device.hpp"
-#include "headers/ErrorCheck.hpp"
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
 
 // ------- Constructors and dectructors ------------- //
 

@@ -1,8 +1,8 @@
 #include <array>
 #include <iostream>
 
-#include "../headers/RenderPass.hpp"
-#include "../headers/Log.hpp"
+#include "headers/RenderPass.hpp"
+#include "headers/Log.hpp"
 
 using namespace puffinengine::tool;
 

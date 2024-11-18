@@ -1,3 +1,5 @@
+#include "../imgui/imgui.h"
+
 #include <algorithm>
 #include <array>
 #include <fstream>
@@ -6,14 +8,6 @@
 
 #include "LoadFile.cpp"
 #include "headers/GuiMainUi.hpp"
-
-#define GLM_ENABLE_EXPERIMENTAL
-#include <glm/glm.hpp>
-
-#ifdef WIN32
-#define NOMINMAX
-#include <windows.h>
-#endif
 
 using namespace puffinengine::tool;
 
