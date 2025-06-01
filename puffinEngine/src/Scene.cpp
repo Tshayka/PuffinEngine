@@ -1129,7 +1129,6 @@ void Scene::UpdateStaticUniformBuffer() {
 	memcpy(m_UboStillObjects.getMapped(), &UBOSG, sizeof(UBOSG));
 	memcpy(m_UboLine.getMapped(), &UBOSG, sizeof(UBOSG));
 	m_MousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
-
 }
 
 void Scene::UpdateCloudsUniformBuffer() {
@@ -1137,9 +1136,11 @@ void Scene::UpdateCloudsUniformBuffer() {
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.time = (float)mainClock->totalElapsedTime;
-	UBOC.view[3][0] *= 0;
-	UBOC.view[3][1] *= 0;
-	UBOC.view[3][2] *= 0;
+	// fixed position
+	//UBOC.view[3][0] *= 0;
+	//UBOC.view[3][1] *= 0;
+	//UBOC.view[3][2] *= 0;
+	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
 	m_UboClouds.copy(sizeof(UBOC), &UBOC);
@@ -1180,54 +1181,479 @@ void Scene::UpdateUniformBufferParameters() {
 	memcpy(m_UboReflectionParameters.getMapped(), &UBOP, sizeof(UBOP));
 }
 
-void Scene::UpdateDynamicUniformBuffer() {
-	const uint32_t dim = static_cast<uint32_t>(std::cbrt(DYNAMIC_UB_OBJECTS));
-	const glm::vec3 offset(cloudsVisibDist, cloudsVisibDist / 10.0f, cloudsVisibDist);
+// BUBBLES
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Grid dimensions
+//	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//	glm::vec3 offset(5.0f); // Initial grid spacing
+//
+//	// Fire parameters
+//	float maxHeight = 50.0f;    // Maximum height before resetting
+//	float topRadius = 10.0f;   // Maximum spread at the top
+//	float minScale = 0.5f;      // Scale at the bottom
+//	float maxScale = 2.0f;      // Scale at the top
+//
+//	// Static properties for particles (fixed-size arrays)
+//	static float particleHeights[DYNAMIC_UB_OBJECTS] = { 0.0f }; // Current heights
+//	static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//	static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized motion offsets
+//	static bool initialized = false;
+//
+//	// Initialize static random values for particles
+//	if (!initialized) {
+//		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//			particleSpeeds[i] = 5.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//			particleOffsets[i] = glm::vec3(
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//				0.0f,                                              // No Y offset for randomness
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//			);
+//		}
+//		initialized = true;
+//	}
+//
+//	// Update positions dynamically to simulate fire
+//	for (uint32_t x = 0; x < dim; x++) {
+//		for (uint32_t y = 0; y < dim; y++) {
+//			for (uint32_t z = 0; z < dim; z++) {
+//				uint32_t index = x * dim * dim + y * dim + z;
+//
+//				// Aligned offset
+//				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//				// Base position (original position in the grid)
+//				glm::vec3 basePos = glm::vec3(
+//					-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x,
+//					0.0f, // Base Y starts at ground level
+//					-((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z
+//				);
+//
+//				// Update particle height
+//				particleHeights[index] += particleSpeeds[index] * 0.016f; // Increment by unique speed
+//
+//				// Reset particle height if it exceeds the maximum height
+//				if (particleHeights[index] > maxHeight) {
+//					particleHeights[index] = 0.0f; // Reset to initial height
+//				}
+//
+//				// Calculate cone spread: scale horizontal position based on height
+//				float heightFactor = particleHeights[index] / maxHeight; // 0.0 (bottom) -> 1.0 (top)
+//				glm::vec3 coneSpread = particleOffsets[index] * topRadius * heightFactor;
+//
+//				// Calculate final position
+//				glm::vec3 pos = basePos + coneSpread;
+//				pos.y = particleHeights[index]; // Height is directly the particle's Y position
+//
+//				// Calculate scale based on height (linear interpolation)
+//				float scale = minScale + heightFactor * (maxScale - minScale);
+//
+//				// Calculate fade factor based on height (1.0 at bottom, 0.0 at top)
+//				float fadeFactor = 1.0f - heightFactor;
+//
+//				// Update the model matrix with translation and scaling
+//				*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//				*modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//				// Pass fadeFactor to the shader (depends on your rendering pipeline)
+//				//m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//			}
+//		}
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
 
-	// Update cloud position with wrap-around behavior
-	cloudsPos += 0.01f;
-	if (cloudsPos > cloudsVisibDist * 2.0f) {
-		cloudsPos = -cloudsVisibDist * 2.0f;
+//void Scene::UpdateDynamicUniformBuffer() {
+//    // Parameters for fire behavior
+//    const float maxHeight = 60.0f;   // Maximum height of the fire cone
+//    const float topRadius = 1.0f;  // Maximum spread at the top
+//    const float minScale = 0.3f;    // Minimum particle scale at the base
+//    const float maxScale = 8.0f;    // Maximum particle scale near the middle
+//    const float shrinkScale = 1.1f; // Final shrinkage at the top
+//    const float flickerIntensity = 1.8f; // Intensity of chaotic motion
+//
+//    // Grid dimensions
+//    uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//
+//    // Static properties for particles (fixed-size arrays)
+//    static float particleHeights[DYNAMIC_UB_OBJECTS] = {0.0f}; // Current heights
+//    static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//    static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized initial offsets
+//    static bool initialized = false;
+//
+//    // Initialize static random values for particles
+//    if (!initialized) {
+//        for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//            particleSpeeds[i] = 2.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//            particleOffsets[i] = glm::vec3(
+//                static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//                0.0f,                                              // Y offset (no height randomness)
+//                static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//            );
+//        }
+//        initialized = true;
+//    }
+//
+//    // Timer for chaotic motion
+//    float time = animationTimer;
+//
+//    // Update particles
+//    for (uint32_t x = 0; x < dim; x++) {
+//        for (uint32_t y = 0; y < dim; y++) {
+//            for (uint32_t z = 0; z < dim; z++) {
+//                uint32_t index = x * dim * dim + y * dim + z;
+//
+//                // Aligned offset
+//                glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//                // Update particle height
+//                particleHeights[index] += particleSpeeds[index] * 0.016f;
+//
+//                // Reset particle height if it exceeds max height
+//                if (particleHeights[index] > maxHeight) {
+//                    particleHeights[index] = 0.0f; // Reset to the base
+//                }
+//
+//                // Calculate height factor (0.0 at base, 1.0 at top)
+//                float heightFactor = particleHeights[index] / maxHeight;
+//
+//                // Horizontal cone spread with chaotic motion
+//                glm::vec3 flicker = glm::vec3(
+//                    sin(time * flickerIntensity + particleOffsets[index].x * 8.0f) * heightFactor,
+//                    0.0f,
+//                    cos(time * flickerIntensity + particleOffsets[index].z * 8.0f) * heightFactor
+//                );
+//
+//                glm::vec3 coneSpread = (particleOffsets[index] + flicker) * topRadius * heightFactor;
+//
+//                // Calculate position
+//                glm::vec3 pos = glm::vec3(0.0f, particleHeights[index], 0.0f) + coneSpread;
+//
+//                // Dynamic scaling: grow, then shrink near the top
+//                float scale = heightFactor < 0.7f
+//                    ? minScale + heightFactor * (maxScale - minScale) / 0.7f
+//                    : maxScale - (heightFactor - 0.7f) * (maxScale - shrinkScale) / 0.3f;
+//
+//                // Fade out as particles reach the top
+//                float fadeFactor = 1.0f - heightFactor;
+//
+//                // Update the model matrix with translation and scaling
+//                *modelMat = glm::translate(glm::mat4(1.0f), pos);
+//                *modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//                // Pass fade factor to the shader for transparency
+//                //m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//            }
+//        }
+//    }
+//
+//    // Increment animation timer
+//    animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//    // Copy and flush the updated data to the buffer
+//    m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//    m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+// OK
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Parameters for fire behavior
+//	const float maxHeight = 50.0f;   // Maximum height of the fire cone
+//	const float topRadius = 1.0f;  // Maximum spread at the top
+//	const float bottomRadius = 20.0f;  // Maximum spread at the top
+//	const float minScale = 0.3f;    // Minimum particle scale at the base
+//	const float maxScale = 4.0f;    // Maximum particle scale near the middle
+//	const float shrinkScale = 1.0f; // Final shrinkage at the top
+//	const float flickerIntensity = 1.8f; // Intensity of chaotic motion
+//
+//	// Grid dimensions
+//	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//
+//	// Static properties for particles (fixed-size arrays)
+//	static float particleHeights[DYNAMIC_UB_OBJECTS] = { 0.0f }; // Current heights
+//	static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//	static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized initial offsets
+//	static bool initialized = false;
+//
+//	// Initialize static random values for particles
+//	if (!initialized) {
+//		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//			particleSpeeds[i] = 5.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//			particleOffsets[i] = glm::vec3(
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//				0.0f,                                              // Y offset (no height randomness)
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//			);
+//		}
+//		initialized = true;
+//	}
+//
+//	// Timer for chaotic motion
+//	float time = animationTimer;
+//
+//	// Update particles
+//	for (uint32_t x = 0; x < dim; x++) {
+//		for (uint32_t y = 0; y < dim; y++) {
+//			for (uint32_t z = 0; z < dim; z++) {
+//				uint32_t index = x * dim * dim + y * dim + z;
+//
+//				// Aligned offset
+//				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//				// Update particle height
+//				particleHeights[index] += particleSpeeds[index] * 0.016f;
+//
+//				// Reset particle height if it exceeds max height
+//				if (particleHeights[index] > maxHeight) {
+//					particleHeights[index] = 0.0f; // Reset to the base
+//				}
+//
+//				// Calculate height factor (0.0 at base, 1.0 at top)
+//				float heightFactor = particleHeights[index] / maxHeight;
+//
+//				float taperFactor = pow(heightFactor, 2.0f); // Quadratic progression for smoother taper
+//				float currentRadius = glm::mix(bottomRadius * taperFactor, topRadius, heightFactor);
+//
+//				// Add chaotic flicker to the flame
+//				glm::vec3 flicker = glm::vec3(
+//					sin(time * flickerIntensity + particleOffsets[index].x * 10.0f) * taperFactor,
+//					0.0f,
+//					cos(time * flickerIntensity + particleOffsets[index].z * 10.0f) * taperFactor
+//				);
+//
+//				// Calculate final spread
+//				glm::vec3 coneSpread = (particleOffsets[index] + flicker) * currentRadius;
+//
+//				// Calculate position
+//				glm::vec3 pos = glm::vec3(0.0f, particleHeights[index], 0.0f) + coneSpread;
+//
+//				// Dynamic scaling: grow, then shrink near the top
+//				float scale = heightFactor < 0.7f
+//					? minScale + heightFactor * (maxScale - minScale) / 0.7f
+//					: maxScale - (heightFactor - 0.7f) * (maxScale - shrinkScale) / 0.3f;
+//
+//				// Fade out as particles reach the top
+//				float fadeFactor = 1.0f - heightFactor;
+//
+//				// Update the model matrix with translation and scaling
+//				*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//				*modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//				// Pass fade factor to the shader for transparency
+//				//m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//			}
+//		}
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+
+// One flame
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Parameters for flame behavior
+//	const float maxHeight = 50.0f;     // Maximum height of the flame
+//	const float baseRadius = 5.0f;     // Tight base radius
+//	const float middleRadius = 30.0f;  // Wide middle radius
+//	const float topRadius = 2.0f;      // Tapered top radius
+//	const float flickerAmplitude = 0.5f; // Subtle flicker motion
+//	const float flickerSpeed = 3.0f;   // Flicker oscillation speed
+//
+//	// Timer for chaotic motion
+//	float time = animationTimer;
+//
+//	// Loop through all flame particles
+//	for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+//		glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
+//
+//		// Calculate height factor (0.0 at base, 1.0 at top)
+//		float heightFactor = static_cast<float>(i) / DYNAMIC_UB_OBJECTS;
+//
+//		// Tapered flame shape: quadratic for smoother curves
+//		float radius = (1.0f - heightFactor) * baseRadius +
+//			heightFactor * (1.0f - heightFactor) * middleRadius +
+//			heightFactor * topRadius;
+//
+//		// Add flicker effect
+//		glm::vec3 flicker = glm::vec3(
+//			sin(time * flickerSpeed + i * 0.1f) * flickerAmplitude,
+//			0.0f,
+//			cos(time * flickerSpeed + i * 0.1f) * flickerAmplitude
+//		);
+//
+//		// Compute particle position
+//		glm::vec3 pos = glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+//
+//		// Scale the particles to shrink toward the top
+//		float scale = 1.0f - heightFactor * 0.8f;
+//
+//		// Update the model matrix with translation and scaling
+//		*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//		*modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+// four flames
+//void Scene::UpdateDynamicUniformBuffer() {
+//    // Parameters for flame behavior
+//    const float maxHeight = 50.0f;     // Maximum height of the flame
+//    const float baseRadius = 5.0f;     // Tight base radius
+//    const float middleRadius = 30.0f;  // Wide middle radius
+//    const float topRadius = 2.0f;      // Tapered top radius
+//    const float flickerAmplitude = 0.5f; // Subtle flicker motion
+//    const float flickerSpeed = 3.0f;   // Flicker oscillation speed
+//
+//    // Timer for chaotic motion
+//    float time = animationTimer;
+//
+//    // Flame positions (4 different flame origins)
+//    glm::vec3 flamePositions[4] = {
+//        glm::vec3(-20.0f, 0.0f, -20.0f), // Flame 1 position
+//        glm::vec3(20.0f, 0.0f, -20.0f),  // Flame 2 position
+//        glm::vec3(-20.0f, 0.0f, 20.0f),  // Flame 3 position
+//        glm::vec3(20.0f, 0.0f, 20.0f)    // Flame 4 position
+//    };
+//
+//    // Loop through all flame particles and assign them to different flames
+//    for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+//        glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
+//
+//        // Calculate which flame this particle belongs to (4 flames in total)
+//        uint32_t flameIndex = i % 4; // Distribute particles evenly between the flames
+//        glm::vec3 flameOrigin = flamePositions[flameIndex];
+//
+//        // Calculate height factor (0.0 at base, 1.0 at top)
+//        float heightFactor = static_cast<float>(i) / DYNAMIC_UB_OBJECTS;
+//
+//        // Tapered flame shape: quadratic for smoother curves
+//        float radius = (1.0f - heightFactor) * baseRadius +
+//            heightFactor * (1.0f - heightFactor) * middleRadius +
+//            heightFactor * topRadius;
+//
+//        // Add flicker effect
+//        glm::vec3 flicker = glm::vec3(
+//            sin(time * flickerSpeed + i * 0.1f) * flickerAmplitude,
+//            0.0f,
+//            cos(time * flickerSpeed + i * 0.1f) * flickerAmplitude
+//        );
+//
+//        // Compute particle position based on flame origin
+//        glm::vec3 pos = flameOrigin + glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+//
+//        // Scale the particles to shrink toward the top
+//        float scale = 1.0f - heightFactor * 0.8f;
+//
+//        // Update the model matrix with translation and scaling
+//        *modelMat = glm::translate(glm::mat4(1.0f), pos);
+//        *modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
+//    }
+//
+//    // Increment animation timer
+//    animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//    // Copy and flush the updated data to the buffer
+//    m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//    m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+void Scene::UpdateDynamicUniformBuffer() {
+	// Parameters for flame behavior
+	const float maxHeight = 50.0f;      // Maximum height of the flame
+	const float baseRadius = 5.0f;      // Tight base radius
+	const float middleRadius = 50.0f;   // Wide middle radius
+	const float topRadius = 2.0f;       // Tapered top radius
+	const float flickerAmplitude = 0.7f; // Subtle flicker motion
+	const float flickerSpeed = 3.0f;    // Flicker oscillation speed
+	const float moveRange = 20.0f;      // Maximum movement range for flame origins
+	const float particleSpeed = 0.2f;   // Speed at which particles move upwards (lower = slower)
+
+	// Static positions for flame origins
+	static glm::vec3 flamePositions[4] = {
+		glm::vec3(mainCharacter->position.x - 5.0f, mainCharacter->position.y, mainCharacter->position.z - 5.0f), // Flame 1 position
+		glm::vec3(mainCharacter->position.x + 5.0f, mainCharacter->position.y, mainCharacter->position.z - 5.0f),  // Flame 2 position
+		glm::vec3(mainCharacter->position.x - 5.0f, mainCharacter->position.y, mainCharacter->position.z + 5.0f),  // Flame 3 position
+		glm::vec3(mainCharacter->position.x + 5.0f, mainCharacter->position.y, mainCharacter->position.z + 5.0f)    // Flame 4 position
+	};
+
+	// Particle lifecycle timers
+	static float particleTimers[DYNAMIC_UB_OBJECTS];
+	static bool initialized = false;
+
+	// Initialize particle timers once
+	if (!initialized) {
+		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+			particleTimers[i] = ((std::rand() % 1000) / 1000.0f); // Random starting offset
+		}
+		std::srand(std::time(nullptr)); // Seed the random generator
+		initialized = true;
 	}
 
-	// Iterate over the 3D grid
-	for (uint32_t x = 0; x < dim; ++x) {
-		for (uint32_t y = 0; y < dim; ++y) {
-			for (uint32_t z = 0; z < dim; ++z) {
-				const uint32_t index = x * dim * dim + y * dim + z;
+	// Loop through all flame particles
+	for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+		glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
 
-				// Calculate aligned memory offset for model matrix
-				glm::mat4* modelMat = reinterpret_cast<glm::mat4*>(
-					reinterpret_cast<uint64_t>(m_UboDataDynamic.model) + (index * dynamicAlignment)
-					);
+		// Calculate which flame this particle belongs to (4 flames in total)
+		uint32_t flameIndex = i % 4; // Distribute particles evenly between the flames
+		glm::vec3 flameOrigin = flamePositions[flameIndex];
 
-				// Compute position with base offset and random offset
-				glm::vec3 position(
-					-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x,
-					-((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y,
-					-((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z
-				);
+		// Update particle timer
+		particleTimers[i] += particleSpeed * 0.016f; // Assuming ~60 FPS
 
-				// Apply additional random offset
-				position += rnd_pos[index];
-
-				// Update model matrix transformations
-				*modelMat = glm::translate(glm::mat4(1.0f), position);
-				*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist * 2.0f, 0.0f));
-
-				// Optional transformations (uncomment as needed)
-				// *modelMat = glm::scale(*modelMat, glm::vec3(55.0f, 55.0f, 55.0f));
-				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				// *modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			}
+		// Reset particle timer when it completes its lifecycle
+		if (particleTimers[i] >= 1.0f) {
+			particleTimers[i] -= 1.0f; // Reset to the bottom
 		}
+
+		// Calculate height factor based on lifecycle progress
+		float heightFactor = particleTimers[i];
+
+		// Tapered flame shape: quadratic for smoother curves
+		float radius = (1.0f - heightFactor) * baseRadius +
+			heightFactor * (1.0f - heightFactor) * middleRadius +
+			heightFactor * topRadius;
+
+		// Add flicker effect
+		glm::vec3 flicker = glm::vec3(
+			sin((float)mainClock->totalElapsedTime * flickerSpeed + i * 0.1f) * flickerAmplitude,
+			0.0f,
+			cos((float)mainClock->totalElapsedTime * flickerSpeed + i * 0.1f) * flickerAmplitude
+		);
+
+		// Compute particle position based on flame origin
+		glm::vec3 pos = flameOrigin + glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+
+		// Scale the particles to shrink toward the top
+		float scale = 1.0f - heightFactor * 0.8f;
+
+		// Update the model matrix with translation and scaling
+		*modelMat = glm::translate(glm::mat4(1.0f), pos);
+		*modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
 	}
 
 	// Copy and flush the updated data to the buffer
 	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
 	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
 }
+
+
+
 
 void Scene::UpdateSkyboxUniformBuffer() {
 	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
@@ -2068,7 +2494,7 @@ void Scene::CreateSelectRay() {
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
-	PrepeareMainCharacter(m_MeshLibrary->meshes["human"]);
+	PrepeareMainCharacter(m_MeshLibrary->meshes["sphere"]);
 	
 	// Scene objects/actors
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), m_MeshLibrary->meshes["sphere"]);

@@ -25,7 +25,7 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 const float horizon = 9832.0f; //0.5km
 static float cloudsPos = 0.0f;
-const float cloudsVisibDist = 50.0f;
+const float cloudsVisibDist = 1.0f;
 
 namespace puffinengine {
 	namespace tool {
@@ -258,6 +258,8 @@ namespace puffinengine {
 				glm::vec3 color;
 				//alignas(16) glm::vec2
 			};
+
+			float animationTimer{ 0.0f };
 
 			enginetool::Buffer m_UboLine;
 			enginetool::Buffer m_UboSkybox;
