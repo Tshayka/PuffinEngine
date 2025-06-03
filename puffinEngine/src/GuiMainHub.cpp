@@ -211,7 +211,12 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY; // specifies if the allocated command buffers are primary or secondary, here "primary" can be submitted to a queue for execution, but cannot be called from other command buffers
 	allocInfo.commandBufferCount = (uint32_t)m_CommandBuffers.size();
 
-	ErrorCheck(vkAllocateCommandBuffers(p_Device->get(), &allocInfo, m_CommandBuffers.data()));
+	if (m_CommandBuffers.at(0) == NULL) { 
+		ErrorCheck(vkAllocateCommandBuffers(p_Device->get(), &allocInfo, m_CommandBuffers.data())); 
+	}
+	else {
+		ErrorCheck(vkResetCommandPool(p_Device->get(), m_CommandPool, 0));
+	}
 	
 	// starting command buffer recording
 	for (size_t i = 0; i < m_CommandBuffers.size(); i++) {

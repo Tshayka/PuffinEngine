@@ -122,8 +122,9 @@ void Scene::update() {
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 #else
-	std::vector<std::function<void()>> stageTwo = {task11, task12, task13};
-	ProcesTasksMultithreaded(threadPool, stageTwo); 
+	//vkResetCommandPool(m_Device->get(), commandPool, 0);
+	//std::vector<std::function<void()>> stageTwo = {/*task11,*/ task12, task13};
+	//ProcesTasksMultithreaded(threadPool, stageTwo); 
 #endif 
 }
 

@@ -176,9 +176,9 @@ namespace puffinengine {
 			std::function<void()> task8 = std::bind(&Scene::UpdateDynamicUniformBuffer, this);
 			std::function<void()> task9 = std::bind(&Scene::UpdateOceanUniformBuffer, this);
 			std::function<void()> task10 = std::bind(&Scene::UpdateCloudsUniformBuffer, this);
-			std::function<void()> task11 = std::bind(&Scene::CreateCommandBuffers, this);
-			std::function<void()> task12 = std::bind(&Scene::CreateReflectionCommandBuffer, this);
-			std::function<void()> task13 = std::bind(&Scene::CreateRefractionCommandBuffer, this);
+			//std::function<void()> task11 = std::bind(&Scene::CreateCommandBuffers, this);
+			//std::function<void()> task12 = std::bind(&Scene::CreateReflectionCommandBuffer, this);
+			//std::function<void()> task13 = std::bind(&Scene::CreateRefractionCommandBuffer, this);
 
 			// ---------------- Deinitialisation ---------------- //
 
