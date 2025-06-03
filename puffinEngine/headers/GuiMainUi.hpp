@@ -29,6 +29,27 @@ struct Vertex {
 	glm::vec4 col;
 };
 
+/// <summary>
+/// Calculates points positions for a circle
+/// </summary>
+class CircleGenerator {
+public:
+	CircleGenerator(const float radius, const uint32_t quality) : m_Radius{radius}, m_Quality{quality}, m_DA{(2.0f * pi) / static_cast<float>(quality)} {}
+
+	static float constexpr pi{ 3.1415927f };
+	float m_Radius = 0.0f;
+	//The number of points to use
+	uint32_t const m_Quality = 0;
+	// The angle variation beetween two consecutive ponts
+	float const m_DA = 0.0f;
+
+	glm::vec2 getPoint(const uint32_t i) const {
+		float const angle{ m_DA * static_cast<float>(i) };
+		return glm::vec2{ m_Radius * glm::vec2{cos(angle), sin(angle) } };
+	}
+};
+
+
 struct UiComponent {
 	glm::vec2 position;
 	std::vector<Vertex> vertices;
@@ -70,6 +91,9 @@ private:
 
 	void createGraphicsPipeline();
 	void destroyPipeline();
+
+	void generateCircle(std::vector<Vertex>& vertices, const glm::vec2& pos, const float radius, const uint32_t quality);
+
 	
 	int32_t m_VertexCount = 0;
 	int32_t m_IndexCount = 0;

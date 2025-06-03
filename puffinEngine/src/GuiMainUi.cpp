@@ -292,21 +292,48 @@ void GuiMainUi::newFrame() {
     
 }
 
+void GuiMainUi::generateCircle(std::vector<Vertex>& vertices, const glm::vec2& pos, const float radius, const uint32_t quality) {
+	CircleGenerator const generator{ radius, quality };
+	vertices.resize(quality);
+	for (uint32_t i{ 0 }; i < quality; ++i) {
+		vertices[i].pos = pos + generator.getPoint(i);
+	}
+}
+
 void GuiMainUi::getDrawData() {
      
 	UiComponent rectangle;
 
-
     rectangle.position = glm::vec2(100.0f, 100.0f);
 
-    rectangle.vertices = {
-    {{-0.25f, -0.25f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.5f}},
-    {{0.25f, -0.25f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.5f}},
-    {{0.25f, 0.25f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}},
-    {{-0.25f, 0.25f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.5f}}
-    };
+	 generateCircle(rectangle.vertices, glm::vec2(1.0f, 1.0f), 0.25f, 28);
 
-    rectangle.indices = { 0, 1, 2, 2, 3, 0 };
+	 for (auto& vertex : rectangle.vertices) {
+		 // Przesuniêcie i skalowanie
+		 glm::vec2 pixelPos = vertex.pos * 100.0f + rectangle.position; // np. promieñ 100px
+		 vertex.pos.x = (pixelPos.x / 800) * 2.0f - 1.0f;
+		 vertex.pos.y = -((pixelPos.y / 600) * 2.0f - 1.0f); // odwracamy Y
+	 }
+	
+	//rectangle.vertices = {
+ //   {{-0.25f, -0.25f}, {1.0f, 0.0f}, {1.0f, 0.0f, 0.0f, 0.5f}},
+ //   {{0.25f, -0.25f}, {0.0f, 0.0f}, {0.0f, 1.0f, 0.0f, 0.5f}},
+ //   {{0.25f, 0.25f}, {0.0f, 1.0f}, {0.0f, 0.0f, 1.0f, 0.5f}},
+ //   {{-0.25f, 0.25f}, {1.0f, 1.0f}, {1.0f, 1.0f, 1.0f, 0.5f}}
+ //   };
+
+    //rectangle.indices = { 0, 1, 2, 2, 3, 0 };
+
+	 for (size_t i = 0; i < rectangle.vertices.size() - 3; ++i) {
+		 rectangle.indices.push_back(0);
+		 rectangle.indices.push_back(i+1);
+		 rectangle.indices.push_back(i+2);
+	 }
+
+	 rectangle.indices.push_back(0);
+	 rectangle.indices.push_back(rectangle.vertices.size() - 2);
+	 rectangle.indices.push_back(1);
+
 
     float clipX1 = (float)(int)(0.5f + rectangle.position.x - 1.0f); //add column offset
     float clipX2 = (float)(int)(0.5f + rectangle.position.x - 1.0f);
