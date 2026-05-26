@@ -240,8 +240,15 @@ void TextureLayout::EndSingleTimeCommands(VkCommandBuffer commandBuffer) {
 }
 
 void TextureLayout::DeInit() {
-	if(sampler) vkDestroySampler(logicalDevice->get(), sampler, nullptr);
-	vkDestroyImageView(logicalDevice->get(), view, nullptr);
-	vkDestroyImage(logicalDevice->get(), m_FontImage, nullptr);
-	vkFreeMemory(logicalDevice->get(), m_FontMemory, nullptr);
+	if (!logicalDevice) return;
+
+	if (sampler) vkDestroySampler(logicalDevice->get(), sampler, nullptr);
+	if (view) vkDestroyImageView(logicalDevice->get(), view, nullptr);
+	if (m_FontImage) vkDestroyImage(logicalDevice->get(), m_FontImage, nullptr);
+	if (m_FontMemory) vkFreeMemory(logicalDevice->get(), m_FontMemory, nullptr);
+
+	sampler = VK_NULL_HANDLE;
+	view = VK_NULL_HANDLE;
+	m_FontImage = VK_NULL_HANDLE;
+	m_FontMemory = VK_NULL_HANDLE;
 };

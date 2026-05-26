@@ -103,8 +103,8 @@ namespace puffinengine {
 			GuiMainHub* m_GUIMainHub = nullptr;
 
 			std::vector<VkCommandBuffer> commandBuffers;
-			VkCommandBuffer reflectionCmdBuff;
-			VkCommandBuffer refractionCmdBuff;
+			VkCommandBuffer reflectionCmdBuff = VK_NULL_HANDLE;
+			VkCommandBuffer refractionCmdBuff = VK_NULL_HANDLE;
 
 		private:
 			// ---------------- Main functions ------------------ //

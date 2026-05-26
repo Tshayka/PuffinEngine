@@ -168,7 +168,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	p_TextOverlay->beginTextUpdate();
 	p_TextOverlay->renderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
 	std::stringstream ss;
-	ss << std::fixed << std::setprecision(4) << "Frame Time : " << (frameTime) << "ms | " << " elapsed time : " << elapsedTime << "s | " << fps << " FPS)";
+	ss << std::fixed << std::setprecision(2) << "Frame Time: " << frameTime << " ms | Elapsed: " << elapsedTime << " s | " << fps << " FPS";
 	p_TextOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
 	p_TextOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
 	p_TextOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
@@ -200,6 +200,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
+	freeCommandBuffers();
 	m_CommandBuffers.resize(p_LogicalDevice->swap_chain_framebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -235,7 +236,10 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 }
 
 void GuiMainHub::freeCommandBuffers() {
+	if (m_CommandBuffers.empty()) return;
+
 	vkFreeCommandBuffers(p_LogicalDevice->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
+	m_CommandBuffers.clear();
 }
 
 void GuiMainHub::deinit() {

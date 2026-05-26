@@ -1,4 +1,5 @@
 #include <iostream>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <thread>
@@ -69,6 +70,9 @@ void PuffinEngine::createWorldClock() {
 
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
+	if (numThreads < 2) {
+		numThreads = 2;
+	}
 	std::cout << "numThreads = " << numThreads << std::endl;
 	m_ThreadPool.SetThreadCount(numThreads);		
 }
@@ -111,15 +115,14 @@ void PuffinEngine::CreateScene() {
 }
 
 void PuffinEngine::mainLoop() {
-	const double maxAccumulatedTime = 1.0;
 	m_MainClock.fixedTimeValue = 0.015;
 	const double maxFrameTime = 0.15;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
-	int frameCount = 0;
 	const int frameHistorySize = 60;
 	double frameTimes[frameHistorySize] = { 0.0 };
 	int frameIndex = 0;
+	int frameSampleCount = 0;
 
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
@@ -143,27 +146,29 @@ void PuffinEngine::mainLoop() {
 			height > 0 ? (static_cast<float>(fb_height) / height) : 0);
 		io.DeltaTime = static_cast<float>(frameTime);
 
+		frameTimes[frameIndex] = frameTime;
+		frameIndex = (frameIndex + 1) % frameHistorySize;
+		if (frameSampleCount < frameHistorySize) {
+			++frameSampleCount;
+		}
+
+		double avgFrameTime = 0.0;
+		for (int i = 0; i < frameSampleCount; i++) {
+			avgFrameTime += frameTimes[i];
+		}
+
+		avgFrameTime /= frameSampleCount;
+		m_MainClock.fps = avgFrameTime > 0.0 ? 1.0 / avgFrameTime : 0.0;
+		m_MainClock.frameTime = frameTime * 1000.0;
+
 		while (accumulator >= m_MainClock.fixedTimeValue) {
-			m_ThreadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
 			scene_1.update();
 			m_MainClock.totalElapsedTime += m_MainClock.fixedTimeValue;
 			accumulator -= m_MainClock.fixedTimeValue;
 		}
 
+		UpdateGui();
 		DrawFrame();
-
-		// Calculate average frame time and FPS
-		// frameTimes - bumber of frames to consider for FPS calculation
-		frameTimes[frameIndex] = frameTime;
-		frameIndex = (frameIndex + 1) % frameHistorySize;
-		double avgFrameTime = 0.0;
-		for (int i = 0; i < frameHistorySize; i++) {
-			avgFrameTime += frameTimes[i];
-		}
-
-		avgFrameTime /= frameHistorySize;
-		m_MainClock.fps = 1.0 / avgFrameTime;
-		m_MainClock.frameTime = frameTime;
 	}
 
 	vkDeviceWaitIdle(m_Device.get());
@@ -273,6 +278,11 @@ bool PuffinEngine::initWindow() {
 
 	window = glfwCreateWindow(800, 600, "PuffinEngine", nullptr, nullptr);
 
+	if (!window) {
+		glfwTerminate();
+		return false;
+	}
+
 	glfwSetKeyCallback(window, PuffinEngine::KeyCallback);
 	glfwSetMouseButtonCallback(window, PuffinEngine::MouseButtonCallback);
 	glfwSetCharCallback(window, PuffinEngine::CharacterCallback);
@@ -285,11 +295,6 @@ bool PuffinEngine::initWindow() {
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetScrollCallback(window, PuffinEngine::ScrollCallback);
 	glfwSetErrorCallback(PuffinEngine::ErrorCallback);
-
-	if (!window) {
-		glfwTerminate();
-		return false;
-	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
