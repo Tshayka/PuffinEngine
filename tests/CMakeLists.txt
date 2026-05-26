@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.2)
+cmake_minimum_required(VERSION 3.5)
 
 #[[----Downloading and unpack google test into build directory at configure time.----]]
 

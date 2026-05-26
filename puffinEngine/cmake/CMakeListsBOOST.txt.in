@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8.2)
+cmake_minimum_required(VERSION 3.5)
 
 project(glfw-download NONE)
 include(ExternalProject)
@@ -13,12 +13,11 @@ endif()
 
 include(ExternalProject)
 ExternalProject_Add(boost
-	URL                     "https://boostorg.jfrog.io/artifactory/main/release/1.80.0/source/boost_1_80_0.tar.bz2"
-    URL_MD5                 "df7dc2fc6de751753198a5bf70210da7"
-    CONFIGURE_COMMAND       ${BUILD_COMMAND_VAL}
-							--with-libraries=atomic,date_time,filesystem,program_options,system,thread
-    BUILD_COMMAND           ${CONFIG_COMMAND_VAL} 
+	URL                     "https://archives.boost.io/release/1.80.0/source/boost_1_80_0.tar.bz2"
+    URL_HASH                "SHA256=1e19565d82e43bc59209a168f5ac899d3ba471d55c7610c677d4ccf2c9c500c0"
+    CONFIGURE_COMMAND       ""
+    BUILD_COMMAND           ""
     BUILD_IN_SOURCE 1
-    INSTALL_COMMAND ""
+    INSTALL_COMMAND         ""
 	UPDATE_COMMAND  ""
 )
