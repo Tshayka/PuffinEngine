@@ -58,15 +58,31 @@ If you want use multithreaded command buffer, you must turn off validation layer
 by "BUILD_ENABLE_VULKAN_DEBUG" value to '0'.
 
 ## Building and running
-### Linux
-- $ ./linux64release.sh
-- $ ./bin/PuffinEngine
+The platform scripts configure CMake, build the `PuffinEngine` target, and start the application from the build directory so shaders and assets resolve correctly.
+
 ### Windows
-- $ win64debug.bat
-- $
+Requirements:
+- CMake
+- Visual Studio C++ Build Tools 2019 or newer
+- Vulkan SDK installed under `C:\VulkanSDK` or exposed through `VULKAN_SDK`
+
+Run:
+- Debug: `win64debug.bat`
+- Release: `win64release.bat`
+
+### Linux
+Requirements:
+- CMake and a C++17 compiler
+- Vulkan SDK. If `VULKAN_SDK` is not set, the scripts try the newest SDK under `$HOME/vulkan/<version>/x86_64`.
+
+Run:
+- Debug: `./linux64debug.sh`
+- Release: `./linux64release.sh`
+
+The app opens to a simple Start/Quit menu. Press Start to load the game scene.
 
 ## Running tests
-- $ ./bin/PuffinEngineTest
+Tests are wired through CMake but are currently disabled in the top-level build file.
 
 ## Compiling shaders
 - $ ./puffinEngine/shaders/compile.sh
