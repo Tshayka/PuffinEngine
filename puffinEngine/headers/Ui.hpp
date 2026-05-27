@@ -1,17 +1,18 @@
 #pragma once
 
-#include "../imgui/imgui.h"
 #include "Buffer.hpp"
 #include "ErrorCheck.hpp"
 #include "PushConstant.hpp"
 #include "Texture.hpp"
+#include "RenderPass.hpp"
+#include "SwapChain.hpp"
 
 class GuiElement {
 public:
 	GuiElement();
 	~GuiElement();
 
-	void init(Device* logiclDevice, VkCommandPool* commandPool);
+	void init(Device* logiclDevice, puffinengine::tool::SwapChain* swapChain, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();
@@ -52,6 +53,8 @@ private:
 	VkViewport m_Viewport = {};
 	VkRect2D m_Scissor = {};
 
-	Device* p_LogicalDevice = nullptr;
+	Device* p_Device = nullptr;
+	puffinengine::tool::SwapChain* p_SwapChain = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr; 
 };

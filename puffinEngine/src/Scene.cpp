@@ -52,8 +52,12 @@ Scene::~Scene() {
 
 // ---------------- Main functions ------------------ //
 
-void Scene::init(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+void Scene::init(GLFWwindow* window, Device* device, SwapChain* swapChain, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* guiMainHub, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool) {
+	p_Window = window;
 	m_Device = device;
+	p_SwapChain = swapChain;
+	p_ScreenRenderPass = screenRenderPass;
+	p_OffScreenRenderPass = offScreenRenderPass;
 	m_GUIMainHub = guiMainHub;
 	m_MousePicker = mousePicker;
 	m_MeshLibrary = meshLibrary;
@@ -90,7 +94,7 @@ void Scene::init(Device* device, GuiMainHub* guiMainHub, MousePicker* mousePicke
 	m_IndexBuffersSelectRay.setDevice(device);
     m_IndexBuffersAABB.setDevice(device);
 
-	InitSwapchainImageViews();
+	//p_SwapChain->initSwapchainImageViews();
 	CreateCommandPool();
 	CreateDepthResources();
 	PrepareOffscreenImage();
@@ -123,7 +127,7 @@ void Scene::update() {
 #endif 
 }
 
-void Scene::CleanUpForSwapchain() {
+void Scene::cleanUpForSwapchain() {
 	CleanUpDepthResources();
 	CleanUpOffscreenImage();
 	DeInitFramebuffer();
@@ -132,7 +136,6 @@ void Scene::CleanUpForSwapchain() {
 }
 
 void Scene::RecreateForSwapchain() {
-	InitSwapchainImageViews();
 	CreateDepthResources();
 	PrepareOffscreenImage();
 	CreateFramebuffers();
@@ -142,39 +145,8 @@ void Scene::RecreateForSwapchain() {
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 
-	m_MousePicker->width = (float)m_Device->swapchain_extent.width;
-	m_MousePicker->height = (float)m_Device->swapchain_extent.height;
-}
-
-// ------------------ Swapchain --------------------- //
-
-void Scene::InitSwapchainImageViews() {
-	m_Device->swapchainImageViews.resize(m_Device->swapchainImages.size());
-
-	for (size_t i = 0; i < m_Device->swapchainImages.size(); i++) {
-		m_Device->swapchainImageViews[i] = CreateImageView(m_Device->swapchainImages[i], m_Device->swapchainImageFormat, VK_IMAGE_ASPECT_COLOR_BIT);
-	}
-}
-
-VkImageView Scene::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspect_flags) {//TODO use in swapchain textureLayout class
-	VkImageViewCreateInfo ViewInfo = {};
-	ViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-	ViewInfo.image = image;
-	ViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-	ViewInfo.format = format;
-	ViewInfo.subresourceRange.aspectMask = aspect_flags;
-	ViewInfo.subresourceRange.baseMipLevel = 0;
-	ViewInfo.subresourceRange.levelCount = 1;
-	ViewInfo.subresourceRange.baseArrayLayer = 0;
-	ViewInfo.subresourceRange.layerCount = 1;
-
-	VkImageView image_view;
-	if (vkCreateImageView(m_Device->get(), &ViewInfo, nullptr, &image_view) != VK_SUCCESS) {
-		assert(0 && "Vulkan ERROR: failed to create texture image view!");
-		std::exit(-1);
-	}
-
-	return image_view;
+	m_MousePicker->width = (float)p_SwapChain->getExtent().width;
+	m_MousePicker->height = (float)p_SwapChain->getExtent().height;
 }
 
 // ----------------- Framebuffer -------------------- //
@@ -185,45 +157,45 @@ void Scene::CreateFramebuffers() {
 			
 	VkFramebufferCreateInfo reflectionFramebufferInfo = {};
 	reflectionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	reflectionFramebufferInfo.renderPass = m_Device->offscreenRenderPass;
+	reflectionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	reflectionFramebufferInfo.attachmentCount = static_cast<uint32_t>(reflectionAttachments.size());
 	reflectionFramebufferInfo.pAttachments = reflectionAttachments.data();
-	reflectionFramebufferInfo.width = m_Device->swapchain_extent.width;
-	reflectionFramebufferInfo.height = m_Device->swapchain_extent.height;
+	reflectionFramebufferInfo.width = p_SwapChain->getExtent().width;
+	reflectionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	reflectionFramebufferInfo.layers = 1;
 
-	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &reflectionFramebufferInfo, nullptr, &m_Device->reflectionFramebuffer));
+	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &reflectionFramebufferInfo, nullptr, &m_Device->m_ReflectionFramebuffer));
 
 	// Refraction frambuffer
 	std::array<VkImageView, 2>  refractionAttachments = {refractionImage->view, refractionDepthImage->view};
 
 	VkFramebufferCreateInfo refractionFramebufferInfo = {};
 	refractionFramebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-	refractionFramebufferInfo.renderPass = m_Device->offscreenRenderPass;
+	refractionFramebufferInfo.renderPass = p_OffScreenRenderPass->get();
 	refractionFramebufferInfo.attachmentCount = static_cast<uint32_t>(refractionAttachments.size());
 	refractionFramebufferInfo.pAttachments = refractionAttachments.data();
-	refractionFramebufferInfo.width = m_Device->swapchain_extent.width;
-	refractionFramebufferInfo.height = m_Device->swapchain_extent.height;
+	refractionFramebufferInfo.width = p_SwapChain->getExtent().width;
+	refractionFramebufferInfo.height = p_SwapChain->getExtent().height;
 	refractionFramebufferInfo.layers = 1;
 
-	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &refractionFramebufferInfo, nullptr, &m_Device->refractionFramebuffer));
+	ErrorCheck(vkCreateFramebuffer(m_Device->get(), &refractionFramebufferInfo, nullptr, &m_Device->m_RefractionFramebuffer));
 
 	// Screen frambuffer
-	m_Device->swap_chain_framebuffers.resize(m_Device->swapchainImageViews.size());
+	m_Device->m_SwapChainFramebuffers.resize(p_SwapChain->getSwapchainImageViews().size());
 
-	for (size_t i = 0; i < m_Device->swapchainImageViews.size(); i++) {
-		std::array<VkImageView, 2> attachments = { m_Device->swapchainImageViews[i], screenDepthImage->view };
+	for (size_t i = 0; i < p_SwapChain->getSwapchainImageViews().size(); i++) {
+		std::array<VkImageView, 2> attachments = { p_SwapChain->getSwapchainImageViews()[i], screenDepthImage->view };
 
 		VkFramebufferCreateInfo framebufferInfo = {};
 		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-		framebufferInfo.renderPass = m_Device->renderPass; // specify with which render pass the framebuffer needs to be compatible
+		framebufferInfo.renderPass = p_ScreenRenderPass->get(); // specify with which render pass the framebuffer needs to be compatible
 		framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 		framebufferInfo.pAttachments = attachments.data();
-		framebufferInfo.width = m_Device->swapchain_extent.width;
-		framebufferInfo.height = m_Device->swapchain_extent.height;
+		framebufferInfo.width = p_SwapChain->getExtent().width;
+		framebufferInfo.height = p_SwapChain->getExtent().height;
 		framebufferInfo.layers = 1; // swap chain images are single images,
 
-		ErrorCheck(vkCreateFramebuffer(m_Device->get(), &framebufferInfo, nullptr, &m_Device->swap_chain_framebuffers[i]));
+		ErrorCheck(vkCreateFramebuffer(m_Device->get(), &framebufferInfo, nullptr, &m_Device->m_SwapChainFramebuffers[i]));
 	}
 }
 
@@ -236,7 +208,7 @@ Because the image in the framebuffer depends on which specific image the swap ch
 we need to record a command buffer for each possible image and select the right one at draw time. */
 
 void Scene::CreateCommandPool() {
-	QueueFamilyIndices queueFamilyIndices = m_Device->FindQueueFamilies(m_Device->gpu);
+	QueueFamilyIndices queueFamilyIndices = m_Device->findQueueFamilies();
 
 	VkCommandPoolCreateInfo poolInfo = {};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -275,8 +247,8 @@ void Scene::EndSingleTimeCommands(const VkCommandBuffer& commandBuffer, const Vk
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(m_Device->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(m_Device->queue);
+	vkQueueSubmit(m_Device->getQueue(), 1, &SubmitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(m_Device->getQueue());
 
 	vkFreeCommandBuffers(m_Device->get(), commandPool, 1, &commandBuffer);
 }
@@ -299,7 +271,7 @@ void Scene::CreateGraphicsPipeline() {
 	PushConstantRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
 	PushConstantRange.offset = 0;
 	PushConstantRange.size = sizeof(Constants);
-	assert(sizeof(Constants) <= m_Device->gpu_properties.limits.maxPushConstantsSize);
+	assert(sizeof(Constants) <= m_Device->getGpuProperties().limits.maxPushConstantsSize);
 
 	VkPipelineInputAssemblyStateCreateInfo InputAssembly = {}; // describes what kind of geometry will be drawn from the vertices and if primitive restart should be enabled
 	InputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -362,14 +334,15 @@ void Scene::CreateGraphicsPipeline() {
 	VertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
 	VertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
 
-	std::array<VkDescriptorSetLayout, 7> layouts = { descriptor_set_layout, 
-													skybox_descriptor_set_layout, 
-													cloudDescriptorSetLayout, 
-													oceanDescriptorSetLayout, 
-													lineDescriptorSetLayout,
-													selectionIndicatorDescriptorSetLayout,
-													aabbDescriptorSetLayout 
-													};
+	std::array<VkDescriptorSetLayout, 7> layouts = { 
+		descriptor_set_layout, 
+		skybox_descriptor_set_layout, 
+		cloudDescriptorSetLayout, 
+		oceanDescriptorSetLayout, 
+		lineDescriptorSetLayout,
+		selectionIndicatorDescriptorSetLayout,
+		aabbDescriptorSetLayout 
+	};
 
 	VkPipelineLayoutCreateInfo PipelineLayoutInfo = {};
 	PipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -395,7 +368,7 @@ void Scene::CreateGraphicsPipeline() {
 	PipelineInfo.pColorBlendState = &ColorBlending;
 	PipelineInfo.pDynamicState = &ViewportDynamic;
 	PipelineInfo.layout = pipelineLayout;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 	PipelineInfo.subpass = 0;
 	PipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 
@@ -431,16 +404,16 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL; 
 
 	// Skybox refraction pipeline
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxRefractionPipeline));
 
 	// Skybox reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &skyboxReflectionPipeline));
 	
 	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 
 	vkDestroyShaderModule(m_Device->get(), fragCubeMapShaderModule, nullptr);
 	vkDestroyShaderModule(m_Device->get(), vertCubeMapShaderModule, nullptr);
@@ -479,19 +452,19 @@ void Scene::CreateGraphicsPipeline() {
 	Rasterization.polygonMode = VK_POLYGON_MODE_FILL;
 	
 	// Models refraction pipeline
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrRefractionPipeline));
 
 	// Models reflection pipeline
 	Rasterization.cullMode = VK_CULL_MODE_BACK_BIT;
-	PipelineInfo.renderPass = m_Device->offscreenRenderPass;
+	PipelineInfo.renderPass = p_OffScreenRenderPass->get();
 	ErrorCheck(vkCreateGraphicsPipelines(m_Device->get(), VK_NULL_HANDLE, 1, &PipelineInfo, nullptr, &pbrReflectionPipeline));
 
 	vkDestroyShaderModule(m_Device->get(), fragModelsShaderModule, nullptr);
 	vkDestroyShaderModule(m_Device->get(), vertModelsShaderModule, nullptr);
 	
 	Rasterization.cullMode = VK_CULL_MODE_FRONT_BIT;
-	PipelineInfo.renderPass = m_Device->renderPass;
+	PipelineInfo.renderPass = p_ScreenRenderPass->get();
 
 	// III. Selection crystal pipeline
 	std::filesystem::path vertSelectionCrystalShaderCodePath = p / std::filesystem::path("puffinEngine") / "shaders" / "selectionCrystalShader.vert.spv";
@@ -694,14 +667,14 @@ void Scene::CreateCommandBuffers() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->renderPass;
+	renderPassInfo.renderPass = p_ScreenRenderPass->get();
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 	
-	commandBuffers.resize(m_Device->swap_chain_framebuffers.size());
+	commandBuffers.resize(m_Device->m_SwapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -714,20 +687,20 @@ void Scene::CreateCommandBuffers() {
 	// starting command buffer recording
 	for (size_t i = 0; i < commandBuffers.size(); i++)	{
 		// Set target frame buffer
-		renderPassInfo.framebuffer = m_Device->swap_chain_framebuffers[i];
+		renderPassInfo.framebuffer = m_Device->m_SwapChainFramebuffers[i];
 		vkBeginCommandBuffer(commandBuffers[i], &beginInfo);
 		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 		
 		viewport.x = 0.0f;
 		viewport.y = 0.0f;
-		viewport.width = (float)m_Device->swapchain_extent.width;
-		viewport.height = (float)m_Device->swapchain_extent.height;
+		viewport.width = (float)p_SwapChain->getExtent().width;
+		viewport.height = (float)p_SwapChain->getExtent().height;
 		viewport.minDepth = 0.0f;
 		viewport.maxDepth = 1.0f;
 		vkCmdSetViewport(commandBuffers[i], 0, 1, &viewport);
 
 		scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-		scissor.extent = m_Device->swapchain_extent;
+		scissor.extent = p_SwapChain->getExtent();
 		vkCmdSetScissor(commandBuffers[i], 0, 1, &scissor);
 
 		VkDeviceSize offsets[1] = { 0 };
@@ -844,11 +817,11 @@ void Scene::CreateReflectionCommandBuffer() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->offscreenRenderPass;
-	renderPassInfo.framebuffer = m_Device->reflectionFramebuffer;
+	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
+	renderPassInfo.framebuffer = m_Device->m_ReflectionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
@@ -865,15 +838,15 @@ void Scene::CreateReflectionCommandBuffer() {
 		
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)m_Device->swapchain_extent.width;
-	viewport.height = (float)m_Device->swapchain_extent.height;
+	viewport.width = (float)p_SwapChain->getExtent().width;
+	viewport.height = (float)p_SwapChain->getExtent().height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(reflectionCmdBuff, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	scissor.extent.height = m_Device->swapchain_extent.height;
-	scissor.extent.width = m_Device->swapchain_extent.width;
+	scissor.extent.width = p_SwapChain->getExtent().width;
+	scissor.extent.height = p_SwapChain->getExtent().height;
 	vkCmdSetScissor(reflectionCmdBuff, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
@@ -919,11 +892,11 @@ void Scene::CreateRefractionCommandBuffer() {
 
 	VkRenderPassBeginInfo renderPassInfo = {};
 	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-	renderPassInfo.renderPass = m_Device->offscreenRenderPass;
-	renderPassInfo.framebuffer = m_Device->refractionFramebuffer;
+	renderPassInfo.renderPass = p_OffScreenRenderPass->get();
+	renderPassInfo.framebuffer = m_Device->m_RefractionFramebuffer;
 	renderPassInfo.renderArea.offset = { 0, 0 };
-	renderPassInfo.renderArea.extent.width = m_Device->swapchain_extent.width;
-	renderPassInfo.renderArea.extent.height = m_Device->swapchain_extent.height;
+	renderPassInfo.renderArea.extent.width = p_SwapChain->getExtent().width;
+	renderPassInfo.renderArea.extent.height = p_SwapChain->getExtent().height;
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
@@ -940,15 +913,15 @@ void Scene::CreateRefractionCommandBuffer() {
 		
 	viewport.x = 0.0f;
 	viewport.y = 0.0f;
-	viewport.width = (float)m_Device->swapchain_extent.width;
-	viewport.height = (float)m_Device->swapchain_extent.height;
+	viewport.width = (float)p_SwapChain->getExtent().width;
+	viewport.height = (float)p_SwapChain->getExtent().height;
 	viewport.minDepth = 0.0f;
 	viewport.maxDepth = 1.0f;
 	vkCmdSetViewport(refractionCmdBuff, 0, 1, &viewport);
 
 	scissor.offset = { 0, 0 }; // scissor rectangle covers framebuffer entirely
-	scissor.extent.height = m_Device->swapchain_extent.height;
-	scissor.extent.width = m_Device->swapchain_extent.width;
+	scissor.extent.width = p_SwapChain->getExtent().width;
+	scissor.extent.height = p_SwapChain->getExtent().height;
 	vkCmdSetScissor(refractionCmdBuff, 0, 1, &scissor);
 
 	VkDeviceSize offsets[1] = { 0 };
@@ -995,18 +968,17 @@ void Scene::CreateBuffers() {
 	
 	// Clouds Uniform buffers memory -> dynamic
 	// Calculate required alignment based on minimum device offset alignment
-	size_t minUboAlignment = m_Device->gpu_properties.limits.minUniformBufferOffsetAlignment;
+	size_t minUboAlignment = m_Device->getGpuProperties().limits.minUniformBufferOffsetAlignment;
 
 	dynamicAlignment = sizeof(glm::mat4);
-
 	if (minUboAlignment > 0) {
 		dynamicAlignment = (dynamicAlignment + minUboAlignment - 1) & ~(minUboAlignment - 1);
 	}
 
 	size_t bufferSize = DYNAMIC_UB_OBJECTS * dynamicAlignment;
-	uboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
 
-	if (uboDataDynamic.model == VK_NULL_HANDLE)	{
+	m_UboDataDynamic.model = (glm::mat4*)alignedAlloc(bufferSize, dynamicAlignment);
+	if (m_UboDataDynamic.model == VK_NULL_HANDLE)	{
 		assert(0 && "Vulkan ERROR: Can't create host memory for the dynamic uniform buffer");
 		std::exit(-1);
 	}
@@ -1149,7 +1121,7 @@ void Scene::DeSelect() {
 }
 
 void Scene::UpdateStaticUniformBuffer() {
-	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSG.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSG.proj[1][1] *= -1; //since the Y axis of Vulkan NDC points down
 	UBOSG.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSG.model = glm::mat4(1.0f);
@@ -1157,24 +1129,25 @@ void Scene::UpdateStaticUniformBuffer() {
 	memcpy(m_UboStillObjects.getMapped(), &UBOSG, sizeof(UBOSG));
 	memcpy(m_UboLine.getMapped(), &UBOSG, sizeof(UBOSG));
 	m_MousePicker->UpdateMousePicker(UBOSG.view, UBOSG.proj, currentCamera);
-
 }
 
 void Scene::UpdateCloudsUniformBuffer() {
-	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOC.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOC.proj[1][1] *= -1; 
 	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.time = (float)mainClock->totalElapsedTime;
-	UBOC.view[3][0] *= 0;
-	UBOC.view[3][1] *= 0;
-	UBOC.view[3][2] *= 0;
+	// fixed position
+	//UBOC.view[3][0] *= 0;
+	//UBOC.view[3][1] *= 0;
+	//UBOC.view[3][2] *= 0;
+	UBOC.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOC.model = glm::mat4(1.0f);
 	UBOC.cameraPos = currentCamera->position;
 	m_UboClouds.copy(sizeof(UBOC), &UBOC);
 } 
 
 void Scene::UpdateSelectionIndicatorUniformBuffer() {
-	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSI.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSI.proj[1][1] *= -1; 
 	UBOSI.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSI.model = glm::rotate(glm::mat4(1.0f), (float)mainClock->totalElapsedTime * glm::radians(90.0f), currentCamera->up);
@@ -1184,7 +1157,7 @@ void Scene::UpdateSelectionIndicatorUniformBuffer() {
 }
 
 void Scene::UpdateOffscreenUniformBuffer() {
-	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOO.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOO.proj[1][1] *= -1; 
 	UBOO.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOO.model = glm::mat4(1.0f);
@@ -1208,45 +1181,482 @@ void Scene::UpdateUniformBufferParameters() {
 	memcpy(m_UboReflectionParameters.getMapped(), &UBOP, sizeof(UBOP));
 }
 
+// BUBBLES
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Grid dimensions
+//	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//	glm::vec3 offset(5.0f); // Initial grid spacing
+//
+//	// Fire parameters
+//	float maxHeight = 50.0f;    // Maximum height before resetting
+//	float topRadius = 10.0f;   // Maximum spread at the top
+//	float minScale = 0.5f;      // Scale at the bottom
+//	float maxScale = 2.0f;      // Scale at the top
+//
+//	// Static properties for particles (fixed-size arrays)
+//	static float particleHeights[DYNAMIC_UB_OBJECTS] = { 0.0f }; // Current heights
+//	static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//	static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized motion offsets
+//	static bool initialized = false;
+//
+//	// Initialize static random values for particles
+//	if (!initialized) {
+//		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//			particleSpeeds[i] = 5.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//			particleOffsets[i] = glm::vec3(
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//				0.0f,                                              // No Y offset for randomness
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//			);
+//		}
+//		initialized = true;
+//	}
+//
+//	// Update positions dynamically to simulate fire
+//	for (uint32_t x = 0; x < dim; x++) {
+//		for (uint32_t y = 0; y < dim; y++) {
+//			for (uint32_t z = 0; z < dim; z++) {
+//				uint32_t index = x * dim * dim + y * dim + z;
+//
+//				// Aligned offset
+//				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//				// Base position (original position in the grid)
+//				glm::vec3 basePos = glm::vec3(
+//					-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x,
+//					0.0f, // Base Y starts at ground level
+//					-((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z
+//				);
+//
+//				// Update particle height
+//				particleHeights[index] += particleSpeeds[index] * 0.016f; // Increment by unique speed
+//
+//				// Reset particle height if it exceeds the maximum height
+//				if (particleHeights[index] > maxHeight) {
+//					particleHeights[index] = 0.0f; // Reset to initial height
+//				}
+//
+//				// Calculate cone spread: scale horizontal position based on height
+//				float heightFactor = particleHeights[index] / maxHeight; // 0.0 (bottom) -> 1.0 (top)
+//				glm::vec3 coneSpread = particleOffsets[index] * topRadius * heightFactor;
+//
+//				// Calculate final position
+//				glm::vec3 pos = basePos + coneSpread;
+//				pos.y = particleHeights[index]; // Height is directly the particle's Y position
+//
+//				// Calculate scale based on height (linear interpolation)
+//				float scale = minScale + heightFactor * (maxScale - minScale);
+//
+//				// Calculate fade factor based on height (1.0 at bottom, 0.0 at top)
+//				float fadeFactor = 1.0f - heightFactor;
+//
+//				// Update the model matrix with translation and scaling
+//				*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//				*modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//				// Pass fadeFactor to the shader (depends on your rendering pipeline)
+//				//m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//			}
+//		}
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+//void Scene::UpdateDynamicUniformBuffer() {
+//    // Parameters for fire behavior
+//    const float maxHeight = 60.0f;   // Maximum height of the fire cone
+//    const float topRadius = 1.0f;  // Maximum spread at the top
+//    const float minScale = 0.3f;    // Minimum particle scale at the base
+//    const float maxScale = 8.0f;    // Maximum particle scale near the middle
+//    const float shrinkScale = 1.1f; // Final shrinkage at the top
+//    const float flickerIntensity = 1.8f; // Intensity of chaotic motion
+//
+//    // Grid dimensions
+//    uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//
+//    // Static properties for particles (fixed-size arrays)
+//    static float particleHeights[DYNAMIC_UB_OBJECTS] = {0.0f}; // Current heights
+//    static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//    static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized initial offsets
+//    static bool initialized = false;
+//
+//    // Initialize static random values for particles
+//    if (!initialized) {
+//        for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//            particleSpeeds[i] = 2.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//            particleOffsets[i] = glm::vec3(
+//                static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//                0.0f,                                              // Y offset (no height randomness)
+//                static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//            );
+//        }
+//        initialized = true;
+//    }
+//
+//    // Timer for chaotic motion
+//    float time = animationTimer;
+//
+//    // Update particles
+//    for (uint32_t x = 0; x < dim; x++) {
+//        for (uint32_t y = 0; y < dim; y++) {
+//            for (uint32_t z = 0; z < dim; z++) {
+//                uint32_t index = x * dim * dim + y * dim + z;
+//
+//                // Aligned offset
+//                glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//                // Update particle height
+//                particleHeights[index] += particleSpeeds[index] * 0.016f;
+//
+//                // Reset particle height if it exceeds max height
+//                if (particleHeights[index] > maxHeight) {
+//                    particleHeights[index] = 0.0f; // Reset to the base
+//                }
+//
+//                // Calculate height factor (0.0 at base, 1.0 at top)
+//                float heightFactor = particleHeights[index] / maxHeight;
+//
+//                // Horizontal cone spread with chaotic motion
+//                glm::vec3 flicker = glm::vec3(
+//                    sin(time * flickerIntensity + particleOffsets[index].x * 8.0f) * heightFactor,
+//                    0.0f,
+//                    cos(time * flickerIntensity + particleOffsets[index].z * 8.0f) * heightFactor
+//                );
+//
+//                glm::vec3 coneSpread = (particleOffsets[index] + flicker) * topRadius * heightFactor;
+//
+//                // Calculate position
+//                glm::vec3 pos = glm::vec3(0.0f, particleHeights[index], 0.0f) + coneSpread;
+//
+//                // Dynamic scaling: grow, then shrink near the top
+//                float scale = heightFactor < 0.7f
+//                    ? minScale + heightFactor * (maxScale - minScale) / 0.7f
+//                    : maxScale - (heightFactor - 0.7f) * (maxScale - shrinkScale) / 0.3f;
+//
+//                // Fade out as particles reach the top
+//                float fadeFactor = 1.0f - heightFactor;
+//
+//                // Update the model matrix with translation and scaling
+//                *modelMat = glm::translate(glm::mat4(1.0f), pos);
+//                *modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//                // Pass fade factor to the shader for transparency
+//                //m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//            }
+//        }
+//    }
+//
+//    // Increment animation timer
+//    animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//    // Copy and flush the updated data to the buffer
+//    m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//    m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+// OK
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Parameters for fire behavior
+//	const float maxHeight = 50.0f;   // Maximum height of the fire cone
+//	const float topRadius = 1.0f;  // Maximum spread at the top
+//	const float bottomRadius = 20.0f;  // Maximum spread at the top
+//	const float minScale = 0.3f;    // Minimum particle scale at the base
+//	const float maxScale = 4.0f;    // Maximum particle scale near the middle
+//	const float shrinkScale = 1.0f; // Final shrinkage at the top
+//	const float flickerIntensity = 1.8f; // Intensity of chaotic motion
+//
+//	// Grid dimensions
+//	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
+//
+//	// Static properties for particles (fixed-size arrays)
+//	static float particleHeights[DYNAMIC_UB_OBJECTS] = { 0.0f }; // Current heights
+//	static float particleSpeeds[DYNAMIC_UB_OBJECTS];           // Randomized upward speeds
+//	static glm::vec3 particleOffsets[DYNAMIC_UB_OBJECTS];      // Randomized initial offsets
+//	static bool initialized = false;
+//
+//	// Initialize static random values for particles
+//	if (!initialized) {
+//		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; i++) {
+//			particleSpeeds[i] = 5.0f + static_cast<float>(rand() % 50) / 10.0f; // Speeds between 5.0 and 10.0
+//			particleOffsets[i] = glm::vec3(
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f, // X offset (-0.5 to 0.5)
+//				0.0f,                                              // Y offset (no height randomness)
+//				static_cast<float>(rand() % 100) / 100.0f - 0.5f  // Z offset (-0.5 to 0.5)
+//			);
+//		}
+//		initialized = true;
+//	}
+//
+//	// Timer for chaotic motion
+//	float time = animationTimer;
+//
+//	// Update particles
+//	for (uint32_t x = 0; x < dim; x++) {
+//		for (uint32_t y = 0; y < dim; y++) {
+//			for (uint32_t z = 0; z < dim; z++) {
+//				uint32_t index = x * dim * dim + y * dim + z;
+//
+//				// Aligned offset
+//				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (index * dynamicAlignment)));
+//
+//				// Update particle height
+//				particleHeights[index] += particleSpeeds[index] * 0.016f;
+//
+//				// Reset particle height if it exceeds max height
+//				if (particleHeights[index] > maxHeight) {
+//					particleHeights[index] = 0.0f; // Reset to the base
+//				}
+//
+//				// Calculate height factor (0.0 at base, 1.0 at top)
+//				float heightFactor = particleHeights[index] / maxHeight;
+//
+//				float taperFactor = pow(heightFactor, 2.0f); // Quadratic progression for smoother taper
+//				float currentRadius = glm::mix(bottomRadius * taperFactor, topRadius, heightFactor);
+//
+//				// Add chaotic flicker to the flame
+//				glm::vec3 flicker = glm::vec3(
+//					sin(time * flickerIntensity + particleOffsets[index].x * 10.0f) * taperFactor,
+//					0.0f,
+//					cos(time * flickerIntensity + particleOffsets[index].z * 10.0f) * taperFactor
+//				);
+//
+//				// Calculate final spread
+//				glm::vec3 coneSpread = (particleOffsets[index] + flicker) * currentRadius;
+//
+//				// Calculate position
+//				glm::vec3 pos = glm::vec3(0.0f, particleHeights[index], 0.0f) + coneSpread;
+//
+//				// Dynamic scaling: grow, then shrink near the top
+//				float scale = heightFactor < 0.7f
+//					? minScale + heightFactor * (maxScale - minScale) / 0.7f
+//					: maxScale - (heightFactor - 0.7f) * (maxScale - shrinkScale) / 0.3f;
+//
+//				// Fade out as particles reach the top
+//				float fadeFactor = 1.0f - heightFactor;
+//
+//				// Update the model matrix with translation and scaling
+//				*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//				*modelMat = glm::scale(*modelMat, glm::vec3(scale));
+//
+//				// Pass fade factor to the shader for transparency
+//				//m_UboDataDynamic.fadeFactors[index] = fadeFactor; // Example placeholder
+//			}
+//		}
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+
+// One flame
+//void Scene::UpdateDynamicUniformBuffer() {
+//	// Parameters for flame behavior
+//	const float maxHeight = 50.0f;     // Maximum height of the flame
+//	const float baseRadius = 5.0f;     // Tight base radius
+//	const float middleRadius = 30.0f;  // Wide middle radius
+//	const float topRadius = 2.0f;      // Tapered top radius
+//	const float flickerAmplitude = 0.5f; // Subtle flicker motion
+//	const float flickerSpeed = 3.0f;   // Flicker oscillation speed
+//
+//	// Timer for chaotic motion
+//	float time = animationTimer;
+//
+//	// Loop through all flame particles
+//	for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+//		glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
+//
+//		// Calculate height factor (0.0 at base, 1.0 at top)
+//		float heightFactor = static_cast<float>(i) / DYNAMIC_UB_OBJECTS;
+//
+//		// Tapered flame shape: quadratic for smoother curves
+//		float radius = (1.0f - heightFactor) * baseRadius +
+//			heightFactor * (1.0f - heightFactor) * middleRadius +
+//			heightFactor * topRadius;
+//
+//		// Add flicker effect
+//		glm::vec3 flicker = glm::vec3(
+//			sin(time * flickerSpeed + i * 0.1f) * flickerAmplitude,
+//			0.0f,
+//			cos(time * flickerSpeed + i * 0.1f) * flickerAmplitude
+//		);
+//
+//		// Compute particle position
+//		glm::vec3 pos = glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+//
+//		// Scale the particles to shrink toward the top
+//		float scale = 1.0f - heightFactor * 0.8f;
+//
+//		// Update the model matrix with translation and scaling
+//		*modelMat = glm::translate(glm::mat4(1.0f), pos);
+//		*modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
+//	}
+//
+//	// Increment animation timer
+//	animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//	// Copy and flush the updated data to the buffer
+//	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
+// four flames
+//void Scene::UpdateDynamicUniformBuffer() {
+//    // Parameters for flame behavior
+//    const float maxHeight = 50.0f;     // Maximum height of the flame
+//    const float baseRadius = 5.0f;     // Tight base radius
+//    const float middleRadius = 30.0f;  // Wide middle radius
+//    const float topRadius = 2.0f;      // Tapered top radius
+//    const float flickerAmplitude = 0.5f; // Subtle flicker motion
+//    const float flickerSpeed = 3.0f;   // Flicker oscillation speed
+//
+//    // Timer for chaotic motion
+//    float time = animationTimer;
+//
+//    // Flame positions (4 different flame origins)
+//    glm::vec3 flamePositions[4] = {
+//        glm::vec3(-20.0f, 0.0f, -20.0f), // Flame 1 position
+//        glm::vec3(20.0f, 0.0f, -20.0f),  // Flame 2 position
+//        glm::vec3(-20.0f, 0.0f, 20.0f),  // Flame 3 position
+//        glm::vec3(20.0f, 0.0f, 20.0f)    // Flame 4 position
+//    };
+//
+//    // Loop through all flame particles and assign them to different flames
+//    for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+//        glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
+//
+//        // Calculate which flame this particle belongs to (4 flames in total)
+//        uint32_t flameIndex = i % 4; // Distribute particles evenly between the flames
+//        glm::vec3 flameOrigin = flamePositions[flameIndex];
+//
+//        // Calculate height factor (0.0 at base, 1.0 at top)
+//        float heightFactor = static_cast<float>(i) / DYNAMIC_UB_OBJECTS;
+//
+//        // Tapered flame shape: quadratic for smoother curves
+//        float radius = (1.0f - heightFactor) * baseRadius +
+//            heightFactor * (1.0f - heightFactor) * middleRadius +
+//            heightFactor * topRadius;
+//
+//        // Add flicker effect
+//        glm::vec3 flicker = glm::vec3(
+//            sin(time * flickerSpeed + i * 0.1f) * flickerAmplitude,
+//            0.0f,
+//            cos(time * flickerSpeed + i * 0.1f) * flickerAmplitude
+//        );
+//
+//        // Compute particle position based on flame origin
+//        glm::vec3 pos = flameOrigin + glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+//
+//        // Scale the particles to shrink toward the top
+//        float scale = 1.0f - heightFactor * 0.8f;
+//
+//        // Update the model matrix with translation and scaling
+//        *modelMat = glm::translate(glm::mat4(1.0f), pos);
+//        *modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
+//    }
+//
+//    // Increment animation timer
+//    animationTimer += 0.016f; // Assuming ~60 FPS
+//
+//    // Copy and flush the updated data to the buffer
+//    m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+//    m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
+//}
+
 void Scene::UpdateDynamicUniformBuffer() {
-	uint32_t dim = static_cast<uint32_t>(pow(DYNAMIC_UB_OBJECTS, (1.0f / 3.0f)));
-	glm::vec3 offset(cloudsVisibDist, cloudsVisibDist/10, cloudsVisibDist);
-	cloudsPos+=0.01f;
-	
-	for (uint32_t x = 0; x < dim; x++) {
-		for (uint32_t y = 0; y < dim; y++) {
-			for (uint32_t z = 0; z < dim; z++) {
-				uint32_t index = x * dim * dim + y * dim + z;
+	// Parameters for flame behavior
+	const float maxHeight = 50.0f;      // Maximum height of the flame
+	const float baseRadius = 5.0f;      // Tight base radius
+	const float middleRadius = 50.0f;   // Wide middle radius
+	const float topRadius = 2.0f;       // Tapered top radius
+	const float flickerAmplitude = 0.7f; // Subtle flicker motion
+	const float flickerSpeed = 3.0f;    // Flicker oscillation speed
+	const float moveRange = 20.0f;      // Maximum movement range for flame origins
+	const float particleSpeed = 0.2f;   // Speed at which particles move upwards (lower = slower)
 
-				// Aligned offset
-				glm::mat4* modelMat = (glm::mat4*)(((uint64_t)uboDataDynamic.model + (index * dynamicAlignment)));
-					
-				// Update matrices
-				glm::vec3 pos = glm::vec3(-((dim * offset.x) / 2.0f) + offset.x / 2.0f + x * offset.x, -((dim * offset.y) / 2.0f) + offset.y / 2.0f + y * offset.y, -((dim * offset.z) / 2.0f) + offset.z / 2.0f + z * offset.z);
-					
-				pos += rnd_pos[index];
-				
-				if(cloudsPos>cloudsVisibDist*2){
-					cloudsPos=-cloudsVisibDist*2;
-				} 
+	// Static positions for flame origins
+	static glm::vec3 flamePositions[4] = {
+		glm::vec3(mainCharacter->position.x - 5.0f, mainCharacter->position.y, mainCharacter->position.z - 5.0f), // Flame 1 position
+		glm::vec3(mainCharacter->position.x + 5.0f, mainCharacter->position.y, mainCharacter->position.z - 5.0f),  // Flame 2 position
+		glm::vec3(mainCharacter->position.x - 5.0f, mainCharacter->position.y, mainCharacter->position.z + 5.0f),  // Flame 3 position
+		glm::vec3(mainCharacter->position.x + 5.0f, mainCharacter->position.y, mainCharacter->position.z + 5.0f)    // Flame 4 position
+	};
 
-				*modelMat = glm::translate(glm::mat4(1.0f), pos);
-				*modelMat = glm::translate(*modelMat, glm::vec3(cloudsPos, cloudsVisibDist*2, 0.0f));
-				//*modelMat = glm::scale(*modelMat,  glm::vec3(55.0f, 55.0f, 55.0f));
+	// Particle lifecycle timers
+	static float particleTimers[DYNAMIC_UB_OBJECTS];
+	static bool initialized = false;
 
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(1.0f, 1.0f, 0.0f));
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-				//*modelMat = glm::rotate(*modelMat, time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-			}
+	// Initialize particle timers once
+	if (!initialized) {
+		for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+			particleTimers[i] = ((std::rand() % 1000) / 1000.0f); // Random starting offset
 		}
+		std::srand(std::time(nullptr)); // Seed the random generator
+		initialized = true;
 	}
 
-	m_UboCloudsDynamic.copy(sizeof(uboDataDynamic), uboDataDynamic.model);
-	m_UboCloudsDynamic.flush(sizeof(uboDataDynamic));
+	// Loop through all flame particles
+	for (uint32_t i = 0; i < DYNAMIC_UB_OBJECTS; ++i) {
+		glm::mat4* modelMat = (glm::mat4*)(((uint64_t)m_UboDataDynamic.model + (i * dynamicAlignment)));
+
+		// Calculate which flame this particle belongs to (4 flames in total)
+		uint32_t flameIndex = i % 4; // Distribute particles evenly between the flames
+		glm::vec3 flameOrigin = flamePositions[flameIndex];
+
+		// Update particle timer
+		particleTimers[i] += particleSpeed * 0.016f; // Assuming ~60 FPS
+
+		// Reset particle timer when it completes its lifecycle
+		if (particleTimers[i] >= 1.0f) {
+			particleTimers[i] -= 1.0f; // Reset to the bottom
+		}
+
+		// Calculate height factor based on lifecycle progress
+		float heightFactor = particleTimers[i];
+
+		// Tapered flame shape: quadratic for smoother curves
+		float radius = (1.0f - heightFactor) * baseRadius +
+			heightFactor * (1.0f - heightFactor) * middleRadius +
+			heightFactor * topRadius;
+
+		// Add flicker effect
+		glm::vec3 flicker = glm::vec3(
+			sin((float)mainClock->totalElapsedTime * flickerSpeed + i * 0.1f) * flickerAmplitude,
+			0.0f,
+			cos((float)mainClock->totalElapsedTime * flickerSpeed + i * 0.1f) * flickerAmplitude
+		);
+
+		// Compute particle position based on flame origin
+		glm::vec3 pos = flameOrigin + glm::vec3(0.0f, heightFactor * maxHeight, 0.0f) + flicker;
+
+		// Scale the particles to shrink toward the top
+		float scale = 1.0f - heightFactor * 0.8f;
+
+		// Update the model matrix with translation and scaling
+		*modelMat = glm::translate(glm::mat4(1.0f), pos);
+		*modelMat = glm::scale(*modelMat, glm::vec3(radius * scale));
+	}
+
+	// Copy and flush the updated data to the buffer
+	m_UboCloudsDynamic.copy(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS, m_UboDataDynamic.model);
+	m_UboCloudsDynamic.flush(sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS);
 }
 
+
+
+
 void Scene::UpdateSkyboxUniformBuffer() {
-	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSB.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSB.proj[1][1] *= -1;
 	UBOSB.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSB.view[3][0] *= 0;
@@ -1265,7 +1675,7 @@ void Scene::UpdateSkyboxUniformBuffer() {
 
 void Scene::UpdateOceanUniformBuffer() {
 	UBOSE.model = glm::mat4(1.0f);
-	UBOSE.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)m_Device->swapchain_extent.width / (float)m_Device->swapchain_extent.height, currentCamera->clippingNear, currentCamera->clippingFar);
+	UBOSE.proj = glm::perspective(glm::radians(currentCamera->FOV), (float)p_SwapChain->getExtent().width / (float)p_SwapChain->getExtent().height, currentCamera->clippingNear, currentCamera->clippingFar);
 	UBOSE.proj[1][1] *= -1;
 	UBOSE.view = glm::lookAt(currentCamera->position, currentCamera->view, currentCamera->up);
 	UBOSE.cameraPos = currentCamera->position;
@@ -1809,7 +2219,7 @@ void Scene::CreateDescriptorSet() {
 	VkDescriptorBufferInfo CloudsDynamicBufferInfo = {};
 	CloudsDynamicBufferInfo.buffer = m_UboCloudsDynamic.getBuffer();
 	CloudsDynamicBufferInfo.offset = 0;
-	CloudsDynamicBufferInfo.range = sizeof(UboDataDynamic);
+	CloudsDynamicBufferInfo.range = sizeof(glm::mat4) * DYNAMIC_UB_OBJECTS;
 
 	std::array<VkWriteDescriptorSet, 2> cloudsDescriptorWrites = {};
 
@@ -2084,7 +2494,7 @@ void Scene::CreateSelectRay() {
 void Scene::LoadAssets() {
 	InitMaterials();
 	CreateSelectRay();
-	PrepeareMainCharacter(m_MeshLibrary->meshes["human"]);
+	PrepeareMainCharacter(m_MeshLibrary->meshes["sphere"]);
 	
 	// Scene objects/actors
 	CreateCloud("Test cloud", "Look, I am flying", glm::vec3(0.0f, 0.0f, 0.0f), m_MeshLibrary->meshes["sphere"]);
@@ -2234,22 +2644,22 @@ void Scene::InitMaterials() {
 
 void Scene::CreateDepthResources() {
 	screenDepthImage->Init(m_Device, commandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	screenDepthImage->texWidth = m_Device->swapchain_extent.width; 
-	screenDepthImage->texHeight = m_Device->swapchain_extent.height;
+	screenDepthImage->texWidth = p_SwapChain->getExtent().width;
+	screenDepthImage->texHeight = p_SwapChain->getExtent().height;
 	screenDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	screenDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	screenDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 	reflectionDepthImage->Init(m_Device, reflectionCommandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	reflectionDepthImage->texWidth = (int32_t)m_Device->swapchain_extent.width; 
-	reflectionDepthImage->texHeight = (int32_t)m_Device->swapchain_extent.height;
+	reflectionDepthImage->texWidth = p_SwapChain->getExtent().width;
+	reflectionDepthImage->texHeight = p_SwapChain->getExtent().height;
 	reflectionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
 
 	refractionDepthImage->Init(m_Device, refractionCommandPool, m_Device->FindDepthFormat(), 0, 1, 1);
-	refractionDepthImage->texWidth = (int32_t)m_Device->swapchain_extent.width; 
-	refractionDepthImage->texHeight = (int32_t)m_Device->swapchain_extent.height;
+	refractionDepthImage->texWidth = p_SwapChain->getExtent().width;
+	refractionDepthImage->texHeight = p_SwapChain->getExtent().height;
 	refractionDepthImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	refractionDepthImage->CreateImageView(VK_IMAGE_ASPECT_DEPTH_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	refractionDepthImage->TransitionImageLayout(VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL);
@@ -2257,15 +2667,15 @@ void Scene::CreateDepthResources() {
 
 void Scene::PrepareOffscreenImage() {
 	reflectionImage->Init(m_Device, reflectionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	reflectionImage->texWidth = m_Device->swapchain_extent.width;
-	reflectionImage->texHeight = m_Device->swapchain_extent.height;
+	reflectionImage->texWidth = p_SwapChain->getExtent().width;
+	reflectionImage->texHeight = p_SwapChain->getExtent().height;
 	reflectionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	reflectionImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	reflectionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
 	refractionImage->Init(m_Device, refractionCommandPool, VK_FORMAT_R8G8B8A8_UNORM, 0, 1, 1);
-	refractionImage->texWidth = m_Device->swapchain_extent.width;
-	refractionImage->texHeight = m_Device->swapchain_extent.height;
+	refractionImage->texWidth = p_SwapChain->getExtent().width;
+	refractionImage->texHeight = p_SwapChain->getExtent().height;
 	refractionImage->CreateImage(VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, 0);
 	refractionImage->CreateImageView(VK_IMAGE_ASPECT_COLOR_BIT, VK_IMAGE_VIEW_TYPE_2D);
 	refractionImage->CreateTextureSampler(VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
@@ -2314,12 +2724,12 @@ void Scene::TextOverlayToggle() {m_GUIMainHub->m_GUISettings.display_stats_overl
 // ---------------- Deinitialisation ---------------- //
 
 void Scene::DeInitFramebuffer() {
-	for (size_t i = 0; i < m_Device->swap_chain_framebuffers.size(); i++) {
-		vkDestroyFramebuffer(m_Device->get(), m_Device->swap_chain_framebuffers[i], nullptr);
+	for (size_t i = 0; i < m_Device->m_SwapChainFramebuffers.size(); i++) {
+		vkDestroyFramebuffer(m_Device->get(), m_Device->m_SwapChainFramebuffers[i], nullptr);
 	}
 
-	vkDestroyFramebuffer(m_Device->get(), m_Device->reflectionFramebuffer, nullptr);
-	vkDestroyFramebuffer(m_Device->get(), m_Device->refractionFramebuffer, nullptr);
+	vkDestroyFramebuffer(m_Device->get(), m_Device->m_ReflectionFramebuffer, nullptr);
+	vkDestroyFramebuffer(m_Device->get(), m_Device->m_RefractionFramebuffer, nullptr);
 }
 
 void Scene::CleanUpDepthResources() {
@@ -2378,8 +2788,8 @@ void Scene::DeInitTextureImage() {
 }
 
 void Scene::DeInitUniformBuffer() {
-	if (uboDataDynamic.model) {
-		alignedFree(uboDataDynamic.model);
+	if (m_UboDataDynamic.model) {
+		alignedFree(m_UboDataDynamic.model);
 	}
 
 	m_UboLine.destroy();

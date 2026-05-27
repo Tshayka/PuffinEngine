@@ -1,4 +1,5 @@
 #include <string>
+
 #include "headers/Texture.hpp"
 
 namespace enginetool {

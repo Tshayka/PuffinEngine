@@ -16,6 +16,8 @@
 #include "MaterialLibrary.hpp"
 #include "MeshLibrary.hpp"
 #include "MousePicker.hpp"
+#include "RenderPass.hpp"
+#include "SwapChain.hpp"
 #include "Texture.hpp"
 #include "Ui.hpp"
 
@@ -23,7 +25,7 @@ const int WIDTH = 800;
 const int HEIGHT = 600;
 const float horizon = 9832.0f; //0.5km
 static float cloudsPos = 0.0f;
-const float cloudsVisibDist = 50.0f;
+const float cloudsVisibDist = 1.0f;
 
 namespace puffinengine {
 	namespace tool {
@@ -34,8 +36,8 @@ namespace puffinengine {
 
 			bool m_Initialized = false;
 
-			void init(Device* device, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
-			void CleanUpForSwapchain();
+			void init(GLFWwindow* window, Device* device, SwapChain* SwapChain, RenderPass* screenRenderPass, RenderPass* offScreenRenderPass, GuiMainHub* statusOverlay, MousePicker* mousePicker, MeshLibrary* meshLibrary, MaterialLibrary* materialLibrary, WorldClock* mainClock, enginetool::ThreadPool* threadPool);
+			void cleanUpForSwapchain();
 			void RecreateForSwapchain();
 			void deinit();
 			
@@ -146,7 +148,6 @@ namespace puffinengine {
 			bool FindDestinationPosition(glm::vec3& destinationPoint);
 			bool HasStencilComponent(VkFormat);
 			void InitMaterials();
-			void InitSwapchainImageViews();
 			void LoadAssets();
 			void PrepeareMainCharacter(enginetool::ScenePart& mesh);
 			void PrepareOffscreenImage();
@@ -247,7 +248,7 @@ namespace puffinengine {
 			// UBO Dynamic that contains all clouds matrices
 			struct UboDataDynamic {
 				glm::mat4* model = nullptr;
-			} uboDataDynamic;
+			} m_UboDataDynamic;
 
 			// Struct that holds the models positions
 			struct Constants {
@@ -257,6 +258,8 @@ namespace puffinengine {
 				glm::vec3 color;
 				//alignas(16) glm::vec2
 			};
+
+			float animationTimer{ 0.0f };
 
 			enginetool::Buffer m_UboLine;
 			enginetool::Buffer m_UboSkybox;
@@ -357,7 +360,11 @@ namespace puffinengine {
 			VkRect2D scissor = {};
 			VkViewport viewport = {};
 
+			GLFWwindow* p_Window = nullptr;
 			Device* m_Device = nullptr;
+			SwapChain* p_SwapChain = nullptr;
+			RenderPass* p_ScreenRenderPass;
+			RenderPass* p_OffScreenRenderPass;
 			MaterialLibrary* materialLibrary = nullptr;
 			MeshLibrary* m_MeshLibrary = nullptr;
 			MousePicker* m_MousePicker = nullptr;

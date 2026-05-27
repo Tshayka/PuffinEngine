@@ -1,12 +1,14 @@
 #pragma once
 
-#include "../imgui/imgui.h"
 #include "Buffer.hpp"
 #include "ErrorCheck.hpp"
 #include "PushConstant.hpp"
+#include "RenderPass.hpp"
+#include "SwapChain.hpp"
 #include "Texture.hpp"
 
 #ifdef WIN32
+#define NOMINMAX
 #include <windows.h>
 #endif
 
@@ -45,7 +47,7 @@ public:
 	GuiMainUi();
 	~GuiMainUi();
 
-	void init(Device* device, VkCommandPool* commandPool);
+	void init(Device* device, puffinengine::tool::SwapChain* swapChain, puffinengine::tool::RenderPass* renderPass, VkCommandPool* commandPool);
 	void cleanUpForSwapchain();
 	void recreateForSwapchain();
 	void deInit();
@@ -87,5 +89,7 @@ private:
 	VkRect2D m_Scissor = {};
 
 	Device* p_LogicalDevice = nullptr;
+	puffinengine::tool::SwapChain* p_SwapChain = nullptr;
+	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	VkCommandPool* p_CommandPool = nullptr;
 };

@@ -1,4 +1,5 @@
 #include <iostream>
+
 #include "headers/ErrorCheck.hpp"
 #include "headers/Texture.hpp"
 
@@ -233,8 +234,8 @@ void TextureLayout::EndSingleTimeCommands(VkCommandBuffer commandBuffer) {
 	SubmitInfo.commandBufferCount = 1;
 	SubmitInfo.pCommandBuffers = &commandBuffer;
 
-	vkQueueSubmit(logicalDevice->queue, 1, &SubmitInfo, VK_NULL_HANDLE);
-	vkQueueWaitIdle(logicalDevice->queue);
+	vkQueueSubmit(logicalDevice->getQueue(), 1, &SubmitInfo, VK_NULL_HANDLE);
+	vkQueueWaitIdle(logicalDevice->getQueue());
 
 	vkFreeCommandBuffers(logicalDevice->get(), *commandPool, 1, &commandBuffer);
 }

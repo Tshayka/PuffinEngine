@@ -3,7 +3,6 @@
 #include "headers/MousePicker.hpp"
 #include "headers/ErrorCheck.hpp"
 
-
 // ------- Constructors and dectructors ------------- //
 
 MousePicker::MousePicker() {

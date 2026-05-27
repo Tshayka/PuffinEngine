@@ -34,14 +34,14 @@ void MaterialLibrary::Init(Device* device) {
 }
 
 void MaterialLibrary::CreateCommandPool() {
-		QueueFamilyIndices queueFamilyIndices = logicalDevice->FindQueueFamilies(logicalDevice->gpu);
+	QueueFamilyIndices queueFamilyIndices = logicalDevice->findQueueFamilies();
 
-		VkCommandPoolCreateInfo poolInfo = {};
-		poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-		poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
-		poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
+	VkCommandPoolCreateInfo poolInfo = {};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT; // allow command buffers to be rerecorded individually, optional
 	
-		ErrorCheck(vkCreateCommandPool(logicalDevice->get(), &poolInfo, nullptr, &commandPool));
+	ErrorCheck(vkCreateCommandPool(logicalDevice->get(), &poolInfo, nullptr, &commandPool));
 }
 
 void MaterialLibrary::FillLibrary() {
