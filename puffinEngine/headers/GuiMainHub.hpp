@@ -26,11 +26,13 @@ public:
 	void deinit();
 	
 	void submit(const VkQueue& queue, const int32_t& bufferIndex);
+	void setPlayerHealth(float ratio, int currentHealth, unsigned int maxHealth);
 	void updateGui(); 
 	
 	bool m_Initialized = false;
 	std::vector<VkCommandBuffer> m_CommandBuffers;
 	bool guiOverlayVisible = true;
+	bool menuMode = false;
 
 	GUISettings m_GUISettings;
 
@@ -56,4 +58,7 @@ private:
 	puffinengine::tool::RenderPass* p_RenderPass = nullptr;
 	enginetool::ThreadPool* p_ThreadPool = nullptr;
 	puffinengine::tool::WorldClock* p_MainClock = nullptr;
+	float m_PlayerHealthRatio = 1.0f;
+	int m_PlayerCurrentHealth = 0;
+	unsigned int m_PlayerMaxHealth = 0;
 };

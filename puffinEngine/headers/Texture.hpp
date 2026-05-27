@@ -19,9 +19,9 @@ class TextureLayout {
 
         std::vector<VkBufferImageCopy> bufferCopyRegions;//private?
 
-        VkImage m_FontImage;
-		VkImageView view;
-		VkDeviceMemory m_FontMemory;
+        VkImage m_FontImage = VK_NULL_HANDLE;
+		VkImageView view = VK_NULL_HANDLE;
+		VkDeviceMemory m_FontMemory = VK_NULL_HANDLE;
 		VkSampler sampler = nullptr;
         VkFormat format;
         VkDeviceSize size;
@@ -36,5 +36,5 @@ class TextureLayout {
         bool HasStencilComponent();
         
         VkCommandPool* commandPool = nullptr;
-        Device* logicalDevice;
+        Device* logicalDevice = nullptr;
     };

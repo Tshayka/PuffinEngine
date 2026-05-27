@@ -44,8 +44,12 @@ namespace puffinengine {
 			void DeSelect();
 			void HandleMouseClick();
 			void CreateCommandBuffers();
+			void CreateMenuCommandBuffers();
 			void CreateReflectionCommandBuffer();
 			void CreateRefractionCommandBuffer();
+			float GetMainCharacterHealthRatio() const;
+			int GetMainCharacterCurrentHealth() const;
+			unsigned int GetMainCharacterMaxHealth() const;
 			void UpdateGUI();
 			void update();
 
@@ -105,8 +109,8 @@ namespace puffinengine {
 			GuiMainHub* m_GUIMainHub = nullptr;
 
 			std::vector<VkCommandBuffer> commandBuffers;
-			VkCommandBuffer reflectionCmdBuff;
-			VkCommandBuffer refractionCmdBuff;
+			VkCommandBuffer reflectionCmdBuff = VK_NULL_HANDLE;
+			VkCommandBuffer refractionCmdBuff = VK_NULL_HANDLE;
 
 		private:
 			// ---------------- Main functions ------------------ //

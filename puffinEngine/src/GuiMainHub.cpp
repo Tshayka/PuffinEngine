@@ -81,6 +81,12 @@ void GuiMainHub::submit(const VkQueue& queue, const int32_t &bufferIndex) {
 	ErrorCheck(vkQueueWaitIdle(queue));
 }
 
+void GuiMainHub::setPlayerHealth(float ratio, int currentHealth, unsigned int maxHealth) {
+	m_PlayerHealthRatio = std::max(0.0f, std::min(1.0f, ratio));
+	m_PlayerCurrentHealth = currentHealth;
+	m_PlayerMaxHealth = maxHealth;
+}
+
 void GuiMainHub::createRenderPass() {
 	VkAttachmentDescription color_attachment = {};
 	color_attachment.format = p_SwapChain->getSwapchainImageFormat();
@@ -169,17 +175,40 @@ void GuiMainHub::createCommandPool() {
 
 void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedTime, const double &fps) {
 	p_TextOverlay->beginTextUpdate();
-	p_TextOverlay->renderText("Some random title", 5.0f, 5.0f, TextAlignment::alignLeft);
-	std::stringstream ss;
-	ss << std::fixed << std::setprecision(4) << "Frame Time : " << (frameTime) << "ms | " << " elapsed time : " << elapsedTime << "s | " << fps << " FPS)";
-	p_TextOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
-	p_TextOverlay->renderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
+
+	if (menuMode) {
+		const float centerX = static_cast<float>(p_SwapChain->getExtent().width) * 0.5f;
+		const float centerY = static_cast<float>(p_SwapChain->getExtent().height) * 0.5f;
+
+		p_TextOverlay->renderText("Puffin Engine", centerX - 78.0f, centerY - 95.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("[ Start ]", centerX - 45.0f, centerY - 25.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("[ Quit ]", centerX - 38.0f, centerY + 30.0f, TextAlignment::alignLeft);
+	}
+	else {
+		p_TextOverlay->renderText("Puffin Engine", 5.0f, 5.0f, TextAlignment::alignLeft);
+		std::stringstream ss;
+		ss << std::fixed << std::setprecision(2) << "Frame Time: " << frameTime << " ms | Elapsed: " << elapsedTime << " s | " << fps << " FPS";
+		p_TextOverlay->renderText(ss.str(), 5.0f, 25.0f, TextAlignment::alignLeft);
+
+		const int barWidth = 24;
+		const int filledWidth = static_cast<int>(m_PlayerHealthRatio * barWidth + 0.5f);
+		std::stringstream health;
+		health << "HP " << m_PlayerCurrentHealth << "/" << m_PlayerMaxHealth << " [";
+		for (int i = 0; i < barWidth; ++i) {
+			health << (i < filledWidth ? '#' : '-');
+		}
+		health << "]";
+		p_TextOverlay->renderText(health.str(), 5.0f, 45.0f, TextAlignment::alignLeft);
+
+		p_TextOverlay->renderText("Press \"1\" to turn on or off all GUI components", 5.0f, 65.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"WSAD\" to move camera", 5.0f, 85.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"2-4\" to toggle GUI components", 5.0f, 105.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"V\" to toggle wireframe mode", 5.0f, 125.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"B\" to toggle AABB boxes", 5.0f, 145.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"R\" to reset camera position", 5.0f, 165.0f, TextAlignment::alignLeft);
+		p_TextOverlay->renderText("Press \"T\" to reset selected actor position", 5.0f, 185.0f, TextAlignment::alignLeft);
+	}
+
 	p_TextOverlay->endTextUpdate();
 
 	p_MainUi->newFrame();
@@ -203,6 +232,7 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
 	renderPassInfo.pClearValues = clearValues.data();
 
+	freeCommandBuffers();
 	m_CommandBuffers.resize(p_Device->m_SwapChainFramebuffers.size());
 
 	VkCommandBufferAllocateInfo allocInfo = {};
@@ -238,7 +268,10 @@ void GuiMainHub::updateCommandBuffers(const double &frameTime, uint32_t elapsedT
 }
 
 void GuiMainHub::freeCommandBuffers() {
+	if (m_CommandBuffers.empty()) return;
+
 	vkFreeCommandBuffers(p_Device->get(), m_CommandPool, static_cast<uint32_t>(m_CommandBuffers.size()), m_CommandBuffers.data());
+	m_CommandBuffers.clear();
 }
 
 void GuiMainHub::deinit() {

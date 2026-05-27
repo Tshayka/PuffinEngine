@@ -122,8 +122,9 @@ void Scene::update() {
 	CreateReflectionCommandBuffer();
 	CreateRefractionCommandBuffer();
 #else
-	std::vector<std::function<void()>> stageTwo = {task11, task12, task13};
-	ProcesTasksMultithreaded(threadPool, stageTwo); 
+	CreateCommandBuffers();
+	CreateReflectionCommandBuffer();
+	CreateRefractionCommandBuffer();
 #endif 
 }
 
@@ -644,9 +645,17 @@ void Scene::CreateGraphicsPipeline() {
 }
 
 void Scene::ProcesTasksMultithreaded(enginetool::ThreadPool* threadPool, std::vector<std::function<void()>>& tasks){
+	if (!threadPool || threadPool->threads.empty()) {
+		while (!tasks.empty()) {
+			tasks.back()();
+			tasks.pop_back();
+		}
+		return;
+	}
+
 	while(!tasks.empty()){
 		size_t i = 0;		
-		while (i < threadPool->threads.size()-1 && !tasks.empty()) {
+		while (i < threadPool->threads.size() && !tasks.empty()) {
 			threadPool->threads[i]->AddJob(tasks.back());
 			tasks.pop_back();
 			++i;
@@ -657,6 +666,11 @@ void Scene::ProcesTasksMultithreaded(enginetool::ThreadPool* threadPool, std::ve
 }
 
 void Scene::CreateCommandBuffers() {
+	if (!commandBuffers.empty()) {
+		vkFreeCommandBuffers(m_Device->get(), commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		commandBuffers.clear();
+	}
+
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -806,7 +820,53 @@ void Scene::CreateCommandBuffers() {
 	}
 }
 
+void Scene::CreateMenuCommandBuffers() {
+	if (!commandBuffers.empty()) {
+		vkFreeCommandBuffers(m_Device->get(), commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		commandBuffers.clear();
+	}
+
+	VkCommandBufferBeginInfo beginInfo = {};
+	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
+
+	std::array<VkClearValue, 2> clearValues = {};
+	clearValues[0].color = { 0.02f, 0.025f, 0.035f, 1.0f };
+	clearValues[1].depthStencil = { 1.0f, 0 };
+
+	VkRenderPassBeginInfo renderPassInfo = {};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+	renderPassInfo.renderPass = p_ScreenRenderPass->get();
+	renderPassInfo.renderArea.offset = { 0, 0 };
+	renderPassInfo.renderArea.extent = p_SwapChain->getExtent();
+	renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+	renderPassInfo.pClearValues = clearValues.data();
+
+	commandBuffers.resize(m_Device->m_SwapChainFramebuffers.size());
+
+	VkCommandBufferAllocateInfo allocInfo = {};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+
+	ErrorCheck(vkAllocateCommandBuffers(m_Device->get(), &allocInfo, commandBuffers.data()));
+
+	for (size_t i = 0; i < commandBuffers.size(); i++) {
+		renderPassInfo.framebuffer = m_Device->m_SwapChainFramebuffers[i];
+		ErrorCheck(vkBeginCommandBuffer(commandBuffers[i], &beginInfo));
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdEndRenderPass(commandBuffers[i]);
+		ErrorCheck(vkEndCommandBuffer(commandBuffers[i]));
+	}
+}
+
 void Scene::CreateReflectionCommandBuffer() {
+	if (reflectionCmdBuff != VK_NULL_HANDLE) {
+		vkFreeCommandBuffers(m_Device->get(), reflectionCommandPool, 1, &reflectionCmdBuff);
+		reflectionCmdBuff = VK_NULL_HANDLE;
+	}
+
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -881,7 +941,12 @@ void Scene::CreateReflectionCommandBuffer() {
 	ErrorCheck(vkEndCommandBuffer(reflectionCmdBuff));
 }
 
-void Scene::CreateRefractionCommandBuffer() { 
+void Scene::CreateRefractionCommandBuffer() {
+	if (refractionCmdBuff != VK_NULL_HANDLE) {
+		vkFreeCommandBuffers(m_Device->get(), refractionCommandPool, 1, &refractionCmdBuff);
+		refractionCmdBuff = VK_NULL_HANDLE;
+	}
+
 	VkCommandBufferBeginInfo beginInfo = {};
 	beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
 	beginInfo.flags = VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT;
@@ -1068,6 +1133,26 @@ void Scene::HandleMouseClick() {
 			std::cout << "Position changed"<< std::endl;
 		}
 	}
+}
+
+float Scene::GetMainCharacterHealthRatio() const {
+	const Character* character = dynamic_cast<const Character*>(mainCharacter.get());
+	if (!character || character->maxHealth == 0) {
+		return 0.0f;
+	}
+
+	const float ratio = static_cast<float>(character->currentHealth) / static_cast<float>(character->maxHealth);
+	return std::max(0.0f, std::min(1.0f, ratio));
+}
+
+int Scene::GetMainCharacterCurrentHealth() const {
+	const Character* character = dynamic_cast<const Character*>(mainCharacter.get());
+	return character ? character->currentHealth : 0;
+}
+
+unsigned int Scene::GetMainCharacterMaxHealth() const {
+	const Character* character = dynamic_cast<const Character*>(mainCharacter.get());
+	return character ? character->maxHealth : 0;
 }
 
 void Scene::CheckActorsVisibility(){
@@ -2829,7 +2914,18 @@ void Scene::DestroyPipeline() {
 }
 
 void Scene::FreeCommandBuffers() {
-	vkFreeCommandBuffers(m_Device->get(), commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
-	vkFreeCommandBuffers(m_Device->get(), reflectionCommandPool, 1, &reflectionCmdBuff);
-	vkFreeCommandBuffers(m_Device->get(), refractionCommandPool, 1, &refractionCmdBuff);
+	if (!commandBuffers.empty()) {
+		vkFreeCommandBuffers(m_Device->get(), commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		commandBuffers.clear();
+	}
+
+	if (reflectionCmdBuff != VK_NULL_HANDLE) {
+		vkFreeCommandBuffers(m_Device->get(), reflectionCommandPool, 1, &reflectionCmdBuff);
+		reflectionCmdBuff = VK_NULL_HANDLE;
+	}
+
+	if (refractionCmdBuff != VK_NULL_HANDLE) {
+		vkFreeCommandBuffers(m_Device->get(), refractionCommandPool, 1, &refractionCmdBuff);
+		refractionCmdBuff = VK_NULL_HANDLE;
+	}
 }

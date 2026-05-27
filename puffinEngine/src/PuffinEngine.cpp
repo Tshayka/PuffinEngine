@@ -1,6 +1,7 @@
 #include "../imgui/imgui.h"
 
 #include <iostream>
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <thread>
@@ -86,6 +87,9 @@ void PuffinEngine::createWorldClock() {
 
 void PuffinEngine::GatherThreadInfo() {
 	numThreads = std::thread::hardware_concurrency();
+	if (numThreads < 2) {
+		numThreads = 2;
+	}
 	std::cout << "numThreads = " << numThreads << std::endl;
 	m_ThreadPool.SetThreadCount(numThreads);		
 }
@@ -121,23 +125,26 @@ void PuffinEngine::CreateMainCharacter() {
 
 void PuffinEngine::CreateGuiMainHub() {
 	m_GUIMainHub.init(&m_Device, &m_SwapChain, &m_ScreenRenderPass, p_Console, p_GuiStatistics, p_MainUi, &m_MainClock, &m_ThreadPool);
+	m_GUIMainHub.menuMode = true;
+	m_GUIMainHub.m_GUISettings.display_main_ui = false;
+	m_GUIMainHub.m_GUISettings.display_imgui = false;
 }
 
 void PuffinEngine::CreateScene() {
 	m_SwapChain.initSwapchainImageViews();
 	scene_1.init(window, &m_Device, &m_SwapChain, &m_ScreenRenderPass, &m_OffScreenRenderPass, &m_GUIMainHub, &m_MousePicker, &m_MeshLibrary, &m_MaterialLibrary, &m_MainClock, &m_ThreadPool);
+	scene_1.CreateMenuCommandBuffers();
 }
 
 void PuffinEngine::mainLoop() {
-	const double maxAccumulatedTime = 1.0;
 	m_MainClock.fixedTimeValue = 0.015;
 	const double maxFrameTime = 0.15;
 	double currentTime = glfwGetTime();
 	double accumulator = 0.0;
-	int frameCount = 0;
 	const int frameHistorySize = 60;
 	double frameTimes[frameHistorySize] = { 0.0 };
 	int frameIndex = 0;
+	int frameSampleCount = 0;
 
 	while (!glfwWindowShouldClose(window)) {
 		double newTime = glfwGetTime();
@@ -161,33 +168,47 @@ void PuffinEngine::mainLoop() {
 			height > 0 ? (static_cast<float>(fb_height) / height) : 0);
 		io.DeltaTime = static_cast<float>(frameTime);
 
-		while (accumulator >= m_MainClock.fixedTimeValue) {
-			m_ThreadPool.threads.back()->AddJob(std::bind(&PuffinEngine::UpdateGui, this));
-			scene_1.update();
-			m_MainClock.totalElapsedTime += m_MainClock.fixedTimeValue;
-			accumulator -= m_MainClock.fixedTimeValue;
-		}
-
-		DrawFrame();
-
-		// Calculate average frame time and FPS
-		// frameTimes - bumber of frames to consider for FPS calculation
 		frameTimes[frameIndex] = frameTime;
 		frameIndex = (frameIndex + 1) % frameHistorySize;
+		if (frameSampleCount < frameHistorySize) {
+			++frameSampleCount;
+		}
+
 		double avgFrameTime = 0.0;
-		for (int i = 0; i < frameHistorySize; i++) {
+		for (int i = 0; i < frameSampleCount; i++) {
 			avgFrameTime += frameTimes[i];
 		}
 
-		avgFrameTime /= frameHistorySize;
-		m_MainClock.fps = 1.0 / avgFrameTime;
-		m_MainClock.frameTime = frameTime;
+		avgFrameTime /= frameSampleCount;
+		m_MainClock.fps = avgFrameTime > 0.0 ? 1.0 / avgFrameTime : 0.0;
+		m_MainClock.frameTime = frameTime * 1000.0;
+
+		if (m_GameStarted) {
+			while (accumulator >= m_MainClock.fixedTimeValue) {
+				scene_1.update();
+				m_MainClock.totalElapsedTime += m_MainClock.fixedTimeValue;
+				accumulator -= m_MainClock.fixedTimeValue;
+			}
+		}
+		else {
+			accumulator = 0.0;
+		}
+
+		UpdateGui();
+		DrawFrame();
 	}
 
 	vkDeviceWaitIdle(m_Device.get());
 }
 
 void PuffinEngine::UpdateGui(){
+	if (m_GameStarted) {
+		m_GUIMainHub.setPlayerHealth(
+			scene_1.GetMainCharacterHealthRatio(),
+			scene_1.GetMainCharacterCurrentHealth(),
+			scene_1.GetMainCharacterMaxHealth());
+	}
+
 	m_GUIMainHub.updateGui();
 }
 
@@ -214,31 +235,39 @@ void PuffinEngine::DrawFrame() {
 		std::exit(-1);
 	}
 
-	// Submitting the command buffer
 	VkSubmitInfo submit_info = {}; // queue submission and synchronization is configured through parameters
 	submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 	VkPipelineStageFlags wait_stages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
 	submit_info.pWaitDstStageMask = wait_stages;
 	submit_info.waitSemaphoreCount = 1;
 	submit_info.signalSemaphoreCount = 1;
-	
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1.reflectionCmdBuff;
-	submit_info.pWaitSemaphores = &imageAvailableSemaphore;
-	submit_info.pSignalSemaphores = &reflectRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
 
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1.refractionCmdBuff;
-	submit_info.pWaitSemaphores = &reflectRenderSemaphore;
-	submit_info.pSignalSemaphores = &refractRenderSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
-	
-	submit_info.commandBufferCount = 1;
-	submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
-	submit_info.pWaitSemaphores = &refractRenderSemaphore;
-	submit_info.pSignalSemaphores = &renderFinishedSemaphore;
-	ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+	if (m_GameStarted) {
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &scene_1.reflectionCmdBuff;
+		submit_info.pWaitSemaphores = &imageAvailableSemaphore;
+		submit_info.pSignalSemaphores = &reflectRenderSemaphore;
+		ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &scene_1.refractionCmdBuff;
+		submit_info.pWaitSemaphores = &reflectRenderSemaphore;
+		submit_info.pSignalSemaphores = &refractRenderSemaphore;
+		ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
+		submit_info.pWaitSemaphores = &refractRenderSemaphore;
+		submit_info.pSignalSemaphores = &renderFinishedSemaphore;
+		ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+	}
+	else {
+		submit_info.commandBufferCount = 1;
+		submit_info.pCommandBuffers = &scene_1.commandBuffers[imageIndex];
+		submit_info.pWaitSemaphores = &imageAvailableSemaphore;
+		submit_info.pSignalSemaphores = &renderFinishedSemaphore;
+		ErrorCheck(vkQueueSubmit(m_Device.getQueue(), 1, &submit_info, VK_NULL_HANDLE));
+	}
 
 	m_GUIMainHub.submit(m_Device.getQueue(), imageIndex);
 	
@@ -280,7 +309,23 @@ void PuffinEngine::RecreateSwapChain() {
 	m_SwapChain.init(&m_Device, window);
 	m_SwapChain.initSwapchainImageViews();
 	scene_1.RecreateForSwapchain();
+	if (!m_GameStarted) {
+		scene_1.CreateMenuCommandBuffers();
+	}
 	m_GUIMainHub.recreateForSwapchain();
+}
+
+void PuffinEngine::StartGame() {
+	if (m_GameStarted) {
+		return;
+	}
+
+	vkDeviceWaitIdle(m_Device.get());
+	m_GameStarted = true;
+	m_GUIMainHub.menuMode = false;
+	scene_1.CreateCommandBuffers();
+	scene_1.CreateReflectionCommandBuffer();
+	scene_1.CreateRefractionCommandBuffer();
 }
 
 
@@ -296,6 +341,11 @@ bool PuffinEngine::initWindow() {
 
 	window = glfwCreateWindow(800, 600, "PuffinEngine", nullptr, nullptr);
 
+	if (!window) {
+		glfwTerminate();
+		return false;
+	}
+
 	glfwSetKeyCallback(window, PuffinEngine::KeyCallback);
 	glfwSetMouseButtonCallback(window, PuffinEngine::MouseButtonCallback);
 	glfwSetCharCallback(window, PuffinEngine::CharacterCallback);
@@ -308,11 +358,6 @@ bool PuffinEngine::initWindow() {
 	glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 	glfwSetScrollCallback(window, PuffinEngine::ScrollCallback);
 	glfwSetErrorCallback(PuffinEngine::ErrorCallback);
-
-	if (!window) {
-		glfwTerminate();
-		return false;
-	}
 
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
@@ -393,15 +438,33 @@ void PuffinEngine::MouseButtonCallback(GLFWwindow* window, int button, int actio
 	PuffinEngine* app = reinterpret_cast<PuffinEngine*>(glfwGetWindowUserPointer(window));
 	ImGuiIO& io = ImGui::GetIO();
 
+	if (!app->m_GameStarted && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+		const double startX1 = app->width * 0.5 - 90.0;
+		const double startX2 = app->width * 0.5 + 90.0;
+		const double startY1 = app->height * 0.5 - 45.0;
+		const double startY2 = app->height * 0.5 + 5.0;
+		const double quitY1 = app->height * 0.5 + 10.0;
+		const double quitY2 = app->height * 0.5 + 60.0;
 
-	if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
+		if (app->xpos >= startX1 && app->xpos <= startX2 && app->ypos >= startY1 && app->ypos <= startY2) {
+			app->StartGame();
+			return;
+		}
+
+		if (app->xpos >= startX1 && app->xpos <= startX2 && app->ypos >= quitY1 && app->ypos <= quitY2) {
+			glfwSetWindowShouldClose(window, GLFW_TRUE);
+			return;
+		}
+	}
+
+	if (app->m_GameStarted && button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS) {
 		app->scene_1.DeSelect();
 #if DEBUG_VERSION
 		std::cout << "You clicked right mouse button" << std::endl;
 #endif
 	}
 	
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
+	if (app->m_GameStarted && button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS) {
 		app->scene_1.HandleMouseClick();
 #if DEBUG_VERSION
 		std::cout << "You clicked left mouse button" << std::endl;
@@ -508,6 +571,10 @@ bool PuffinEngine::initDefaultKeysBindings(std::map<int, FuncPair>& functions ) 
 }
 
 void PuffinEngine::PressKey(int key) {
+	if (!m_GameStarted) {
+		return;
+	}
+
 	int state = glfwGetKey(window, key);
 		
 	if (functions.count(key)) {

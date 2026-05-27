@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-build_dir="build64r"
-build_type="Release"
+build_dir="build64d"
+build_type="Debug"
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-app_exe="$repo_root/PuffinEngine/work/release/PuffinEngine"
+app_exe="$repo_root/PuffinEngine/work/debug/PuffinEngine"
 
 if [[ -z "${VULKAN_SDK:-}" ]]; then
     vulkan_root="$HOME/vulkan"

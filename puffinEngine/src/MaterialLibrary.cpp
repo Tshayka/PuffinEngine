@@ -1,3 +1,4 @@
+#define GLM_STATIC_ASSERT static_assert
 #include <gli/gli.hpp>
 #include <iostream>
 

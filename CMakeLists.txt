@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 2.8.2)
+cmake_minimum_required (VERSION 3.5)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -129,10 +129,10 @@ endif()
 
 #[[----Linking GLM libraries----]]
 
-set(glm_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm/lib/cmake/glm)
+set(glm_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm/share/glm)
 find_package(glm)
 target_link_libraries(${PROJECT_NAME} glm::glm)
-include_directories(${glm_DIR})
+include_directories(${CMAKE_SOURCE_DIR}/puffinEngine/lib/glm/include)
 
 if(NOT GLM_INCLUDE_DIR OR GLM_INCLUDE_DIR MATCHES "NOTFOUND")
 	set(GLM_FOUND false)
@@ -152,9 +152,24 @@ endif()
 set(GLI_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/lib/gli/include)
 include_directories(${GLI_INCLUDE_DIR})
 
-#[[----Downloading and unpack TINYOBJLOADER into libraries directory.----]]
+#[[----Downloading and unpack STB into libraries directory.----]]
 
 include(ExternalProject)
+ExternalProject_Add(stb
+    GIT_REPOSITORY         https://github.com/nothings/stb
+    GIT_TAG                master
+    SOURCE_DIR             "${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb/stb-prefix/src/stb"
+    CONFIGURE_COMMAND      ""
+    BUILD_COMMAND          ""
+    INSTALL_COMMAND        ""
+    UPDATE_COMMAND         ""
+)
+
+set(STB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb/stb-prefix/src/stb)
+include_directories(${PROJECT_NAME} ${STB_INCLUDE_DIR})
+
+#[[----Downloading and unpack TINYOBJLOADER into libraries directory.----]]
+
 ExternalProject_Add(tinyobjloader
     GIT_REPOSITORY         https://github.com/syoyo/tinyobjloader
     GIT_TAG                release
@@ -165,16 +180,12 @@ ExternalProject_Add(tinyobjloader
 
 set(TINYOBJ_INCLUDE_PATH ${CMAKE_SOURCE_DIR}/puffinEngine/lib/tinyobjloader/include)
 include_directories(${PROJECT_NAME} ${TINYOBJ_INCLUDE_PATH})
+add_dependencies(${PROJECT_NAME} stb tinyobjloader)
 
 
 
 
 #[[----Linking STB libraries----]]
-
-set(STB_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/puffinEngine/3rdParty/stb/stb-prefix/src/stb)
-include_directories(${PROJECT_NAME} ${STB_INCLUDE_DIR})
-
-
 
 #[[---Downloading and unpack BOOST into libraries directory.---]]
 

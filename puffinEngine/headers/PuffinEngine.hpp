@@ -62,6 +62,7 @@ private:
     void mainLoop();
     void PressKey(int key);
 	void RecreateSwapChain();
+    void StartGame();
     void UpdateGui();
    
     std::map<int, FuncPair> functions;
@@ -90,6 +91,7 @@ private:
 
     uint32_t numThreads;
     enginetool::ThreadPool m_ThreadPool;
+    bool m_GameStarted = false;
 
     double xpos, ypos;
 	int fb_width, fb_height; // framebuffer sizes are, in contrast to the window coordinates given in pixels in order to match Vulkans requirements for viewport.
